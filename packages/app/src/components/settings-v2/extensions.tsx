@@ -44,7 +44,13 @@ export const SettingsExtensionsV2: Component = () => {
     () => serverSdk.connection.status() === "connected",
     () => serverSdk.api.plugin.list().then((result) => result.data),
   )
-  const plugins = createMemo<PluginRowItem[]>(() => (pluginList.latest ?? []).map((item) => ({ name: item.id })))
+  const plugins = createMemo<PluginRowItem[]>(() => {
+    const loaded = (pluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
+    const configured = (serverSync.data.config.plugin ?? []).map((item) => (typeof item === "string" ? item : item[0]))
+    return [...new Set([...loaded, ...configured])]
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => ({ name }))
+  })
 
   createEffect(() => {
     if (serverSdk.connection.status() !== "connected") return

@@ -101,10 +101,20 @@ export const ProjectSettingsExtensions: Component = () => {
     () => (serverSDK.connection.status() === "connected" ? directorySDK().directory : undefined),
     (directory) => serverSDK.api.plugin.list({ location: { directory } }).then((result) => result.data),
   )
-  const globalPlugins = createMemo(() => (globalPluginList.latest ?? []).map((item) => item.id))
+  const listPlugins = (result: { data: ReadonlyArray<{ id: string }> }) =>
+    result.data.map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
+  const globalPlugins = createMemo(() => {
+    const loaded = (globalPluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
+    const configured = (serverSync.data.config.plugin ?? []).map(pluginName)
+    return [...new Set([...loaded, ...configured])].sort((a, b) => a.localeCompare(b))
+  })
   const projectPlugins = createMemo(() => {
     const shared = new Set(globalPlugins())
-    return (projectPluginList.latest ?? []).map((item) => item.id).filter((name) => !shared.has(name))
+    const loaded = (projectPluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
+    const configured = (sync().data.config.plugin ?? []).map(pluginName)
+    return [...new Set([...loaded, ...configured])]
+      .filter((name) => !shared.has(name))
+      .sort((a, b) => a.localeCompare(b))
   })
 
   const serverSkills = createMemo(() => data.location.skill.list() ?? [])
