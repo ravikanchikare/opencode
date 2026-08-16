@@ -99,3 +99,39 @@ export function mergeShellEnv(shell: Record<string, string> | null, env: Record<
     ...env,
   }
 }
+
+const IDENTITY_ENV = [
+  "OPENCODE_APP_ID",
+  "OPENCODE_CONFIG_DIR",
+  "XDG_DATA_HOME",
+  "XDG_CONFIG_HOME",
+  "XDG_CACHE_HOME",
+  "XDG_STATE_HOME",
+] as const
+
+function brandedIdentity(env: NodeJS.ProcessEnv) {
+  const id = env.OPENCODE_APP_ID?.trim()
+  return Boolean(id && id !== "opencode")
+}
+
+export function applyPreferredEnv(
+  current: NodeJS.ProcessEnv,
+  shellEnv: Record<string, string> | null,
+) {
+  const branded = brandedIdentity(current)
+  const preserved = Object.fromEntries(
+    IDENTITY_ENV.flatMap((key) => (current[key] === undefined ? [] : [[key, current[key]]])),
+  )
+  const incoming = { ...(shellEnv ?? {}) }
+  if (branded) delete incoming.OPENCODE_CONFIG_DIR
+
+  const next: NodeJS.ProcessEnv = { ...current }
+  if (!branded && !incoming.XDG_STATE_HOME) delete next.XDG_STATE_HOME
+  return mergeShellEnv(next as Record<string, string>, {
+    ...incoming,
+    OPENCODE_EXPERIMENTAL_ICON_DISCOVERY: "true",
+    OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
+    OPENCODE_CLIENT: "desktop",
+    ...preserved,
+  })
+}

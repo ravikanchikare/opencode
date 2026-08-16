@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 
-import { isNushell, mergeShellEnv, parseShellEnv, resolveUserShell } from "./shell-env"
+import { applyPreferredEnv, isNushell, mergeShellEnv, parseShellEnv, resolveUserShell } from "./shell-env"
 
 describe("shell env", () => {
   test("parseShellEnv supports null-delimited pairs", () => {
@@ -32,6 +32,38 @@ describe("shell env", () => {
     expect(env.PATH).toBe("/desktop/path")
     expect(env.HOME).toBe("/tmp/home")
     expect(env.OPENCODE_CLIENT).toBe("desktop")
+  })
+
+  test("a branded desktop keeps its identity instead of the shell OpenCode config", () => {
+    const env = applyPreferredEnv(
+      {
+        OPENCODE_APP_ID: "factory",
+        OPENCODE_CONFIG_DIR: "/starter/factory-config",
+        XDG_CONFIG_HOME: "/starter/config",
+        XDG_STATE_HOME: "/starter/state",
+      },
+      {
+        OPENCODE_CONFIG_DIR: "/Users/ravi/.config/opencode",
+        XDG_CONFIG_HOME: "/Users/ravi/.config",
+        PATH: "/usr/bin",
+      },
+    )
+
+    expect(env.OPENCODE_APP_ID).toBe("factory")
+    expect(env.OPENCODE_CONFIG_DIR).toBe("/starter/factory-config")
+    expect(env.XDG_CONFIG_HOME).toBe("/starter/config")
+    expect(env.XDG_STATE_HOME).toBe("/starter/state")
+    expect(env.PATH).toBe("/usr/bin")
+  })
+
+  test("a branded desktop ignores a shell OPENCODE_CONFIG_DIR pointing at OpenCode", () => {
+    const env = applyPreferredEnv(
+      { OPENCODE_APP_ID: "factory" },
+      { OPENCODE_CONFIG_DIR: "/Users/ravi/.config/opencode" },
+    )
+
+    expect(env.OPENCODE_CONFIG_DIR).toBeUndefined()
+    expect(env.OPENCODE_APP_ID).toBe("factory")
   })
 
   test("resolveUserShell falls back to the login shell before /bin/sh", () => {

@@ -209,6 +209,7 @@ export const layer = (options?: Options) =>
 
       const discover = Effect.fn("Config.discover")(function* () {
         const globalDirectory = AbsolutePath.make(global.config)
+        const stock = Global.isStockIdentity()
         const globalAgentsDirectory = AbsolutePath.make(path.join(global.home, ".agents"))
         const globalClaudeDirectory = AbsolutePath.make(path.join(global.home, ".claude"))
         const locationIsGlobal = path.resolve(location.directory) === path.resolve(global.config)
@@ -217,24 +218,32 @@ export const layer = (options?: Options) =>
             ? []
             : yield* fs
                 .up({
-                  targets: [".opencode", ".claude", ".agents", ...names.toReversed()],
+                  targets: stock
+                    ? [".opencode", ".claude", ".agents", ...names.toReversed()]
+                    : [".opencode", ...names.toReversed()],
                   start: location.directory,
                 })
                 .pipe(Effect.orDie)
 
-        // We load certain files from a few other folders in the ecosystem
-        const claude = [
-          ...new Set([
-            ...((yield* fs.isDir(globalClaudeDirectory)) ? [globalClaudeDirectory] : []),
-            ...discovered.filter((item) => path.basename(item) === ".claude").toReversed(),
-          ]),
-        ].map((directory) => new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(directory) }))
-        const agents = [
-          ...new Set([
-            ...((yield* fs.isDir(globalAgentsDirectory)) ? [globalAgentsDirectory] : []),
-            ...discovered.filter((item) => path.basename(item) === ".agents").toReversed(),
-          ]),
-        ].map((directory) => new AgentsDirectory({ type: "agents", path: AbsolutePath.make(directory) }))
+        // Stock OpenCode also reads ~/.claude and ~/.agents. A branded
+        // distribution stays inside its own identity directory plus project
+        // `.opencode` so it cannot pick up another product's config.
+        const claude = stock
+          ? [
+              ...new Set([
+                ...((yield* fs.isDir(globalClaudeDirectory)) ? [globalClaudeDirectory] : []),
+                ...discovered.filter((item) => path.basename(item) === ".claude").toReversed(),
+              ]),
+            ].map((directory) => new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(directory) }))
+          : []
+        const agents = stock
+          ? [
+              ...new Set([
+                ...((yield* fs.isDir(globalAgentsDirectory)) ? [globalAgentsDirectory] : []),
+                ...discovered.filter((item) => path.basename(item) === ".agents").toReversed(),
+              ]),
+            ].map((directory) => new AgentsDirectory({ type: "agents", path: AbsolutePath.make(directory) }))
+          : []
 
         const directories = [
           globalDirectory,

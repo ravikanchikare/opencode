@@ -9,7 +9,17 @@ import { roots } from "#global-roots"
 import { Flock } from "./flock.js"
 import { makeGlobalNode } from "./effect/app-node.js"
 
-const app = process.env.OPENCODE_APP_ID?.trim() || "opencode"
+export const DEFAULT_APP_ID = "opencode"
+
+export function appID(env: NodeJS.ProcessEnv = process.env) {
+  return env.OPENCODE_APP_ID?.trim() || DEFAULT_APP_ID
+}
+
+export function isStockIdentity(env: NodeJS.ProcessEnv = process.env) {
+  return appID(env) === DEFAULT_APP_ID
+}
+
+const app = appID()
 const { data, cache, config, state, tmp } = roots(app)
 
 const paths = {
