@@ -22,6 +22,21 @@ describe("globalConfigDirectory", () => {
     expect(globalConfigDirectory({ XDG_CONFIG_HOME: "/xdg" } as NodeJS.ProcessEnv, "/home/x")).toBe("/xdg/opencode")
     expect(globalConfigDirectory({} as NodeJS.ProcessEnv, "/home/x")).toBe("/home/x/.config/opencode")
   })
+
+  test("uses the application identity below XDG without overriding an explicit config directory", () => {
+    expect(
+      globalConfigDirectory(
+        { OPENCODE_APP_ID: "factory", XDG_CONFIG_HOME: "/xdg" } as NodeJS.ProcessEnv,
+        "/home/x",
+      ),
+    ).toBe("/xdg/factory")
+    expect(
+      globalConfigDirectory(
+        { OPENCODE_APP_ID: "factory", OPENCODE_CONFIG_DIR: "/explicit" } as NodeJS.ProcessEnv,
+        "/home/x",
+      ),
+    ).toBe("/explicit")
+  })
 })
 
 describe("seedPluginsFrom", () => {

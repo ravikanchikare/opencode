@@ -115,7 +115,11 @@ export async function stop(options: StopOptions = {}) {
 }
 
 function fallback() {
-  return join(process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"), "opencode", "service.json")
+  return join(
+    process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"),
+    process.env.OPENCODE_APP_ID?.trim() || "opencode",
+    "service.json",
+  )
 }
 
 /** Create HTTP authentication headers for a service endpoint. */

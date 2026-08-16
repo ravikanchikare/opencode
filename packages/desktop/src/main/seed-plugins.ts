@@ -38,7 +38,8 @@ type Logger = {
 export function globalConfigDirectory(env = process.env, home = homedir()): string {
   if (env.OPENCODE_CONFIG_DIR) return env.OPENCODE_CONFIG_DIR
   const xdg = env.XDG_CONFIG_HOME
-  return xdg ? join(xdg, "opencode") : join(home, ".config", "opencode")
+  const app = env.OPENCODE_APP_ID?.trim() || "opencode"
+  return xdg ? join(xdg, app) : join(home, ".config", app)
 }
 
 /** Where bundles live inside a packaged app; undefined when absent. */

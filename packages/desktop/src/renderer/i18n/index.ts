@@ -4,6 +4,7 @@ import {
   detectDesktopNativeLocale,
   type DesktopNativeLocale,
 } from "../../../../app/src/i18n/desktop-native"
+import { brandText } from "@opencode-ai/app/brand"
 
 import { dict as desktopEn } from "./en"
 import { dict as desktopZh } from "./zh"
@@ -191,7 +192,7 @@ state.dict = build(state.locale)
 const translate = i18n.translator(() => state.dict, i18n.resolveTemplate)
 
 export function t(key: keyof Dictionary, params?: Record<string, string | number>) {
-  return translate(key, params)
+  return brandText(translate(key, params))
 }
 
 export function initI18n(): Promise<Locale> {

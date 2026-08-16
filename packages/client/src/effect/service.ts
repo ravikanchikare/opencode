@@ -139,7 +139,7 @@ export const stop = Effect.fn("service.stop")(function* (options: StopOptions = 
 
 function fallback() {
   const state = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  return join(state, "opencode", "service.json")
+  return join(state, process.env.OPENCODE_APP_ID?.trim() || "opencode", "service.json")
 }
 
 /** Create HTTP authentication headers for a service endpoint. */

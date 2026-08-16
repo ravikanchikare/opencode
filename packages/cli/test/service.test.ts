@@ -19,6 +19,15 @@ test("managed service ports are stable per installation channel", () => {
   expect(ServiceConfig.defaultPort("preview-a")).not.toBe(ServiceConfig.defaultPort("preview-b"))
 })
 
+test("managed service ports isolate application identity overrides", () => {
+  const port = ServiceConfig.defaultPort("latest", "factory")
+  expect(port).toBe(ServiceConfig.defaultPort("dev", "factory"))
+  expect(port).toBe(ServiceConfig.defaultPort("beta", "factory"))
+  expect(port).toBe(ServiceConfig.defaultPort("next", "factory"))
+  expect(port).not.toBe(ServiceConfig.defaultPort("latest", "opencode"))
+  expect(port).not.toBe(ServiceConfig.defaultPort("latest", "another-distribution"))
+})
+
 test("managed service forwards the CPU profile path to the server", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-service-profile-"))
   const profile = path.join(root, "server.cpuprofile")

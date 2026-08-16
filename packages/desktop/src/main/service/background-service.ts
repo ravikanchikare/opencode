@@ -36,7 +36,7 @@ export async function startBackgroundCli(logger: Logger) {
   const service = await Service.ensure({
     file:
       isolated && process.env.OPENCODE_DESKTOP_SERVER_CHANNEL === "local"
-        ? join(app.getPath("userData"), "opencode", "service-local.json")
+        ? join(app.getPath("userData"), process.env.OPENCODE_APP_ID?.trim() || "opencode", "service-local.json")
         : undefined,
     version: cli.version,
     command: [...cli.command, "serve", "--service", ...(isolated ? ["--port", "0"] : [])],

@@ -5,6 +5,9 @@ import {
   type DesktopNativeBundle,
   type DesktopNativeKey,
 } from "@opencode-ai/app/i18n/desktop-native"
+import { brandText } from "@opencode-ai/app/brand"
+
+const PRODUCT_NAME = import.meta.env.OPENCODE_DESKTOP_NAME?.trim() || "OpenCode"
 
 let bundle: DesktopNativeBundle = { locale: "en", messages: { ...DESKTOP_NATIVE_ENGLISH } }
 
@@ -20,5 +23,5 @@ export function setNativeTranslations(next: DesktopNativeBundle) {
 }
 
 export function nativeT(key: DesktopNativeKey, params?: Record<string, string | number>) {
-  return formatDesktopNativeMessage(bundle.messages[key], params)
+  return brandText(formatDesktopNativeMessage(bundle.messages[key], params), PRODUCT_NAME)
 }

@@ -157,7 +157,8 @@ function manifest() {
 
 function serverLogRoots() {
   const xdgData = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share")
-  return [...new Set([join(xdgData, "opencode", "log"), join(app.getPath("userData"), "opencode", "log")])]
+  const identity = process.env.OPENCODE_APP_ID?.trim() || "opencode"
+  return [...new Set([join(xdgData, identity, "log"), join(app.getPath("userData"), identity, "log")])]
 }
 
 type Entry = { name: string; path?: string; data?: Buffer }
