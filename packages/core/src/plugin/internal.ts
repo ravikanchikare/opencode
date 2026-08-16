@@ -66,6 +66,7 @@ import { CommandPlugin } from "./command.js"
 import { PlanPlugin } from "./plan.js"
 import { ModelsDevPlugin } from "./models-dev.js"
 import { MCPCodeModeExclusionPlugin } from "./mcp-codemode-exclusion.js"
+import { ProviderAllowlistPlugin } from "./provider-allowlist.js"
 import { ProviderPlugins } from "./provider.js"
 import { WebSearchPlugins } from "./websearch/index.js"
 import { PluginRuntime } from "./runtime.js"
@@ -237,6 +238,8 @@ const post = [
   ConfigWebSearchPlugin.Plugin,
   VariantPlugin.Plugin,
   ConfigPolicyPlugin.Plugin,
+  // Last: removal wins even over providers re-created by earlier transforms.
+  ProviderAllowlistPlugin.Plugin,
 ] as const satisfies readonly InternalPlugin[]
 
 export const list = Effect.fn("PluginInternal.list")(function* () {
