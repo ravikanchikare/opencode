@@ -44,9 +44,21 @@ import { requireServerKey } from "./utils/session-route"
 import { TargetSessionRouteContent } from "@/pages/session"
 import { Home } from "@/pages/home"
 import { ServerProvider } from "./context/server"
+import { getAppComposition, type HomeSurfaceProps } from "./composition"
+import { useSettingsCommand } from "./components/settings-dialog"
 
 const NewSession = lazy(() => import("@/pages/new-session"))
 
+function HomeRoute() {
+  const component = getAppComposition().home
+  if (!component) return <Home />
+  return <ComposedHome component={component} />
+}
+
+function ComposedHome(props: { component: Component<HomeSurfaceProps> }) {
+  const openSettings = useSettingsCommand()
+  return <Dynamic component={props.component} openSettings={openSettings} />
+}
 function TargetServerRoute(props: ParentProps) {
   const params = useParams<{ serverKey: string }>()
   const global = useGlobal()
@@ -268,7 +280,7 @@ export function AppInterface(props: {
         <GlobalProvider>
           <Dynamic component={props.router ?? Router} root={Root}>
             <Route component={AppLayout}>
-              <Route path="/" component={Home} />
+              <Route path="/" component={HomeRoute} />
               <Route
                 path="/server/:serverKey/session/:id"
                 component={() => (

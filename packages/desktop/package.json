@@ -22,6 +22,10 @@
     "native:build": "bun install --cwd native"
   },
   "main": "./out/main/index.js",
+  "exports": {
+    "./renderer": "./src/renderer/index.tsx",
+    "./vite": "./electron.vite.config.ts"
+  },
   "dependencies": {
     "@zip.js/zip.js": "2.7.62",
     "effect": "catalog:",

@@ -1,0 +1,45 @@
+name: Fork policy
+
+on:
+  push:
+    branches: [v2]
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one-commit-fork:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch upstream v2
+        run: git fetch https://github.com/anomalyco/opencode.git v2:refs/remotes/upstream/v2
+      - name: Enforce one rebased composition commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor upstream/v2 HEAD
+          test "$(git rev-list --count upstream/v2..HEAD)" -eq 1
+
+          allowed='^(\.github/workflows/fork-policy\.yml|packages/app/package\.json|packages/app/src/app\.tsx|packages/app/src/composition-api\.ts|packages/app/src/composition\.tsx|packages/app/src/components/settings-dialog\.tsx|packages/desktop/package\.json|packages/desktop/src/main/env\.d\.ts|packages/desktop/src/main/index\.ts)$'
+          unexpected="$(git diff --name-only upstream/v2...HEAD | grep -Ev "$allowed" || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo "Fork changes escaped the composition allowlist:"
+            echo "$unexpected"
+            exit 1
+          fi
+
+          git diff --quiet upstream/v2...HEAD -- packages/session-ui packages/app/src/pages/session.tsx packages/app/src/pages/session packages/app/src/components/session
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+        working-directory: packages/app
+      - run: bun run typecheck
+        working-directory: packages/desktop
+      - run: bun run build
+        working-directory: packages/desktop
