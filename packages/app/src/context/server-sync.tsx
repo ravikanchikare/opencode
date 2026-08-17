@@ -16,7 +16,19 @@ import { PathKey } from "@/utils/path-key"
 import type { ServerScope } from "@/utils/server-scope"
 import { persisted } from "@/utils/persist"
 import type { ServerApi } from "@/utils/server"
-import { toggleMcp } from "./global-sync/mcp"
+import type {
+  McpListInput,
+  McpListOutput,
+  McpResource,
+  McpResourceCatalogInput,
+  McpResourceCatalogOutput,
+  McpServer,
+  SessionActiveOutput,
+  SessionStatus,
+} from "@opencode-ai/client/promise"
+import { authenticateMcp, connectMcp, disconnectMcp, toggleMcp } from "./global-sync/mcp"
+import { createServerSession, type ServerSession } from "./server-session"
+import { createCatalogSync } from "./server-sync/catalog"
 import { createConnectionSync } from "./server-sync/connection"
 import { usePlatform } from "./platform"
 import type { Data } from "@opencode-ai/client/solid"
@@ -285,31 +297,15 @@ export function createServerSyncContextInner(serverSDK: ServerSDK, data: Data) {
         if (!status) return
         await toggleMcp({
           status,
-          connect: async () => {
-            await serverSDK.api.mcp.connect({ server: name, location: { directory: key } })
-          },
-          disconnect: async () => {
-            await serverSDK.api.mcp.disconnect({ server: name, location: { directory: key } })
-          },
-          authenticate: async () => {
-            const server = (await serverSDK.api.mcp.list({ location: { directory: key } })).data.find(
-              (item) => item.name === name,
-            )
-            if (!server?.integrationID) throw new Error(`MCP server ${name} has no authentication integration`)
-            const integration = await serverSDK.api.integration.get({
-              integrationID: server.integrationID,
+          connect: () => connectMcp(serverSDK.api, name, { directory: key }),
+          disconnect: () => disconnectMcp(serverSDK.api, name, { directory: key }),
+          authenticate: () =>
+            authenticateMcp({
+              api: serverSDK.api,
+              name,
               location: { directory: key },
-            })
-            const method = integration.data?.methods.find((item) => item.type === "oauth" && !item.form?.length)
-            if (!method || method.type !== "oauth")
-              throw new Error(`MCP server ${name} requires an interactive authentication form`)
-            const attempt = await serverSDK.api.integration.oauth.connect({
-              integrationID: server.integrationID,
-              methodID: method.id,
-              location: { directory: key },
-            })
-            platform.openExternal(attempt.data.url)
-          },
+              openExternal: platform.openExternal,
+            }),
           refresh: async () => {
             data.location.mcp.server.invalidate({ directory: key })
             data.location.mcp.resource.invalidate({ directory: key })

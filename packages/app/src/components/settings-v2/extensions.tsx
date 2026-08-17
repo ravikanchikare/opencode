@@ -1,18 +1,21 @@
 import { Component, For, createEffect, createMemo, createResource } from "solid-js"
+import type { McpServer } from "@opencode-ai/client/promise"
 import { Icon } from "@opencode-ai/ui/icon"
 import { Switch } from "@opencode-ai/ui/v2/switch-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
 import { useLanguage } from "@/context/language"
 import { useData } from "@/context/server"
+import { authenticateMcp, connectMcp, disconnectMcp, toggleMcp } from "@/context/global-sync/mcp"
+import { usePlatform } from "@/context/platform"
 import { useServerSDK } from "@/context/server-sdk"
-import { useMcpToggle } from "@/context/mcp"
+import { showToast } from "@/utils/toast"
 import { ExternalLink } from "../external-link"
 import { InlineServerSelect } from "./parts/server-select"
 import "./settings-v2.css"
 
 interface McpRowItem {
   name: string
-  enabled: boolean
+  status: McpServer["status"]["status"]
 }
 
 interface PluginRowItem {
@@ -22,22 +25,51 @@ interface PluginRowItem {
 export const SettingsExtensionsV2: Component = () => {
   const language = useLanguage()
   const serverSdk = useServerSDK()
-  const data = useData()
-  const [mcpList, { refetch: refetchMcp }] = createResource(
-    () => serverSdk.connection.status() === "connected",
-    () => serverSdk.api.mcp.list().then((result) => result.data),
-  )
-  const toggleMcp = useMcpToggle(() => undefined, refetchMcp)
-  const mcps = createMemo<McpRowItem[]>(() => {
-    return (mcpList.latest ?? []).map((server) => ({
-      name: server.name,
-      enabled: server.status.status === "connected",
-    }))
-  })
+  const platform = usePlatform()
 
-  const handleMcpToggle = (item: McpRowItem, checked: boolean) => {
-    if (item.enabled === checked || toggleMcp.isPending) return
-    toggleMcp.mutate(item.name)
+  /**
+   * MCP servers come from the *runtime* list, not from config — the same
+   * correction the plugins list below already carries.
+   *
+   * `config.mcp` is `{ timeout?, servers? }`, so enumerating its entries
+   * yielded rows named `servers` and `timeout` rather than server names, and
+   * every server a user did not hand-write into an `opencode.json` — anything
+   * the distribution ships — was missing entirely. `mcp.list()` reports what is
+   * actually registered, which is what this tab exists to show.
+   *
+   * No location is passed: this is the server-wide view, a distinct scope from
+   * any one project. Per-project state lives in project settings.
+   */
+  const [mcpServers, { refetch: refetchMcp }] = createResource(
+    () => serverSdk.connection.status() === "connected",
+    (connected) => {
+      if (!connected) return []
+      return serverSdk.api.mcp
+        .list()
+        .then((result) => result.data.map((server) => ({ name: server.name, status: server.status.status })))
+        .catch(() => [])
+    },
+    { initialValue: [] },
+  )
+  const mcps = createMemo<McpRowItem[]>(() => [...mcpServers.latest].sort((a, b) => a.name.localeCompare(b.name)))
+
+  const handleMcpToggle = (item: McpRowItem) => {
+    void toggleMcp({
+      status: item.status,
+      connect: () => connectMcp(serverSdk.api, item.name),
+      disconnect: () => disconnectMcp(serverSdk.api, item.name),
+      authenticate: () => authenticateMcp({ api: serverSdk.api, name: item.name, openExternal: platform.openExternal }),
+      refresh: async () => {
+        await refetchMcp()
+      },
+    }).catch((error) =>
+      showToast({
+        variant: "error",
+        title: language.t("common.requestFailed"),
+        description: error instanceof Error ? error.message : String(error),
+      }),
+    )
+  }
   }
 
   const [pluginList] = createResource(
@@ -94,7 +126,12 @@ export const SettingsExtensionsV2: Component = () => {
                         <Icon name="mcp" class="text-v2-icon-icon-muted shrink-0" />
                         <span class="text-13-medium text-v2-text-text-base truncate">{item.name}</span>
                       </div>
-                      <Switch checked={item.enabled} onChange={(checked) => handleMcpToggle(item, checked)} hideLabel>
+                      <Switch
+                        checked={item.status === "connected"}
+                        disabled={item.status === "pending"}
+                        onChange={() => handleMcpToggle(item)}
+                        hideLabel
+                      >
                         {item.name}
                       </Switch>
                     </div>
