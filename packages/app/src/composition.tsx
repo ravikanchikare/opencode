@@ -1,4 +1,5 @@
 import type { Component } from "solid-js"
+import type { useLanguage } from "@/context/language"
 
 export type HomeSurfaceProps = {
   openSettings: () => void
@@ -14,6 +15,13 @@ export type SettingsProvidersSurfaceProps = {
   onBack?: () => void
 }
 
+export type HomeUtilityNavSurfaceProps = {
+  class?: string
+  onOpenSettings: () => void
+  onOpenHelp: () => void
+  language: ReturnType<typeof useLanguage>
+}
+
 export type AppComposition = {
   home?: Component<HomeSurfaceProps>
   settings?: Component<SettingsSurfaceProps>
@@ -24,6 +32,14 @@ export type AppComposition = {
    * owns its own tab bodies and this slot is not read.
    */
   settingsProviders?: Component<SettingsProvidersSurfaceProps>
+  /**
+   * Replaces the utility nav rendered at the bottom of the Home page's project
+   * sidebar (and its mobile counterpart). The stock component shows Settings
+   * and Help buttons; a composition can omit either. Only `home.tsx`
+   * consults this — a composition that also replaces `home` owns its own
+   * entire page and this slot is not read.
+   */
+  homeUtilityNav?: Component<HomeUtilityNavSurfaceProps>
 }
 
 let composition: AppComposition = {}

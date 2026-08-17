@@ -4,6 +4,7 @@ export {
   configureAppComposition,
   type AppComposition,
   type HomeSurfaceProps,
+  type HomeUtilityNavSurfaceProps,
   type SettingsProvidersSurfaceProps,
   type SettingsSurfaceProps,
 } from "./composition"
@@ -25,6 +26,7 @@ export { InlineServerSelect } from "./components/settings-v2/parts/server-select
 export { SettingsRowV2 } from "./components/settings-v2/parts/row"
 export { SettingsWorkspacesV2 } from "./components/settings-v2/workspaces"
 export { DialogConnectProvider, useProviderConnectController } from "./components/dialog-connect-provider"
+export { HomeUtilityNav } from "./pages/home/home-projects-view"
 export { Persist, persisted } from "./utils/persist"
 export { showToast } from "./utils/toast"
 export { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -33,6 +35,7 @@ export { useDialog } from "@opencode-ai/ui/context/dialog"
 // both stop at this package, so a composition consumer cannot resolve them or
 // its own utility classes on its own.
 export { Icon } from "@opencode-ai/ui/icon"
+export { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 export { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 export { Tag } from "@opencode-ai/ui/v2/badge-v2"
 export { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
