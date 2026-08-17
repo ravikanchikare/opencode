@@ -87,6 +87,24 @@ export const McpGroup = HttpApiGroup.make("server.mcp")
       ),
   )
   .add(
+    HttpApiEndpoint.post("mcp.setEnabled", "/api/mcp/:server/enabled", {
+      params: { server: Schema.String },
+      query: LocationQuery,
+      payload: Schema.Struct({ enabled: Schema.Boolean }),
+      success: HttpApiSchema.NoContent,
+      error: McpServerNotFoundError,
+    })
+      .annotateMerge(locationQueryOpenApi)
+      .annotateMerge(
+        OpenApi.annotations({
+          identifier: "v2.mcp.setEnabled",
+          summary: "Enable or disable an MCP server",
+          description:
+            "Persistently enable or disable an MCP server for this project. The choice survives a process restart via the global KV store.",
+        }),
+      ),
+  )
+  .add(
     HttpApiEndpoint.get("mcp.resource.catalog", "/api/mcp/resource", {
       query: LocationQuery,
       success: Location.response(Mcp.ResourceCatalog),

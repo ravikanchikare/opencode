@@ -18,6 +18,7 @@ import { McpEvent } from "@opencode-ai/schema/mcp-event"
 import { Config } from "@opencode-ai/core/config"
 import { ConfigMCPPlugin } from "@opencode-ai/core/config/plugin/mcp"
 import { Credential } from "@opencode-ai/core/credential"
+import { KV } from "@opencode-ai/core/kv"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Bus } from "@opencode-ai/core/bus"
@@ -250,6 +251,11 @@ function resourceMcpLayer(
           },
         }),
         Layer.mock(Credential.Service, {}),
+        Layer.mock(KV.Service, {
+          get: () => Effect.succeed(undefined),
+          set: () => Effect.void,
+          remove: () => Effect.void,
+        }),
         overrides?.environment ?? hostEnvironmentLayer,
       ),
     ),

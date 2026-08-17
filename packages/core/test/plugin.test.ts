@@ -75,6 +75,7 @@ describe("Plugin", () => {
                 remove: (ref) => Effect.sync(() => routed.push(`remove:${ref.directory}`)),
                 connect: (ref) => Effect.sync(() => routed.push(`connect:${ref.directory}`)),
                 disconnect: (ref) => Effect.sync(() => routed.push(`disconnect:${ref.directory}`)),
+                setEnabled: (ref, server, enabled) => Effect.sync(() => routed.push(`setEnabled:${ref.directory}:${server}:${enabled}`)),
               },
             },
           }),

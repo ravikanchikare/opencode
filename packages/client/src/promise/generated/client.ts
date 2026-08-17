@@ -126,6 +126,8 @@ import type {
   McpConnectOutput,
   McpDisconnectInput,
   McpDisconnectOutput,
+  McpSetEnabledInput,
+  McpSetEnabledOutput,
   McpResourceCatalogInput,
   McpResourceCatalogOutput,
   CredentialUpdateInput,
@@ -1195,6 +1197,19 @@ export function make(options: ClientOptions) {
             method: "POST",
             path: `/api/mcp/${encodeURIComponent(input.server)}/disconnect`,
             query: { location: input["location"] },
+            successStatus: 204,
+            declaredStatuses: [404, 401, 400],
+            empty: true,
+          },
+          requestOptions,
+        ),
+      setEnabled: (input: McpSetEnabledInput, requestOptions?: RequestOptions) =>
+        request<McpSetEnabledOutput>(
+          {
+            method: "POST",
+            path: `/api/mcp/${encodeURIComponent(input.server)}/enabled`,
+            query: { location: input["location"] },
+            body: { enabled: input["enabled"] },
             successStatus: 204,
             declaredStatuses: [404, 401, 400],
             empty: true,

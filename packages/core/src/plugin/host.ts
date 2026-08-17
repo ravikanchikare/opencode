@@ -298,6 +298,11 @@ export const make = Effect.fn("PluginHost.make")(function* (plugin: import("../p
         if (ref && !isCurrentLocation(ref)) return runtime.location.mcp.disconnect(ref, input.server)
         return mcp.disconnect(input.server)
       },
+      setEnabled: (input) => {
+        const ref = locationRef(input)
+        if (ref && !isCurrentLocation(ref)) return runtime.location.mcp.setEnabled(ref, input.server, input.enabled)
+        return mcp.setEnabled(input.server, input.enabled)
+      },
       reload: mcp.reload,
       transform: (callback) =>
         mcp.transform((draft) => {

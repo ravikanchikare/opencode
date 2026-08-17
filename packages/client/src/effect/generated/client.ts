@@ -134,6 +134,8 @@ import type {
   Endpoint11_4Output,
   Endpoint11_5Input,
   Endpoint11_5Output,
+  Endpoint11_6Input,
+  Endpoint11_6Output,
   Endpoint12_0Input,
   Endpoint12_0Output,
   Endpoint12_1Input,
@@ -838,8 +840,17 @@ const Endpoint11_4 = (raw: RawClient["server.mcp"]) => (input: Endpoint11_4Input
     ),
   )
 
-const Endpoint11_5 = (raw: RawClient["server.mcp"]) => (input?: Endpoint11_5Input) =>
+const Endpoint11_5 = (raw: RawClient["server.mcp"]) => (input: Endpoint11_5Input) =>
   preserveEffect<Endpoint11_5Output>()(
+    raw["mcp.setEnabled"]({
+      params: { server: input["server"] },
+      query: { location: input["location"] },
+      payload: { enabled: input["enabled"] },
+    }).pipe(Effect.mapError(mapClientError)),
+  )
+
+const Endpoint11_6 = (raw: RawClient["server.mcp"]) => (input?: Endpoint11_6Input) =>
+  preserveEffect<Endpoint11_6Output>()(
     raw["mcp.resource.catalog"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
   )
 
@@ -849,7 +860,8 @@ const adaptGroup11 = (raw: RawClient["server.mcp"]) => ({
   remove: Endpoint11_2(raw),
   connect: Endpoint11_3(raw),
   disconnect: Endpoint11_4(raw),
-  resource: { catalog: Endpoint11_5(raw) },
+  setEnabled: Endpoint11_5(raw),
+  resource: { catalog: Endpoint11_6(raw) },
 })
 
 const Endpoint12_0 = (raw: RawClient["server.credential"]) => (input: Endpoint12_0Input) =>

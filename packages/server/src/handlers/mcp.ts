@@ -59,6 +59,14 @@ export const McpHandler = HttpApiBuilder.group(Api, "server.mcp", (handlers) =>
         }),
       )
       .handle(
+        "mcp.setEnabled",
+        Effect.fn(function* (ctx) {
+          const service = yield* MCP.Service
+          yield* notFound(service.setEnabled(ctx.params.server, ctx.payload.enabled))
+          return HttpApiSchema.NoContent.make()
+        }),
+      )
+      .handle(
         "mcp.resource.catalog",
         Effect.fn(function* () {
           const service = yield* MCP.Service

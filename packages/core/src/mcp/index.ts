@@ -13,6 +13,7 @@ import { Environment } from "../environment/index.js"
 import { Form } from "../form.js"
 import { Integration } from "../integration.js"
 import { KeyedMutex } from "../effect/keyed-mutex.js"
+import { KV } from "../kv.js"
 import { Location } from "../location.js"
 import { waitForAbort } from "@opencode-ai/util/process"
 import { State } from "../state.js"
@@ -147,6 +148,7 @@ export interface Interface extends State.Transformable<Draft> {
   readonly add: (server: ServerName | string, config: Mcp.ServerConfig) => Effect.Effect<void>
   readonly connect: (server: ServerName | string) => Effect.Effect<void, NotFoundError>
   readonly disconnect: (server: ServerName | string) => Effect.Effect<void, NotFoundError>
+  readonly setEnabled: (server: ServerName | string, enabled: boolean) => Effect.Effect<void, NotFoundError>
   readonly remove: (server: ServerName | string) => Effect.Effect<void, NotFoundError>
   readonly tools: () => Effect.Effect<Tool[]>
   readonly callTool: (input: {
@@ -190,8 +192,16 @@ export const layer = (options?: Options) =>
       const forms = yield* Form.Service
       const integration = yield* Integration.Service
       const credentials = yield* Credential.Service
+      const kv = yield* KV.Service
       const root = yield* Effect.scope
       const fork = yield* FiberSet.makeRuntime<never, void, never>()
+
+      // Persisted enable/disable state lives in the global KV store. KV is a
+      // global node (not per-location), so the key carries the location directory
+      // to keep one project's choice from affecting another. The key is stable
+      // across process restarts but does not reach the project's opencode.json.
+      const disabledKey = (name: ServerName) =>
+        `mcp:disabled:${location.directory}:${name}`
 
       // Materialized definitions and live connections are kept separate so operational additions
       // survive unrelated definition reloads.
@@ -559,15 +569,21 @@ export const layer = (options?: Options) =>
       const replaceServer = Effect.fnUntraced(function* (name: ServerName, serverConfig: Mcp.ServerConfig) {
         const previous = entries.get(name)
         if (previous) yield* disposeServer(name, previous)
+        // Merge the persisted enable/disable flag at entry construction so all
+        // three disabled-gated sites (startup loop, replaceServer, reconnect)
+        // see a consistent value. A config reload that runs replaceServer will
+        // not silently undo a user's toggle choice.
+        const persisted = yield* kv.get(disabledKey(name))
+        const disabled = persisted === true || serverConfig.disabled === true
         const entry: ServerEntry = {
-          config: serverConfig,
+          config: { ...serverConfig, disabled },
           status: { status: "pending" },
           startup: Deferred.makeUnsafe<void>(),
         }
         entries.set(name, entry)
         yield* Effect.gen(function* () {
           yield* register(name, entry)
-          if (serverConfig.disabled) {
+          if (entry.config.disabled) {
             entry.status = { status: "disabled" }
             yield* bus.publish(McpEvent.StatusChanged, { server: name }).pipe(Effect.ignore)
             return
@@ -600,6 +616,14 @@ export const layer = (options?: Options) =>
               startup: Deferred.makeUnsafe<void>(),
             })
           }
+          // Merge persisted enable/disable flags before starting servers so a
+          // user's prior toggle choice survives a fresh process boot.
+          yield* Effect.forEach(entries, ([name, entry]) =>
+            Effect.gen(function* () {
+              const persisted = yield* kv.get(disabledKey(name))
+              if (persisted === true) (entry as { config: Mcp.ServerConfig }).config = { ...entry.config, disabled: true }
+            }),
+          )
           yield* Effect.forEach(entries, ([name, entry]) => register(name, entry), { discard: true })
           applied = servers
 
@@ -718,6 +742,26 @@ export const layer = (options?: Options) =>
             yield* stopServer(name, target.entry)
             target.entry.status = { status: "disabled" }
             yield* bus.publish(McpEvent.StatusChanged, { server: name }).pipe(Effect.ignore)
+          }).pipe(locks.withLock(name))
+        }),
+        setEnabled: Effect.fn("MCP.setEnabled")(function* (server, enabled) {
+          const name = ServerName.make(server)
+          yield* Effect.gen(function* () {
+            const target = yield* requireServer(name)
+            // Persist to KV so the choice survives a process restart. KV is
+            // global, so the key carries the location directory.
+            yield* kv.set(disabledKey(name), !enabled)
+            // Apply immediately: start or stop the server and update the entry.
+            ;(target.entry as { config: Mcp.ServerConfig }).config = { ...target.entry.config, disabled: !enabled }
+            if (enabled) {
+              if (target.entry.status.status !== "connected") {
+                yield* startServer(name, target.entry)
+              }
+            } else {
+              yield* stopServer(name, target.entry)
+              target.entry.status = { status: "disabled" }
+              yield* bus.publish(McpEvent.StatusChanged, { server: name }).pipe(Effect.ignore)
+            }
           }).pipe(locks.withLock(name))
         }),
         remove: Effect.fn("MCP.remove")(function* (server) {
@@ -847,7 +891,7 @@ export function configured(options?: Options) {
   return makeLocationNode({
     service: Service,
     layer: layer(options),
-    deps: [Location.node, Environment.node, Bus.node, Form.node, Integration.node, Credential.node],
+    deps: [Location.node, Environment.node, Bus.node, Form.node, Integration.node, Credential.node, KV.node],
   })
 }
 

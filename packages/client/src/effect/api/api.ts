@@ -1190,10 +1190,18 @@ export type Endpoint11_4Output = void
 export type McpDisconnectOperation<E = never> = (input: Endpoint11_4Input) => Effect.Effect<Endpoint11_4Output, E>
 
 export type Endpoint11_5Input = {
+  readonly server: string
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly enabled: boolean
+}
+export type Endpoint11_5Output = void
+export type McpSetEnabledOperation<E = never> = (input: Endpoint11_5Input) => Effect.Effect<Endpoint11_5Output, E>
+
+export type Endpoint11_6Input = {
   readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
 }
-export type Endpoint11_5Output = { readonly location: Location.Info; readonly data: Mcp.ResourceCatalog }
-export type McpResourceCatalogOperation<E = never> = (input?: Endpoint11_5Input) => Effect.Effect<Endpoint11_5Output, E>
+export type Endpoint11_6Output = { readonly location: Location.Info; readonly data: Mcp.ResourceCatalog }
+export type McpResourceCatalogOperation<E = never> = (input?: Endpoint11_6Input) => Effect.Effect<Endpoint11_6Output, E>
 
 export interface McpApi<E = never> {
   readonly list: McpListOperation<E>
@@ -1201,6 +1209,7 @@ export interface McpApi<E = never> {
   readonly remove: McpRemoveOperation<E>
   readonly connect: McpConnectOperation<E>
   readonly disconnect: McpDisconnectOperation<E>
+  readonly setEnabled: McpSetEnabledOperation<E>
   readonly resource: { readonly catalog: McpResourceCatalogOperation<E> }
 }
 

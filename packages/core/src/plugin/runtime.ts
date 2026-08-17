@@ -42,6 +42,7 @@ export interface Interface {
       readonly remove: (ref: Location.Ref, server: string) => Effect.Effect<void, unknown>
       readonly connect: (ref: Location.Ref, server: string) => Effect.Effect<void, unknown>
       readonly disconnect: (ref: Location.Ref, server: string) => Effect.Effect<void, unknown>
+      readonly setEnabled: (ref: Location.Ref, server: string, enabled: boolean) => Effect.Effect<void, unknown>
     }
   }
 }
@@ -100,6 +101,7 @@ export const layerWithCell = (cell: Cell) =>
           remove: (ref, server) => require(cell, (runtime) => runtime.location.mcp.remove(ref, server)),
           connect: (ref, server) => require(cell, (runtime) => runtime.location.mcp.connect(ref, server)),
           disconnect: (ref, server) => require(cell, (runtime) => runtime.location.mcp.disconnect(ref, server)),
+          setEnabled: (ref, server, enabled) => require(cell, (runtime) => runtime.location.mcp.setEnabled(ref, server, enabled)),
         },
       },
     }),
@@ -152,6 +154,8 @@ export const providerLayerWithCell = (cell: Cell) =>
               MCP.Service.use((mcp) => mcp.connect(server)).pipe(Effect.provide(locations.get(ref))),
             disconnect: (ref, server) =>
               MCP.Service.use((mcp) => mcp.disconnect(server)).pipe(Effect.provide(locations.get(ref))),
+            setEnabled: (ref, server, enabled) =>
+              MCP.Service.use((mcp) => mcp.setEnabled(server, enabled)).pipe(Effect.provide(locations.get(ref))),
           },
         },
       }

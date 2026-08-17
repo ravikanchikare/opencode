@@ -4275,6 +4275,16 @@ export type McpDisconnectInput = {
 
 export type McpDisconnectOutput = void
 
+export type McpSetEnabledInput = {
+  readonly server: { readonly server: string }["server"]
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly enabled: { readonly enabled: boolean }["enabled"]
+}
+
+export type McpSetEnabledOutput = void
+
 export type McpResourceCatalogInput = {
   readonly location?: {
     readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined

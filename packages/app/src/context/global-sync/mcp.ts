@@ -4,6 +4,7 @@ type McpApi = {
   mcp: {
     connect: (input: { server: string } & Record<string, unknown>) => Promise<unknown>
     disconnect: (input: { server: string } & Record<string, unknown>) => Promise<unknown>
+    setEnabled: (input: { server: string; enabled: boolean } & Record<string, unknown>) => Promise<unknown>
   }
 }
 
@@ -82,3 +83,13 @@ export const connectMcp = (api: McpApi, name: string, location?: McpLocation): P
 
 export const disconnectMcp = (api: McpApi, name: string, location?: McpLocation): Promise<void> =>
   Promise.resolve(api.mcp.disconnect({ server: name, ...at(location) })).then(() => undefined)
+
+// Durable enable/disable: persists the choice to KV so it survives a process
+// restart. The non-durable connect/disconnect are kept for the `needs_auth`
+// authenticate path, which should not persist a toggle.
+export const setEnabledMcp = (
+  api: McpApi,
+  name: string,
+  enabled: boolean,
+  location?: McpLocation,
+): Promise<void> => Promise.resolve(api.mcp.setEnabled({ server: name, enabled, ...at(location) })).then(() => undefined)

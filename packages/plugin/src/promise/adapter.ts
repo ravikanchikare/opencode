@@ -242,6 +242,7 @@ export function fromPromise(plugin: Plugin) {
             remove: adaptApiMethod(McpEndpoints["mcp.remove"], host.mcp.remove),
             connect: adaptApiMethod(McpEndpoints["mcp.connect"], host.mcp.connect),
             disconnect: adaptApiMethod(McpEndpoints["mcp.disconnect"], host.mcp.disconnect),
+            setEnabled: adaptApiMethod(McpEndpoints["mcp.setEnabled"], host.mcp.setEnabled),
             transform: transform(host.mcp),
             reload: () => run(host.mcp.reload()),
           },
