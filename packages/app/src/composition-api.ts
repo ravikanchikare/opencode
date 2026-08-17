@@ -7,6 +7,8 @@ export {
   type HomeUtilityNavSurfaceProps,
   type SettingsProvidersSurfaceProps,
   type SettingsSurfaceProps,
+  type SettingsTabContentProps,
+  type SettingsTabEntry,
 } from "./composition"
 export { useCommand } from "./context/command"
 export { useGlobal, useServerCtx } from "./context/global"
@@ -40,6 +42,13 @@ export { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 export { Tag } from "@opencode-ai/ui/v2/badge-v2"
 export { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 export { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
+export { Switch } from "@opencode-ai/ui/v2/switch-v2"
+export {
+  authenticateMcp,
+  connectMcp,
+  disconnectMcp,
+  toggleMcp,
+} from "./context/global-sync/mcp"
 
 export function loadDialogEditProject() {
   return import("./components/dialog-edit-project-v2")

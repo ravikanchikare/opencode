@@ -22,6 +22,22 @@ export type HomeUtilityNavSurfaceProps = {
   language: ReturnType<typeof useLanguage>
 }
 
+export type SettingsTabContentProps = {
+  directory: string | undefined
+  onBack?: () => void
+}
+
+export type SettingsTabEntry = {
+  /** Tab value, unique across stock and composed tabs. */
+  value: string
+  /** Icon name from the fork's v1 icon set. */
+  icon: string
+  /** Label shown in the tab trigger. */
+  label: string
+  /** Component rendered in the tab content area. */
+  content: Component<SettingsTabContentProps>
+}
+
 export type AppComposition = {
   home?: Component<HomeSurfaceProps>
   settings?: Component<SettingsSurfaceProps>
@@ -40,6 +56,18 @@ export type AppComposition = {
    * entire page and this slot is not read.
    */
   homeUtilityNav?: Component<HomeUtilityNavSurfaceProps>
+  /**
+   * Customizes the stock Settings tab list: hide stock tabs by value and
+   * append new tabs after the Capabilities group. Only `dialog-settings-v2.tsx`
+   * consults this — a composition that also replaces `settings` owns its own
+   * dialog and this slot is not read. Added tab content is rendered outside
+   * `SettingsServerScope`, so composed tabs do not receive a server-scoped
+   * directory unless they read one themselves.
+   */
+  settingsTabs?: {
+    hide?: readonly string[]
+    add?: readonly SettingsTabEntry[]
+  }
 }
 
 let composition: AppComposition = {}
