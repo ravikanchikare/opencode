@@ -4,6 +4,7 @@ export {
   configureAppComposition,
   type AppComposition,
   type HomeSurfaceProps,
+  type SettingsProvidersSurfaceProps,
   type SettingsSurfaceProps,
 } from "./composition"
 export { useCommand } from "./context/command"
@@ -16,13 +17,26 @@ export { useServerSDK } from "./context/server-sdk"
 export { ServerConnection, useServers } from "./context/servers"
 export { useTabs } from "./context/tabs"
 export { useProviders } from "./hooks/use-providers"
+export { useIntegrations } from "./hooks/use-integrations"
+export { useServerSync } from "./context/server-sync"
 export { SettingsServerScope } from "./components/settings-server-picker"
 export { SettingsListV2 } from "./components/settings-v2/parts/list"
+export { InlineServerSelect } from "./components/settings-v2/parts/server-select"
 export { SettingsRowV2 } from "./components/settings-v2/parts/row"
 export { SettingsWorkspacesV2 } from "./components/settings-v2/workspaces"
+export { DialogConnectProvider, useProviderConnectController } from "./components/dialog-connect-provider"
 export { Persist, persisted } from "./utils/persist"
 export { showToast } from "./utils/toast"
 export { useDialog } from "@opencode-ai/ui/context/dialog"
+// Design-system primitives a replacement surface needs to look like the rest of
+// Settings. Re-exported here because Tailwind's source globs and the `@/` alias
+// both stop at this package, so a composition consumer cannot resolve them or
+// its own utility classes on its own.
+export { Icon } from "@opencode-ai/ui/icon"
+export { ProviderIcon } from "@opencode-ai/ui/provider-icon"
+export { Tag } from "@opencode-ai/ui/v2/badge-v2"
+export { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+export { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
 
 export function loadDialogEditProject() {
   return import("./components/dialog-edit-project-v2")

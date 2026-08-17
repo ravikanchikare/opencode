@@ -1,4 +1,5 @@
 import { Component, createEffect, createMemo, createSignal, startTransition } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { Dialog } from "@opencode-ai/ui/v2/dialog-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -19,6 +20,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLayout } from "@/context/layout"
 import { useTabs } from "@/context/tabs"
 import { useGlobal, useServerCtx } from "@/context/global"
+import { getAppComposition } from "@/composition"
 import { ServerConnection, useServers } from "@/context/servers"
 import "./settings-v2.css"
 
@@ -166,7 +168,11 @@ export const DialogSettings: Component<{
             <SettingsWorkspacesV2 activeDirectory={directory()} />
           </TabsV2.Content>
           <TabsV2.Content value="providers" class="settings-v2-panel">
-            <SettingsProvidersV2 directory={directory()} onBack={showProviders} />
+            <Dynamic
+              component={getAppComposition().settingsProviders ?? SettingsProvidersV2}
+              directory={directory()}
+              onBack={showProviders}
+            />
           </TabsV2.Content>
           <TabsV2.Content value="models" class="settings-v2-panel">
             <SettingsModelsV2 />
