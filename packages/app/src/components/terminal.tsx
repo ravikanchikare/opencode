@@ -180,6 +180,7 @@ export const Terminal = (props: TerminalProps) => {
   // Intentional mount-time capture: the imperative xterm/WebSocket lifecycle needs stable values, and Terminal remounts when the SDK scope changes.
   const directory = sdk().directory
   const url = serverSDK.url
+  const auth = { username: serverSDK.server.http.username, password: serverSDK.server.http.password }
   let container!: HTMLDivElement
   const [local, others] = splitProps(props, [
     "pty",
@@ -532,7 +533,7 @@ export const Terminal = (props: TerminalProps) => {
       }
 
       const connectToken = async () => {
-        const result = await terminalConnectToken({ url, id, directory })
+        const result = await terminalConnectToken({ url, id, directory, auth })
         if (result.ticket) return result.ticket
         if (result.status === 404 || result.status === 405) return
         if (result.status === 403) throw new Error(language.t("terminal.connectTicket.csrfError"))
