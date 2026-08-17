@@ -5,6 +5,7 @@ import { define } from "@opencode-ai/plugin/effect/plugin"
 
 const Allowlist = Schema.Struct({
   providers: Schema.Array(Schema.String),
+  integrations: Schema.Array(Schema.String).pipe(Schema.optional),
   models: Schema.Record(Schema.String, Schema.Array(Schema.String)).pipe(Schema.optional),
 })
 type Allowlist = Schema.Schema.Type<typeof Allowlist>
@@ -14,7 +15,13 @@ const decodeAllowlist = Schema.decodeUnknownOption(Schema.fromJsonString(Allowli
  * Restricts the provider/model catalog to an operator-defined allowlist read
  * from the `OPENCODE_PROVIDER_ALLOWLIST` environment variable:
  *
- *   OPENCODE_PROVIDER_ALLOWLIST='{"providers":["anthropic","acme"],"models":{"anthropic":["claude-sonnet-4-5"]}}'
+ *   OPENCODE_PROVIDER_ALLOWLIST='{"providers":["anthropic","acme"],"integrations":["devrev"],"models":{"anthropic":["claude-sonnet-4-5"]}}'
+ *
+ * `providers` rules the served catalog and, via each provider's `integrationID`,
+ * the integrations those providers authenticate through. `integrations` names
+ * integration ids worth keeping even though no provider references them — a
+ * pure tool connection such as `devrev` has no catalog record. Both lists seed
+ * the integration keep-set, so an id may appear in either.
  *
  * A missing or malformed value leaves the catalog unrestrained; this is a
  * launch-time distribution lever, not a user-facing capability. Registered last
@@ -34,11 +41,16 @@ export const Plugin = define({
     const allowlist = decoded.value
     const allowed = new Set(allowlist.providers)
 
-    // Integration ids a disallowed provider still needs, because a provider may
-    // authenticate through an integration named differently from itself.
-    // Populated by the catalog pass and read by the integration pass; both
-    // replay on every rebuild, so it converges after the first.
-    const allowedIntegrations = new Set<string>(allowlist.providers)
+    // Integration ids that must survive the pass below: ids explicitly listed
+    // under `integrations`, plus every allowlisted provider's own
+    // `integrationID` (a provider may authenticate through an integration named
+    // differently from itself). Populated by the catalog pass and read by the
+    // integration pass; both replay on every rebuild, so it converges after
+    // the first.
+    const allowedIntegrations = new Set<string>([
+      ...allowlist.providers,
+      ...(allowlist.integrations ?? []),
+    ])
 
     yield* ctx.catalog.transform((catalog) => {
       for (const record of catalog.provider.list()) {

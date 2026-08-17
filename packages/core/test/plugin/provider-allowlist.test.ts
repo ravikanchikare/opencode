@@ -66,12 +66,13 @@ function pluginHost(catalog: Catalog.Interface, integration: Integration.Interfa
   return host({ catalog: catalogHost(catalog), integration: integrationHost(integration) })
 }
 
-function applyAllowlist(catalog: Catalog.Interface, integration: Integration.Interface) {
+function applyAllowlist(catalog: Catalog.Interface, integration: Integration.Interface, extra: Record<string, unknown> = {}) {
   return withEnv(
     {
       OPENCODE_PROVIDER_ALLOWLIST: JSON.stringify({
         providers: ["acme"],
         models: { acme: ["keep"] },
+        ...extra,
       }),
     },
     () => ProviderAllowlistPlugin.Plugin.effect(pluginHost(catalog, integration)),
@@ -155,6 +156,40 @@ describe("ProviderAllowlistPlugin", () => {
       expect((yield* integration.list()).map((entry) => entry.id)).toContain(Integration.ID.make("openai"))
 
       yield* applyAllowlist(catalog, integration)
+
+      expect((yield* integration.list()).map((entry) => entry.id)).toEqual([Integration.ID.make("acme")])
+    }),
+  )
+
+  it.effect("keeps integration-only ids listed under `integrations`", () =>
+    Effect.gen(function* () {
+      // `openai` is integration-only: it sits in the `integrations` list but not
+      // in `providers`, and no allowlisted provider references it. Listing an
+      // integration must not be a provider grant — the catalog stays restricted
+      // to `acme` while the connection stays connectable.
+      const catalog = yield* Catalog.Service
+      const integration = yield* Integration.Service
+      yield* populate(catalog)
+      yield* populateIntegrations(integration)
+
+      yield* applyAllowlist(catalog, integration, { providers: ["acme"], integrations: ["openai"] })
+
+      expect((yield* catalog.provider.all()).map((provider) => provider.id)).toEqual([Provider.ID.make("acme")])
+      expect((yield* integration.list()).map((entry) => entry.id)).toEqual([
+        Integration.ID.make("acme"),
+        Integration.ID.make("openai"),
+      ])
+    }),
+  )
+
+  it.effect("removes integrations that appear in neither `providers` nor `integrations`", () =>
+    Effect.gen(function* () {
+      const catalog = yield* Catalog.Service
+      const integration = yield* Integration.Service
+      yield* populate(catalog)
+      yield* populateIntegrations(integration)
+
+      yield* applyAllowlist(catalog, integration, { providers: ["acme"], integrations: ["acme"] })
 
       expect((yield* integration.list()).map((entry) => entry.id)).toEqual([Integration.ID.make("acme")])
     }),
