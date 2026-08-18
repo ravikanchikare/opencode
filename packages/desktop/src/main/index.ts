@@ -15,6 +15,7 @@ import { finishFirstLaunchOnboarding, isFirstLaunchOnboardingPending } from "./l
 import { exportDebugLogs, startNetworkLogging, writeLog } from "./native/logging"
 import { createMenu, sendMenuCommand } from "./native/menu"
 import { setNativeTranslations } from "./native/translations"
+import { seedBundledPlugins } from "./seed-plugins"
 import { startBackgroundCli } from "./service/background-service"
 import { forwardInitializationFailure } from "./service/initialization"
 import { getDefaultServerUrl, setDefaultServerUrl } from "./service/server-settings"
@@ -73,6 +74,14 @@ const main = Effect.gen(function* () {
 
   const loadingTask = yield* Effect.gen(function* () {
     loadProxyEnvironment(logger)
+    // Plugin discovery only scans config directories, so the bundles that ship
+    // inside the app have to be installed into one before the server starts.
+    seedBundledPlugins({
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      logger,
+      source: process.env.OPENCODE_DESKTOP_PLUGIN_SEED_DIR,
+    })
     logger.log("starting v2 background service")
     const background = yield* Effect.promise(() => startBackgroundCli(logger))
     const wsl = yield* Effect.promise(() => startWsl(background, logger))
