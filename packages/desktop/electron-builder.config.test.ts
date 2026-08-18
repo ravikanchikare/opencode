@@ -125,3 +125,101 @@ test("packages a branded distribution under its own identity", async () => {
   expect(config.deb?.fpm).toEqual([])
   expect(config.rpm?.fpm).toEqual([])
 })
+
+test("never points a branded build at stock OpenCode's releases", async () => {
+  const previous = { channel: process.env.OPENCODE_CHANNEL, appId: process.env.OPENCODE_DESKTOP_APP_ID }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=none")
+  const config = module.default as Configuration
+
+  if (previous.channel === undefined) delete process.env.OPENCODE_CHANNEL
+  else process.env.OPENCODE_CHANNEL = previous.channel
+  if (previous.appId === undefined) delete process.env.OPENCODE_DESKTOP_APP_ID
+  else process.env.OPENCODE_DESKTOP_APP_ID = previous.appId
+
+  // Inheriting the stock feed would install stock OpenCode over the branded app.
+  expect(config.publish).toBeUndefined()
+})
+
+test("publishes a branded build to the feed it was given", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    url: process.env.OPENCODE_DESKTOP_UPDATE_URL,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_UPDATE_URL = "https://updates.example.com/factory"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=feed")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_UPDATE_URL", previous.url],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.publish).toEqual({ provider: "generic", url: "https://updates.example.com/factory" })
+})
+
+test("publishes a branded build to its own GitHub releases", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    repo: process.env.OPENCODE_DESKTOP_UPDATE_REPO,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "acme/factory"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=repo")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_UPDATE_REPO", previous.repo],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.publish).toEqual({ provider: "github", owner: "acme", repo: "factory", channel: "latest" })
+})
+
+test("rejects an update repo that is not owner/repo", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_UPDATE_REPO
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "https://github.com/acme/factory"
+
+  const attempt = import("./electron-builder.config.ts?brand-updates=bad-repo")
+  await expect(attempt).rejects.toThrow(/owner\/repo/)
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_UPDATE_REPO
+  else process.env.OPENCODE_DESKTOP_UPDATE_REPO = previous
+})
+
+test("rejects setting both update seams at once", async () => {
+  const previous = {
+    url: process.env.OPENCODE_DESKTOP_UPDATE_URL,
+    repo: process.env.OPENCODE_DESKTOP_UPDATE_REPO,
+  }
+  process.env.OPENCODE_DESKTOP_UPDATE_URL = "https://updates.example.com/factory"
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "acme/factory"
+
+  const attempt = import("./electron-builder.config.ts?brand-updates=both")
+  await expect(attempt).rejects.toThrow(/not both/)
+
+  for (const [key, value] of [
+    ["OPENCODE_DESKTOP_UPDATE_URL", previous.url],
+    ["OPENCODE_DESKTOP_UPDATE_REPO", previous.repo],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+})

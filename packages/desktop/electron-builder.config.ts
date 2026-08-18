@@ -58,6 +58,34 @@ const iconDir = process.env.OPENCODE_DESKTOP_ICON_DIR?.trim() || "icons"
 // OpenCode artifacts that ship as files under resources/; a branded id has none.
 const branded = appId !== APP_IDS[channel]
 
+/**
+ * Where this build looks for its own updates.
+ *
+ * A branded build must never fall through to stock OpenCode's GitHub releases:
+ * electron-updater would happily download them and install stock OpenCode over
+ * the distribution. So a branded build publishes to the feed it was given, and
+ * with no feed it publishes nowhere — no `app-update.yml` is generated and the
+ * app reports updates as disabled rather than checking the wrong place.
+ */
+const updateUrl = process.env.OPENCODE_DESKTOP_UPDATE_URL?.trim()
+const updateRepo = process.env.OPENCODE_DESKTOP_UPDATE_REPO?.trim()
+if (updateUrl && updateRepo)
+  throw new Error("Set OPENCODE_DESKTOP_UPDATE_URL or OPENCODE_DESKTOP_UPDATE_REPO, not both")
+if (updateRepo && !/^[^/\s]+\/[^/\s]+$/.test(updateRepo))
+  throw new Error(`OPENCODE_DESKTOP_UPDATE_REPO must be "owner/repo", got "${updateRepo}"`)
+
+const publishFor = (stock: Configuration["publish"]) => {
+  // The two shapes a distribution actually ships with: releases on GitHub, or a
+  // static file host. Both are stated rather than inferred — a generic feed may
+  // legitimately live at a github.com URL, so sniffing the URL would guess wrong.
+  if (updateRepo) {
+    const [owner, repo] = updateRepo.split("/")
+    return { provider: "github", owner, repo, channel: "latest" } as const
+  }
+  if (updateUrl) return { provider: "generic", url: updateUrl } as const
+  return branded ? undefined : stock
+}
+
 const getBase = (appId: string): Configuration => ({
   artifactName: "opencode-desktop-${os}-${arch}.${ext}",
   directories: {
@@ -155,7 +183,7 @@ function getConfig() {
         appId,
         productName,
         protocols: { name: productName, schemes: [deepLinkScheme] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
+        publish: publishFor({ provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" }),
         deb: { fpm },
         rpm: { packageName: "opencode-beta", fpm },
       }
@@ -166,7 +194,7 @@ function getConfig() {
         appId,
         productName,
         protocols: { name: productName, schemes: [deepLinkScheme] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
+        publish: publishFor({ provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" }),
         deb: { fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
         rpm: { packageName: "opencode", fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
       }

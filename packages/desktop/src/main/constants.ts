@@ -5,8 +5,6 @@ const raw = import.meta.env.OPENCODE_CHANNEL
 export const CHANNEL: Channel = raw === "local" || raw === "dev" || raw === "beta" || raw === "prod" ? raw : "dev"
 export const VERSION = app.isPackaged ? app.getVersion() : (process.env.OPENCODE_VERSION ?? app.getVersion())
 
-export const UPDATER_ENABLED = app.isPackaged && CHANNEL !== "dev"
-
 // Distribution identity, resolved from the electron.vite define block. Stock is
 // the zero-config default; a branded build supplies these at build time and
 // they must agree with the values electron-builder.config.ts packages with.
@@ -53,3 +51,19 @@ export const SERVICE_ID =
     .replace(/[^a-z0-9._-]+/g, "-")
     .replace(/^-+|-+$/g, "") ||
   "opencode"
+
+/**
+ * A branded build only updates itself when it was given its own feed — GitHub
+ * releases through `OPENCODE_DESKTOP_UPDATE_REPO`, or a static host through
+ * `OPENCODE_DESKTOP_UPDATE_URL`. Without
+ * one, electron-builder wrote no `app-update.yml`, so checking would fail at
+ * runtime — and if it did fall back to stock OpenCode's releases it would
+ * install stock OpenCode over the distribution. Off is the correct answer.
+ */
+export const UPDATER_ENABLED =
+  app.isPackaged &&
+  CHANNEL !== "dev" &&
+  (!APP_ID ||
+    Boolean(
+      import.meta.env.OPENCODE_DESKTOP_UPDATE_URL?.trim() || import.meta.env.OPENCODE_DESKTOP_UPDATE_REPO?.trim(),
+    ))

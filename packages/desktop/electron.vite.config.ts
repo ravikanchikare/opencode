@@ -37,6 +37,8 @@ export default defineConfig({
       "import.meta.env.OPENCODE_DESKTOP_APP_ID": define(process.env.OPENCODE_DESKTOP_APP_ID),
       "import.meta.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME": define(process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME),
       "import.meta.env.OPENCODE_DESKTOP_ICON_DIR": define(process.env.OPENCODE_DESKTOP_ICON_DIR),
+      "import.meta.env.OPENCODE_DESKTOP_UPDATE_URL": define(process.env.OPENCODE_DESKTOP_UPDATE_URL),
+      "import.meta.env.OPENCODE_DESKTOP_UPDATE_REPO": define(process.env.OPENCODE_DESKTOP_UPDATE_REPO),
       "import.meta.env.OPENCODE_APP_ID": define(process.env.OPENCODE_APP_ID),
       "import.meta.env.OPENCODE_SERVICE_ID": define(process.env.OPENCODE_SERVICE_ID),
     },
