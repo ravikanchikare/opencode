@@ -20,6 +20,10 @@ export function appID(env: NodeJS.ProcessEnv = process.env) {
   return env.OPENCODE_APP_ID?.trim() || DEFAULT_APP_ID
 }
 
+export function isStockIdentity(env: NodeJS.ProcessEnv = process.env) {
+  return appID(env) === DEFAULT_APP_ID
+}
+
 const app = appID()
 const { data, cache, config, state, tmp } = roots(app)
 

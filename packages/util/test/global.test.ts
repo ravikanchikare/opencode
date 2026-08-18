@@ -39,6 +39,41 @@ describe("global", () => {
     fs.rmSync(root, { recursive: true, force: true })
   })
 
+  test("branding alone does not move the XDG roots", () => {
+    // A branded desktop app and stock OpenCode are meant to share one config
+    // directory, one set of credentials, and one project list. Only an explicit
+    // OPENCODE_APP_ID separates them; a product name never does.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-global-shared-"))
+    const module = pathToFileURL(path.join(import.meta.dir, "../src/global.ts")).href
+    const result = Bun.spawnSync({
+      cmd: [
+        process.execPath,
+        "-e",
+        `const { Global } = await import(${JSON.stringify(module)}); process.stdout.write(JSON.stringify(Global.Path))`,
+      ],
+      env: {
+        ...process.env,
+        OPENCODE_APP_ID: undefined,
+        OPENCODE_DESKTOP_NAME: "Factory",
+        OPENCODE_DESKTOP_APP_ID: "ai.factory.desktop",
+        XDG_DATA_HOME: path.join(root, "data"),
+        XDG_CONFIG_HOME: path.join(root, "config"),
+        XDG_STATE_HOME: path.join(root, "state"),
+        XDG_CACHE_HOME: path.join(root, "cache"),
+        TMPDIR: path.join(root, "tmp"),
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+
+    expect(result.exitCode, result.stderr.toString()).toBe(0)
+    const paths = JSON.parse(result.stdout.toString()) as Record<string, string>
+    expect(paths.config).toBe(path.join(root, "config", "opencode"))
+    expect(paths.data).toBe(path.join(root, "data", "opencode"))
+    expect(paths.state).toBe(path.join(root, "state", "opencode"))
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+
   test("importing the module does not create directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-global-import-"))
     const directories = ["data", "cache", "config", "state", "tmp"].map((directory) => path.join(root, directory))

@@ -1563,4 +1563,66 @@ describe("Config", () => {
       }),
     ),
   )
+
+  it.live("an isolated identity stays inside its own config directory", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) => {
+        const global = path.join(tmp.path, "factory")
+        const root = path.join(tmp.path, "repo")
+        const directory = path.join(root, "app")
+        return Effect.gen(function* () {
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(tmp.path, "home", ".claude"), { recursive: true })
+            await fs.mkdir(path.join(tmp.path, "home", ".agents"), { recursive: true })
+            await fs.mkdir(path.join(tmp.path, "home", ".config", "opencode"), { recursive: true })
+            await fs.mkdir(global, { recursive: true })
+            await fs.mkdir(path.join(root, ".opencode"), { recursive: true })
+            await fs.mkdir(path.join(root, ".claude"), { recursive: true })
+            await fs.mkdir(path.join(directory, ".opencode"), { recursive: true })
+            await fs.mkdir(directory, { recursive: true })
+            await Promise.all([
+              fs.writeFile(
+                path.join(tmp.path, "home", ".config", "opencode", "opencode.json"),
+                JSON.stringify({ $schema: "stock" }),
+              ),
+              fs.writeFile(path.join(global, "opencode.json"), JSON.stringify({ $schema: "factory" })),
+              fs.writeFile(path.join(root, ".opencode", "opencode.json"), JSON.stringify({ $schema: "project" })),
+            ])
+          })
+          const previous = process.env.OPENCODE_APP_ID
+          process.env.OPENCODE_APP_ID = "factory"
+          try {
+            return yield* Effect.gen(function* () {
+              const config = yield* Config.Service
+              const entries = yield* config.entries()
+              expect(entries.filter((entry) => entry.type === "claude")).toEqual([])
+              expect(entries.filter((entry) => entry.type === "agents")).toEqual([])
+              expect(entries.filter((entry) => entry.type === "directory").map((entry) => entry.path)).toEqual([
+                AbsolutePath.make(global),
+                AbsolutePath.make(path.join(root, ".opencode")),
+                AbsolutePath.make(path.join(directory, ".opencode")),
+              ])
+              expect(entries.filter((entry) => entry.type === "document").map((entry) => entry.info.$schema)).toEqual([
+                "factory",
+                "project",
+              ])
+            }).pipe(
+              Effect.provide(
+                testLayer(directory, global, root, {
+                  type: "git",
+                  store: AbsolutePath.make(path.join(root, ".git")),
+                }),
+              ),
+            )
+          } finally {
+            if (previous === undefined) delete process.env.OPENCODE_APP_ID
+            else process.env.OPENCODE_APP_ID = previous
+          }
+        })
+      }),
+    ),
+  )
 })
