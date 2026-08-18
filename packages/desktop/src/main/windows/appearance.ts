@@ -4,6 +4,7 @@ import oc2ThemeJson from "../../../../ui/src/theme/themes/oc-2.json"
 import { app, BrowserWindow, nativeImage, nativeTheme } from "electron"
 import { join } from "node:path"
 import { Ipc, sendIpcEvent, type TitlebarTheme } from "../../shared/ipc-contract"
+import { ICON_DIR } from "../constants"
 import { developmentResourcesRoot, preloadPath } from "../paths"
 import { PINCH_ZOOM_ENABLED_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
@@ -118,7 +119,7 @@ export function wireFullscreen(win: BrowserWindow) {
 }
 
 function iconsDir() {
-  return app.isPackaged ? join(process.resourcesPath, "icons") : join(developmentResourcesRoot, "icons")
+  return app.isPackaged ? join(process.resourcesPath, ICON_DIR) : join(developmentResourcesRoot, ICON_DIR)
 }
 
 function iconPath() {

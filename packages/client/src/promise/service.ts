@@ -13,6 +13,7 @@ import { matchesVersion } from "../service-version.js"
 import type { ServiceHealth } from "./generated/types.js"
 
 export * from "../service.js"
+import { registrationFilename } from "../service.js"
 
 // Find, start, and stop the local opencode background service.
 //
@@ -114,8 +115,16 @@ export async function stop(options: StopOptions = {}) {
   if (info !== undefined) await terminate(info, options, defaultEnsureTiming)
 }
 
+// The state root follows the config identity (`OPENCODE_APP_ID`); the
+// registration file follows the service identity, so a distribution sharing
+// stock's configuration still finds its own server. Stable channels are the
+// only ones this fallback covers — every other channel passes an explicit file.
 function fallback() {
-  return join(process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"), "opencode", "service.json")
+  return join(
+    process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"),
+    process.env.OPENCODE_APP_ID?.trim() || "opencode",
+    registrationFilename("latest"),
+  )
 }
 
 /** Create HTTP authentication headers for a service endpoint. */

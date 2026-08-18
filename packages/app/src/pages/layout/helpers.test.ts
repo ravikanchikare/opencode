@@ -6,6 +6,7 @@ import {
   parseDeepLink,
   parseNewSessionDeepLink,
 } from "./deep-links"
+import { DEEP_LINK_SCHEME } from "@/brand"
 import type { SessionInfo } from "@opencode-ai/client/promise"
 import {
   childSessionOnPath,
@@ -43,6 +44,14 @@ const session = (input: Partial<SessionInfo> & Pick<SessionInfo, "id"> & { direc
 describe("layout deep links", () => {
   test("parses open-project deep links", () => {
     expect(parseDeepLink("opencode://open-project?directory=/tmp/demo")).toBe("/tmp/demo")
+  })
+
+  test("follows the scheme this build is registered for", () => {
+    // The Electron main process registers DEEP_LINK_SCHEME with the OS and
+    // filters argv by it; if this parser hardcodes a scheme instead, every deep
+    // link a branded build receives is dropped on arrival.
+    expect(parseDeepLink(`${DEEP_LINK_SCHEME}://open-project?directory=/tmp/demo`)).toBe("/tmp/demo")
+    expect(parseDeepLink("some-other-product://open-project?directory=/tmp/demo")).toBeUndefined()
   })
 
   test("ignores non-project deep links", () => {

@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, wri
 import { ZipWriter, BlobWriter, BlobReader } from "@zip.js/zip.js"
 import { dirname, join } from "node:path"
 import { homedir } from "node:os"
-import { VERSION } from "../constants"
+import { APP_IDENTITY, VERSION } from "../constants"
 
 const MAX_LOG_AGE_DAYS = 7
 const TAIL_LINES = 1000
@@ -157,7 +157,7 @@ function manifest() {
 
 function serverLogRoots() {
   const xdgData = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share")
-  return [...new Set([join(xdgData, "opencode", "log"), join(app.getPath("userData"), "opencode", "log")])]
+  return [...new Set([join(xdgData, APP_IDENTITY, "log"), join(app.getPath("userData"), APP_IDENTITY, "log")])]
 }
 
 type Entry = { name: string; path?: string; data?: Buffer }

@@ -1,7 +1,7 @@
 import { Global } from "@opencode-ai/util/global"
 import { OPENCODE_CHANNEL, OPENCODE_VERSION } from "../version"
 import { Hash } from "@opencode-ai/util/hash"
-import { Service } from "@opencode-ai/client/effect/service"
+import { Service, registrationFilename, serviceID as resolveServiceID } from "@opencode-ai/client/effect/service"
 import { Effect, FileSystem, Option, Schema } from "effect"
 import { randomBytes } from "crypto"
 import path from "path"
@@ -25,15 +25,42 @@ type Key = (typeof keys)[number]
 const decodeInfo = Schema.decodeUnknownEffect(Schema.fromJsonString(Info))
 const decodeRegistration = Schema.decodeUnknownEffect(Schema.fromJsonString(Service.Info))
 
-export function filename(channel = OPENCODE_CHANNEL) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return "service.json"
-  return `service-${channel.replace(/[^a-zA-Z0-9._-]/g, "-")}.json`
-}
+export const DEFAULT_SERVICE_ID = "opencode"
 
-export function defaultPort(channel = OPENCODE_CHANNEL) {
-  if (channel === "latest" || channel === "dev" || channel === "beta" || channel === "next") return 0xc0de
-  if (channel === "local") return 0xc0df
-  return 10_000 + (Number.parseInt(Hash.fast(channel).slice(0, 8), 16) % 50_000)
+/**
+ * Which background service this build runs and talks to.
+ *
+ * Deliberately separate from `OPENCODE_APP_ID`, which decides where
+ * configuration lives. A branded desktop app shares stock OpenCode's config,
+ * credentials, and projects, but runs its *own* server process, because a
+ * server carries process-wide state that belongs to whoever started it: the
+ * managed policy it read, the environment, the plugins on disk when it booted.
+ * Sharing one server would hand those to whichever app happened to launch
+ * first — the distribution's policy silently not applying, or worse, applying
+ * to stock OpenCode.
+ *
+ * Distribution servers sit beside stock's in the same state directory,
+ * separated by port and registration filename exactly as release channels
+ * already are. The filename rule itself lives in `@opencode-ai/client`, which
+ * every process that discovers a service already depends on.
+ */
+export const serviceID = resolveServiceID
+
+export const filename = (channel = OPENCODE_CHANNEL, service = serviceID()) => registrationFilename(channel, service)
+
+const stableChannel = (channel: string) =>
+  channel === "latest" || channel === "dev" || channel === "beta" || channel === "next"
+
+export function defaultPort(channel = OPENCODE_CHANNEL, service = serviceID()) {
+  const stable = stableChannel(channel)
+  // Stock ports are part of the discovery contract an already-installed client
+  // relies on, so a distribution's own port may not shift any of them.
+  if (service === DEFAULT_SERVICE_ID) {
+    if (stable) return 0xc0de
+    if (channel === "local") return 0xc0df
+    return 10_000 + (Number.parseInt(Hash.fast(channel).slice(0, 8), 16) % 50_000)
+  }
+  return 10_000 + (Number.parseInt(Hash.fast(`${service}:${stable ? "stable" : channel}`).slice(0, 8), 16) % 50_000)
 }
 
 export function legacyFilename(channel = OPENCODE_CHANNEL) {
@@ -93,7 +120,12 @@ const paths = Effect.gen(function* () {
     legacyConfigFile: legacy ? path.join(global.config, legacy) : undefined,
     legacyRegistrationFiles: [
       ...(legacy ? [path.join(global.state, legacy)] : []),
-      ...(name !== "service.json" && OPENCODE_CHANNEL !== "local" ? [path.join(global.state, "service.json")] : []),
+      // Only stock adopts the old shared registration. A distribution taking it
+      // over would point itself at stock OpenCode's running server, which is the
+      // collision separate service identities exist to prevent.
+      ...(name !== "service.json" && OPENCODE_CHANNEL !== "local" && serviceID() === DEFAULT_SERVICE_ID
+        ? [path.join(global.state, "service.json")]
+        : []),
     ],
     configFile: path.join(global.config, name),
   }

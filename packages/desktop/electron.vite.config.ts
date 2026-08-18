@@ -10,6 +10,7 @@ const channel = (() => {
 })()
 
 const nodePtyPkg = `@lydell/node-pty-${process.platform}-${process.arch}`
+const define = (value: string | undefined) => JSON.stringify(value) ?? "undefined"
 
 const sentry =
   process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_ORG && process.env.SENTRY_PROJECT
@@ -32,6 +33,12 @@ export default defineConfig({
   main: {
     define: {
       "import.meta.env.OPENCODE_CHANNEL": JSON.stringify(channel),
+      "import.meta.env.OPENCODE_DESKTOP_NAME": define(process.env.OPENCODE_DESKTOP_NAME),
+      "import.meta.env.OPENCODE_DESKTOP_APP_ID": define(process.env.OPENCODE_DESKTOP_APP_ID),
+      "import.meta.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME": define(process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME),
+      "import.meta.env.OPENCODE_DESKTOP_ICON_DIR": define(process.env.OPENCODE_DESKTOP_ICON_DIR),
+      "import.meta.env.OPENCODE_APP_ID": define(process.env.OPENCODE_APP_ID),
+      "import.meta.env.OPENCODE_SERVICE_ID": define(process.env.OPENCODE_SERVICE_ID),
     },
     build: {
       rollupOptions: {
@@ -75,6 +82,8 @@ const require = __cjs_mod__.createRequire(import.meta.url);
     define: {
       "import.meta.env.OPENCODE_VERSION": JSON.stringify(process.env.OPENCODE_VERSION),
       "import.meta.env.VITE_OPENCODE_CHANNEL": JSON.stringify(channel),
+      "import.meta.env.VITE_OPENCODE_DESKTOP_NAME": define(process.env.OPENCODE_DESKTOP_NAME),
+      "import.meta.env.VITE_OPENCODE_DESKTOP_DEEP_LINK_SCHEME": define(process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME),
     },
     plugins: [appPlugin, sentry],
     publicDir: "../../../app/public",

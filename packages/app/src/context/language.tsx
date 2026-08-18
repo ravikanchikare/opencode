@@ -21,6 +21,7 @@ import {
   type DesktopNativeBundle,
   type DesktopNativeLocale,
 } from "@/i18n/desktop-native"
+import { brandText } from "@/brand"
 
 export type Locale = DesktopNativeLocale
 export type Direction = "ltr" | "rtl"
@@ -201,12 +202,13 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
       initialValue: dicts.get(initial) ?? base,
     })
 
-    const t = i18n.translator(() => dict() ?? base, i18n.resolveTemplate) as <
+    const translate = i18n.translator(() => dict() ?? base, i18n.resolveTemplate) as <
       Key extends Extract<keyof Dictionary, string>,
     >(
       key: TranslationKey<Key>,
       params?: Record<string, string | number | boolean>,
     ) => string
+    const t: typeof translate = (key, params) => brandText(key, translate(key, params))
 
     const pluralForm = (
       key: PluralKey,
@@ -236,7 +238,7 @@ export const { use: useLanguage, provider: LanguageProvider } = createSimpleCont
       const current = dict()
       if (!current) return
       props.onNativeTranslations(
-        createDesktopNativeBundle(locale(), (key) => current[key] ?? DESKTOP_NATIVE_ENGLISH[key]),
+        createDesktopNativeBundle(locale(), (key) => brandText(key, current[key] ?? DESKTOP_NATIVE_ENGLISH[key])),
       )
     })
 

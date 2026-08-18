@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from "electron"
 import type { Event } from "electron"
 import { Ipc, sendIpcEvent } from "../../shared/ipc-contract"
+import { DEEP_LINK_SCHEME } from "../constants"
 import { writeLog, type DesktopLogger } from "../native/logging"
 import { safeWebContentsURL } from "../windows/state"
 import { getLastFocusedWindow, restoreMainWindows, setAppQuitting, setRelaunchHandler } from "../windows"
@@ -23,7 +24,7 @@ export function createApplicationLifecycle(logger: DesktopLogger) {
   }
 
   app.on("second-instance", (_event: Event, argv: string[]) => {
-    const urls = argv.filter((arg) => arg.startsWith("opencode://"))
+    const urls = argv.filter((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`))
     if (urls.length) {
       logger.log("deep link received via second-instance", { urls })
       emitDeepLinks(urls)

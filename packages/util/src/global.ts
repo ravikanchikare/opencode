@@ -9,7 +9,18 @@ import { roots } from "#global-roots"
 import { Flock } from "./flock.js"
 import { makeGlobalNode } from "./effect/app-node.js"
 
-const app = "opencode"
+export const DEFAULT_APP_ID = "opencode"
+
+/**
+ * Identity of the running distribution. Every on-disk root and the managed
+ * service port are scoped by it, so a branded build and stock OpenCode can be
+ * installed side by side without sharing or clobbering state.
+ */
+export function appID(env: NodeJS.ProcessEnv = process.env) {
+  return env.OPENCODE_APP_ID?.trim() || DEFAULT_APP_ID
+}
+
+const app = appID()
 const { data, cache, config, state, tmp } = roots(app)
 
 const paths = {

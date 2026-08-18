@@ -7,7 +7,7 @@ import { getCACertificates, setDefaultCACertificates } from "node:tls"
 import { app } from "electron"
 import contextMenu from "electron-context-menu"
 import { Effect } from "effect"
-import { CHANNEL, VERSION } from "../constants"
+import { APP_ID, APP_IDENTITY, APP_NAME, CHANNEL, DEEP_LINK_SCHEME, SERVICE_ID, VERSION } from "../constants"
 import { initCrashReporter, initLogging, type DesktopLogger } from "../native/logging"
 import { getUserShell, loadShellEnv } from "../service/shell-env"
 import { cleanupStoreFiles } from "../storage/cleanup"
@@ -34,9 +34,20 @@ export function configureApplication() {
   } catch {}
   process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appID = app.isPackaged ? appIDs[CHANNEL] : "ai.opencode.desktop.dev"
+  // Hand both identities to the server this app will spawn, before anything can
+  // read them: `@opencode-ai/util` resolves the config identity at module load,
+  // and the background CLI inherits this environment when it starts later.
+  //
+  // They are deliberately independent. The config identity stays "opencode"
+  // unless a distribution opted into isolation, so a branded app shares stock's
+  // configuration, credentials, and projects. The service identity follows the
+  // bundle, so the branded app still runs its own server.
+  process.env.OPENCODE_APP_ID = APP_IDENTITY
+  process.env.OPENCODE_SERVICE_ID = SERVICE_ID
+
+  const appID = APP_ID ?? (app.isPackaged ? appIDs[CHANNEL] : "ai.opencode.desktop.dev")
   const onboardingRoot = createOnboardingTestRoot()
-  app.setName(app.isPackaged ? appNames[CHANNEL] : "OpenCode Dev")
+  app.setName(APP_NAME ?? (app.isPackaged ? appNames[CHANNEL] : "OpenCode Dev"))
   app.setAppUserModelId(appID)
   app.setPath("userData", onboardingRoot ? join(onboardingRoot, "desktop") : join(app.getPath("appData"), appID))
   if (onboardingRoot) app.setPath("sessionData", join(onboardingRoot, "session"))
@@ -88,7 +99,7 @@ export function prepareDesktop(logger: DesktopLogger) {
       ),
       Effect.catch((error) => Effect.sync(() => logger.warn("failed to clean scoped store files", error))),
     )
-    app.setAsDefaultProtocolClient("opencode")
+    app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME)
     registerRendererProtocol()
     setDockIcon()
   })

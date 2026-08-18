@@ -89,3 +89,39 @@ test("does not bundle the CLI in prod builds", async () => {
     filter: ["opencode-cli*"],
   })
 })
+
+test("packages a branded distribution under its own identity", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    name: process.env.OPENCODE_DESKTOP_NAME,
+    scheme: process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_NAME = "Factory"
+  process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME = "factory"
+
+  const module = await import("./electron-builder.config.ts?brand=factory")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_NAME", previous.name],
+    ["OPENCODE_DESKTOP_DEEP_LINK_SCHEME", previous.scheme],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.appId).toBe("ai.factory.desktop")
+  expect(config.productName).toBe("Factory")
+  expect(config.protocols).toEqual({ name: "Factory", schemes: ["factory"] })
+  expect(config.extraMetadata?.desktopName).toBe("ai.factory.desktop.desktop")
+  expect(config.linux?.executableName).toBe("ai.factory.desktop")
+  // The AppStream metainfo and the legacy launcher are stock OpenCode files
+  // that exist under resources/; a branded build ships neither.
+  expect(config.deb?.fpm).toEqual([])
+  expect(config.rpm?.fpm).toEqual([])
+})

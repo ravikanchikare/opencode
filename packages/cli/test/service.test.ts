@@ -19,6 +19,40 @@ test("managed service ports are stable per installation channel", () => {
   expect(ServiceConfig.defaultPort("preview-a")).not.toBe(ServiceConfig.defaultPort("preview-b"))
 })
 
+test("a distribution service gets its own port on every stable channel", () => {
+  const port = ServiceConfig.defaultPort("latest", "factory")
+  expect(port).toBe(ServiceConfig.defaultPort("dev", "factory"))
+  expect(port).toBe(ServiceConfig.defaultPort("beta", "factory"))
+  expect(port).toBe(ServiceConfig.defaultPort("next", "factory"))
+  expect(port).not.toBe(ServiceConfig.defaultPort("latest", "opencode"))
+  expect(port).not.toBe(ServiceConfig.defaultPort("latest", "another-distribution"))
+})
+
+// A distribution shares stock's state directory, so its registration file has to
+// carry a distinct name or the two servers overwrite each other's endpoint.
+test("a distribution service registers under its own filename", () => {
+  expect(ServiceConfig.filename("latest", "factory")).toBe("service-factory.json")
+  expect(ServiceConfig.filename("preview", "factory")).toBe("service-factory-preview.json")
+  expect(ServiceConfig.filename("latest", "ai.factory.desktop")).toBe("service-ai.factory.desktop.json")
+  expect(ServiceConfig.filename("weird/id", "a b")).toBe("service-a-b-weird-id.json")
+})
+
+test("stock service registration filenames are unchanged", () => {
+  expect(ServiceConfig.filename("latest", "opencode")).toBe("service.json")
+  expect(ServiceConfig.filename("dev", "opencode")).toBe("service.json")
+  expect(ServiceConfig.filename("local", "opencode")).toBe("service-local.json")
+  expect(ServiceConfig.filename("preview-a", "opencode")).toBe("service-preview-a.json")
+})
+
+// Stock ports are a discovery contract: an installed client and a freshly built
+// server must agree on them, so identity scoping may not shift any of them.
+test("managed service ports are unchanged for stock", () => {
+  expect(ServiceConfig.defaultPort("latest", "opencode")).toBe(0xc0de)
+  expect(ServiceConfig.defaultPort("local", "opencode")).toBe(0xc0df)
+  expect(ServiceConfig.defaultPort("preview-a", "opencode")).toBe(12_195)
+  expect(ServiceConfig.defaultPort("preview-b", "opencode")).toBe(58_733)
+})
+
 test("managed service forwards the CPU profile path to the server", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "opencode-service-profile-"))
   const profile = path.join(root, "server.cpuprofile")

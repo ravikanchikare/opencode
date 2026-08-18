@@ -53,3 +53,31 @@ export type Info = {
   /** Private service password, when authentication is enabled. */
   readonly password?: string
 }
+
+const DEFAULT_SERVICE_ID = "opencode"
+const slug = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, "-")
+
+/** The service identity this process discovers and starts, `opencode` unless a distribution set its own. */
+export function serviceID(env: Record<string, string | undefined> = process.env) {
+  return env.OPENCODE_SERVICE_ID?.trim() || DEFAULT_SERVICE_ID
+}
+
+/**
+ * Name of the registration file a service publishes itself in.
+ *
+ * The registration file is the discovery contract, so every process that looks
+ * for a service — the CLI that writes it, this package's discovery fallback,
+ * and the desktop app that waits on the CLI it spawned — has to derive the same
+ * name. It lives here because that is the one module all of them already
+ * depend on; a second copy is how a desktop app ends up watching a file its own
+ * server never writes.
+ *
+ * Stock names are unchanged: `service.json` on a stable channel and
+ * `service-<channel>.json` otherwise. A distribution inserts its identity ahead
+ * of the channel, so its service sits beside stock's in the same directory.
+ */
+export function registrationFilename(channel: string, service = serviceID()) {
+  const stable = channel === "latest" || channel === "dev" || channel === "beta" || channel === "next"
+  const identity = service === DEFAULT_SERVICE_ID ? "" : `-${slug(service)}`
+  return stable ? `service${identity}.json` : `service${identity}-${slug(channel)}.json`
+}

@@ -1,4 +1,4 @@
-import { Service } from "@opencode-ai/client/service"
+import { Service, registrationFilename } from "@opencode-ai/client/service"
 import { execFile } from "node:child_process"
 import { existsSync } from "node:fs"
 import { chmod, copyFile, mkdir, readdir, rename, rm } from "node:fs/promises"
@@ -6,6 +6,7 @@ import { dirname, join } from "node:path"
 import { promisify } from "node:util"
 import { app } from "electron"
 import { parseCliVersion } from "./cli-version"
+import { APP_IDENTITY, SERVICE_ID } from "../constants"
 import { developmentResourcesRoot } from "../paths"
 
 const execFileAsync = promisify(execFile)
@@ -36,7 +37,11 @@ export async function startBackgroundCli(logger: Logger) {
   const service = await Service.ensure({
     file:
       isolated && process.env.OPENCODE_DESKTOP_SERVER_CHANNEL === "local"
-        ? join(app.getPath("userData"), "opencode", "service-local.json")
+        ? // The CLI we are about to spawn derives this name itself, so it comes
+          // from the shared rule rather than a second copy — otherwise the app
+          // waits on a file its own server never writes. userData is already
+          // scoped by bundle, so the directory carries the config identity.
+          join(app.getPath("userData"), APP_IDENTITY, registrationFilename("local", SERVICE_ID))
         : undefined,
     version: cli.version,
     command: [...cli.command, "serve", "--service", ...(isolated ? ["--port", "0"] : [])],

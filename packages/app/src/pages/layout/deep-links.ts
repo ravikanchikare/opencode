@@ -1,7 +1,9 @@
+import { DEEP_LINK_SCHEME } from "@/brand"
+
 export const deepLinkEvent = "opencode:deep-link"
 
 const parseUrl = (input: string) => {
-  if (!input.startsWith("opencode://")) return
+  if (!input.startsWith(`${DEEP_LINK_SCHEME}://`)) return
   if (typeof URL.canParse === "function" && !URL.canParse(input)) return
   try {
     return new URL(input)

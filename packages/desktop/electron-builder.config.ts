@@ -41,6 +41,23 @@ const APP_IDS = {
   prod: "ai.opencode.desktop",
 } as const
 
+const PRODUCT_NAMES = {
+  dev: "OpenCode Dev",
+  beta: "OpenCode Beta",
+  prod: "OpenCode",
+} as const
+
+// Packaged bundle identity. electron-builder runs in its own process at package
+// time, so these cannot come from the renderer or main bundle defines — a
+// branded build has to set the same values for both. Unset is stock.
+const appId = process.env.OPENCODE_DESKTOP_APP_ID?.trim() || APP_IDS[channel]
+const productName = process.env.OPENCODE_DESKTOP_NAME?.trim() || PRODUCT_NAMES[channel]
+const deepLinkScheme = process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME?.trim() || "opencode"
+const iconDir = process.env.OPENCODE_DESKTOP_ICON_DIR?.trim() || "icons"
+// The AppStream metainfo and the legacy GNOME/KDE desktop entry are stock
+// OpenCode artifacts that ship as files under resources/; a branded id has none.
+const branded = appId !== APP_IDS[channel]
+
 const getBase = (appId: string): Configuration => ({
   artifactName: "opencode-desktop-${os}-${arch}.${ext}",
   directories: {
@@ -74,7 +91,7 @@ const getBase = (appId: string): Configuration => ({
   ],
   mac: {
     category: "public.app-category.developer-tools",
-    icon: `resources/icons/icon.icns`,
+    icon: `resources/${iconDir}/icon.icns`,
     hardenedRuntime: true,
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
@@ -86,11 +103,11 @@ const getBase = (appId: string): Configuration => ({
     sign: true,
   },
   protocols: {
-    name: "OpenCode",
-    schemes: ["opencode"],
+    name: productName,
+    schemes: [deepLinkScheme],
   },
   win: {
-    icon: `resources/icons/icon.ico`,
+    icon: `resources/${iconDir}/icon.ico`,
     signtoolOptions: {
       sign: signWindows,
     },
@@ -100,11 +117,11 @@ const getBase = (appId: string): Configuration => ({
   nsis: {
     oneClick: true,
     perMachine: false,
-    installerIcon: `resources/icons/icon.ico`,
-    installerHeaderIcon: `resources/icons/icon.ico`,
+    installerIcon: `resources/${iconDir}/icon.ico`,
+    installerHeaderIcon: `resources/${iconDir}/icon.ico`,
   },
   linux: {
-    icon: `resources/icons`,
+    icon: `resources/${iconDir}`,
     category: "Development",
     executableName: appId,
     desktop: {
@@ -119,39 +136,39 @@ const getBase = (appId: string): Configuration => ({
 })
 
 function getConfig() {
-  const appId = APP_IDS[channel]
   const base = getBase(appId)
+  const fpm = branded ? [] : [metainfoFpm(appId)]
 
   switch (channel) {
     case "dev": {
       return {
         ...base,
         appId,
-        productName: "OpenCode Dev",
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-dev", fpm: [metainfoFpm(appId)] },
+        productName,
+        deb: { fpm },
+        rpm: { packageName: "opencode-dev", fpm },
       }
     }
     case "beta": {
       return {
         ...base,
         appId,
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
+        productName,
+        protocols: { name: productName, schemes: [deepLinkScheme] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-beta", fpm: [metainfoFpm(appId)] },
+        deb: { fpm },
+        rpm: { packageName: "opencode-beta", fpm },
       }
     }
     case "prod": {
       return {
         ...base,
         appId,
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
+        productName,
+        protocols: { name: productName, schemes: [deepLinkScheme] },
         publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
-        deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
-        rpm: { packageName: "opencode", fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
+        deb: { fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
+        rpm: { packageName: "opencode", fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
       }
     }
   }

@@ -13,6 +13,7 @@ import { defaultEnsureTiming, ensureTiming, type EnsureTiming } from "../service
 import { matchesVersion } from "../service-version.js"
 
 export * from "../service.js"
+import { registrationFilename } from "../service.js"
 /** Contents of the local service registration file. */
 export type Info = import("../service.js").Info
 
@@ -137,9 +138,13 @@ export const stop = Effect.fn("service.stop")(function* (options: StopOptions = 
   if (info !== undefined) yield* terminate(info, options, defaultEnsureTiming)
 })
 
+// The state root follows the config identity (`OPENCODE_APP_ID`); the
+// registration file follows the service identity, so a distribution sharing
+// stock's configuration still finds its own server. Stable channels are the
+// only ones this fallback covers — every other channel passes an explicit file.
 function fallback() {
   const state = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  return join(state, "opencode", "service.json")
+  return join(state, process.env.OPENCODE_APP_ID?.trim() || "opencode", registrationFilename("latest"))
 }
 
 /** Create HTTP authentication headers for a service endpoint. */
