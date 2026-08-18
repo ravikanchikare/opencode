@@ -105,14 +105,12 @@ export const ProjectSettingsExtensions: Component = () => {
     result.data.map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
   const globalPlugins = createMemo(() => {
     const loaded = (globalPluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
-    const configured = (serverSync.data.config.plugin ?? []).map(pluginName)
-    return [...new Set([...loaded, ...configured])].sort((a, b) => a.localeCompare(b))
+    return [...new Set([...loaded])].sort((a, b) => a.localeCompare(b))
   })
   const projectPlugins = createMemo(() => {
     const shared = new Set(globalPlugins())
     const loaded = (projectPluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
-    const configured = (sync().data.config.plugin ?? []).map(pluginName)
-    return [...new Set([...loaded, ...configured])]
+    return [...new Set([...loaded])]
       .filter((name) => !shared.has(name))
       .sort((a, b) => a.localeCompare(b))
   })

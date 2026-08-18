@@ -70,7 +70,6 @@ export const SettingsExtensionsV2: Component = () => {
       }),
     )
   }
-  }
 
   const [pluginList] = createResource(
     () => serverSdk.connection.status() === "connected",
@@ -78,12 +77,12 @@ export const SettingsExtensionsV2: Component = () => {
   )
   const plugins = createMemo<PluginRowItem[]>(() => {
     const loaded = (pluginList.latest ?? []).map((item) => String(item.id)).filter((id) => !id.startsWith("opencode."))
-    const configured = (serverSync.data.config.plugin ?? []).map((item) => (typeof item === "string" ? item : item[0]))
-    return [...new Set([...loaded, ...configured])]
+    return [...new Set([...loaded])]
       .sort((a, b) => a.localeCompare(b))
       .map((name) => ({ name }))
   })
 
+  const data = useData()
   createEffect(() => {
     if (serverSdk.connection.status() !== "connected") return
     void data.location.skill.sync().catch(() => undefined)

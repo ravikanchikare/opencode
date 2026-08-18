@@ -27,7 +27,6 @@ import type {
   SessionStatus,
 } from "@opencode-ai/client/promise"
 import { authenticateMcp, connectMcp, disconnectMcp, toggleMcp } from "./global-sync/mcp"
-import { createServerSession, type ServerSession } from "./server-session"
 import { createCatalogSync } from "./server-sync/catalog"
 import { createConnectionSync } from "./server-sync/connection"
 import { usePlatform } from "./platform"

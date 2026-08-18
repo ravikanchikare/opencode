@@ -1,5 +1,27 @@
 import type { McpServer } from "@opencode-ai/client/promise"
-import type { ServerApi } from "@/utils/server"
+
+type McpApi = {
+  mcp: {
+    connect: (input: { server: string } & Record<string, unknown>) => Promise<unknown>
+    disconnect: (input: { server: string } & Record<string, unknown>) => Promise<unknown>
+  }
+}
+
+type AuthenticateApi = {
+  mcp: {
+    list: (scope?: Record<string, unknown>) => Promise<{ data: { name: string; integrationID?: string }[] }>
+  }
+  integration: {
+    get: (input: { integrationID: string } & Record<string, unknown>) => Promise<{
+      data?: { methods: ReadonlyArray<{ type: string; id?: string; form?: unknown[] }> } | null
+    }>
+    oauth: {
+      connect: (input: { integrationID: string; methodID: string } & Record<string, unknown>) => Promise<{
+        data: { url: string }
+      }>
+    }
+  }
+}
 
 export async function toggleMcp(input: {
   status: McpServer["status"]["status"]
@@ -35,7 +57,7 @@ const at = (location: McpLocation) => (location ? { location } : {})
  * once the flow completes — there is nothing to write back here.
  */
 export async function authenticateMcp(input: {
-  api: ServerApi
+  api: AuthenticateApi
   name: string
   location?: McpLocation
   openExternal: (url: string) => void
@@ -45,7 +67,7 @@ export async function authenticateMcp(input: {
   if (!server?.integrationID) throw new Error(`MCP server ${input.name} has no authentication integration`)
   const integration = await input.api.integration.get({ integrationID: server.integrationID, ...scope })
   const method = integration.data?.methods.find((item) => item.type === "oauth" && !item.form?.length)
-  if (!method || method.type !== "oauth")
+  if (!method || method.type !== "oauth" || !method.id)
     throw new Error(`MCP server ${input.name} requires an interactive authentication form`)
   const attempt = await input.api.integration.oauth.connect({
     integrationID: server.integrationID,
@@ -55,8 +77,8 @@ export async function authenticateMcp(input: {
   input.openExternal(attempt.data.url)
 }
 
-export const connectMcp = (api: ServerApi, name: string, location?: McpLocation) =>
-  api.mcp.connect({ server: name, ...at(location) }).then(() => undefined)
+export const connectMcp = (api: McpApi, name: string, location?: McpLocation): Promise<void> =>
+  Promise.resolve(api.mcp.connect({ server: name, ...at(location) })).then(() => undefined)
 
-export const disconnectMcp = (api: ServerApi, name: string, location?: McpLocation) =>
-  api.mcp.disconnect({ server: name, ...at(location) }).then(() => undefined)
+export const disconnectMcp = (api: McpApi, name: string, location?: McpLocation): Promise<void> =>
+  Promise.resolve(api.mcp.disconnect({ server: name, ...at(location) })).then(() => undefined)
