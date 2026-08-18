@@ -102,10 +102,18 @@ export const ProjectSettingsExtensions: Component = () => {
     () => (serverSDK.connection.status() === "connected" ? directorySDK().directory : undefined),
     (directory) => serverSDK.api.plugin.list({ location: { directory } }).then((result) => result.data),
   )
-  const globalPlugins = createMemo(() => (globalPluginList.latest ?? []).map(pluginLabel))
+  // Internal plugins are the ones OpenCode registers itself; they are not
+  // extensions a user installed and have no meaning in this list.
+  const installed = (list: ReadonlyArray<Parameters<typeof pluginLabel>[0]> | undefined) =>
+    [
+      ...new Set(
+        (list ?? []).filter((item) => !String(item.id ?? "").startsWith("opencode.")).map(pluginLabel),
+      ),
+    ].sort((a, b) => a.localeCompare(b))
+  const globalPlugins = createMemo(() => installed(globalPluginList.latest))
   const projectPlugins = createMemo(() => {
     const shared = new Set(globalPlugins())
-    return (projectPluginList.latest ?? []).map(pluginLabel).filter((name) => !shared.has(name))
+    return installed(projectPluginList.latest).filter((name) => !shared.has(name))
   })
 
   const serverSkills = createMemo(() => data.location.skill.list() ?? [])
