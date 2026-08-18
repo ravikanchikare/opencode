@@ -244,6 +244,8 @@ const post = [
   ConfigProviderPlugin.Plugin,
   ConfigWebSearchPlugin.Plugin,
   VariantPlugin.Plugin,
+  // Terminal: policy is applied after every other catalog transform, so a
+  // provider re-created by an earlier transform is still subject to it.
   ConfigPolicyPlugin.Plugin,
 ] as const satisfies readonly InternalPlugin[]
 
