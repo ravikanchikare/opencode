@@ -1,0 +1,51 @@
+name: Upstream rebase
+
+on:
+  push:
+    branches: [v2]
+  workflow_dispatch:
+
+concurrency:
+  group: upstream-rebase-v2
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  rebase-on-upstream:
+    if: >-
+      github.repository != 'anomalyco/opencode' &&
+      (github.event_name == 'workflow_dispatch' ||
+      !contains(github.event.head_commit.message, '[skip upstream-rebase]'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: v2
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Rebase v2 onto anomalyco/opencode v2
+        id: rebase
+        env:
+          UPSTREAM_URL: https://github.com/anomalyco/opencode.git
+          UPSTREAM_BRANCH: v2
+          TARGET_BRANCH: v2
+          REMOTE_NAME: origin
+        run: bash .github/scripts/rebase-on-upstream.sh
+
+      - name: Report rebase failure
+        if: failure() && steps.rebase.outcome == 'failure'
+        run: |
+          {
+            echo "### Upstream rebase failed"
+            echo ""
+            echo "The rebase onto \`anomalyco/opencode:v2\` stopped because one or more files were changed on both your fork and upstream since the last common ancestor."
+            echo ""
+            echo "Resolve those conflicts locally, then push to \`v2\` to retry this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
