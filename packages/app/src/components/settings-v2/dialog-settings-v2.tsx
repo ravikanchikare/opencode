@@ -1,4 +1,5 @@
-import { Component, createEffect, createMemo, createSignal, startTransition } from "solid-js"
+import { Component, createEffect, createMemo, createSignal, For, Show, startTransition } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { Dialog } from "@opencode-ai/ui/dialog"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -19,6 +20,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLayout } from "@/context/layout"
 import { useTabs } from "@/context/tabs"
 import { useGlobal, useServerCtx } from "@/context/global"
+import { getAppComposition } from "@/composition"
 import { ServerConnection, useServers } from "@/context/servers"
 import "./settings-v2.css"
 
@@ -71,6 +73,10 @@ export const DialogSettings: Component<{
     void dialog.show(() => <DialogSettings sessionID={props.sessionID} defaultValue="providers" />)
   }
 
+  const tabComposition = getAppComposition().settingsTabs
+  const hiddenTabs = new Set(tabComposition?.hide ?? [])
+  const addedTabs = tabComposition?.add ?? []
+
   return (
     <Dialog size="x-large" variant="settings" class="settings-v2-dialog">
       <Tabs
@@ -105,10 +111,12 @@ export const DialogSettings: Component<{
 
               {/* Group 2: Environment & Workspaces */}
               <div class="flex flex-col gap-1 w-full">
-                <Tabs.Trigger value="servers">
-                  <Icon name="server" />
-                  {language.t("status.popover.tab.servers")}
-                </Tabs.Trigger>
+                <Show when={!hiddenTabs.has("servers")}>
+                  <Tabs.Trigger value="servers">
+                    <Icon name="server" />
+                    {language.t("status.popover.tab.servers")}
+                  </Tabs.Trigger>
+                </Show>
                 <Tabs.Trigger value="projects">
                   <Icon name="folder" />
                   {language.t("settings.tab.projects")}
@@ -134,6 +142,20 @@ export const DialogSettings: Component<{
                   {language.t("settings.tab.extensions")}
                 </Tabs.Trigger>
               </div>
+
+              {/* Group 4: Composed tabs */}
+              <Show when={addedTabs.length > 0}>
+                <div class="flex flex-col gap-1 w-full">
+                  <For each={addedTabs}>
+                    {(entry) => (
+                      <Tabs.Trigger value={entry.value}>
+                        <Icon name={entry.icon} />
+                        {entry.label}
+                      </Tabs.Trigger>
+                    )}
+                  </For>
+                </div>
+              </Show>
             </div>
 
             <div class="settings-v2-nav-footer">
@@ -155,9 +177,11 @@ export const DialogSettings: Component<{
         <Tabs.Content value="shortcuts" class="settings-v2-panel">
           <SettingsKeybinds />
         </Tabs.Content>
-        <Tabs.Content value="servers" class="settings-v2-panel">
-          <SettingsServersV2 />
-        </Tabs.Content>
+        <Show when={!hiddenTabs.has("servers")}>
+          <Tabs.Content value="servers" class="settings-v2-panel">
+            <SettingsServersV2 />
+          </Tabs.Content>
+        </Show>
         <Tabs.Content value="projects" class="settings-v2-panel">
           <SettingsProjectsV2 />
         </Tabs.Content>
@@ -166,7 +190,11 @@ export const DialogSettings: Component<{
             <SettingsWorkspacesV2 activeDirectory={directory()} />
           </Tabs.Content>
           <Tabs.Content value="providers" class="settings-v2-panel">
-            <SettingsProvidersV2 directory={directory()} onBack={showProviders} />
+            <Dynamic
+              component={getAppComposition().settingsProviders ?? SettingsProvidersV2}
+              directory={directory()}
+              onBack={showProviders}
+            />
           </Tabs.Content>
           <Tabs.Content value="models" class="settings-v2-panel">
             <SettingsModelsV2 />
@@ -175,6 +203,13 @@ export const DialogSettings: Component<{
             <SettingsExtensionsV2 />
           </Tabs.Content>
         </SettingsServerScope>
+        <For each={addedTabs}>
+          {(entry) => (
+            <Tabs.Content value={entry.value} class="settings-v2-panel">
+              <Dynamic component={entry.content} directory={directory()} onBack={showProviders} />
+            </Tabs.Content>
+          )}
+        </For>
       </Tabs>
     </Dialog>
   )

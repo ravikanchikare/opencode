@@ -1,4 +1,5 @@
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
+import { Dynamic } from "solid-js/web"
 import { createHomeController } from "./home/home-controller"
 import { createHomeProjectsController } from "./home/home-projects-controller"
 import { HomeUtilityNav } from "./home/home-projects-view"
@@ -7,6 +8,7 @@ import { createHomeScrollController } from "./home/home-scroll-controller"
 import { createHomeSessionSearchController } from "./home/home-session-search-controller"
 import { createHomeSessionsController } from "./home/home-sessions-controller"
 import { HomeSessions } from "./home/home-sessions"
+import { getAppComposition } from "@/composition"
 
 export function Home() {
   const home = createHomeController()
@@ -37,7 +39,8 @@ export function Home() {
         >
           <HomeProjects projects={projects} scroll={scroll} />
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
-          <HomeUtilityNav
+          <Dynamic
+            component={getAppComposition().homeUtilityNav ?? HomeUtilityNav}
             class="flex lg:hidden"
             onOpenSettings={projects.utility.settings}
             onOpenHelp={projects.utility.help}

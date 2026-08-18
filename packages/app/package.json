@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./composition": "./src/composition-api.ts",
     "./brand": "./src/brand.ts",
     "./desktop-menu": "./src/desktop-menu.ts",
     "./i18n/desktop-native": "./src/i18n/desktop-native.ts",

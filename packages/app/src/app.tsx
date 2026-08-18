@@ -44,8 +44,24 @@ import { requireServerKey } from "./utils/session-route"
 import { TargetSessionRouteContent } from "@/pages/session"
 import { Home } from "@/pages/home"
 import { ServerProvider } from "./context/server"
+import { getAppComposition, type HomeSurfaceProps } from "./composition"
+import { useSettingsCommand } from "./components/settings-dialog"
 
 const NewSession = lazy(() => import("@/pages/new-session"))
+
+// The composed Home surface is reached through a second component so that
+// `useSettingsCommand` — which registers the settings keybind — runs only when
+// a composition actually replaces Home. Stock Home keeps the stock command set.
+function HomeRoute() {
+  const composed = getAppComposition().home
+  if (!composed) return <Home />
+  return <ComposedHome component={composed} />
+}
+
+function ComposedHome(props: { component: Component<HomeSurfaceProps> }) {
+  const openSettings = useSettingsCommand()
+  return <Dynamic component={props.component} openSettings={openSettings} />
+}
 
 function TargetServerRoute(props: ParentProps) {
   const params = useParams<{ serverKey: string }>()
@@ -268,7 +284,7 @@ export function AppInterface(props: {
         <GlobalProvider>
           <Dynamic component={props.router ?? Router} root={Root}>
             <Route component={AppLayout}>
-              <Route path="/" component={Home} />
+              <Route path="/" component={HomeRoute} />
               <Route
                 path="/server/:serverKey/session/:id"
                 component={() => (
