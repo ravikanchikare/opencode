@@ -18,7 +18,15 @@ export const Plugin = define({
         .toReversed()
         .flatMap((entry) => entry.info.experimental?.policies ?? [])
       for (const record of catalog.provider.list()) {
-        const policy = policies.findLast((policy) => Wildcard.match(record.provider.id, policy.resource))
+        // Match on action as well as resource. `ConfigPolicy.Info` currently
+        // admits only `provider.use`, so this changes nothing today — but the
+        // vocabulary is meant to grow to operations like `mcp.connect`, and a
+        // resource-only match would then let an unrelated statement delete
+        // providers.
+        const policy = policies.findLast(
+          (policy) =>
+            Wildcard.match("provider.use", policy.action) && Wildcard.match(record.provider.id, policy.resource),
+        )
         if (policy?.effect === "deny") catalog.provider.remove(record.provider.id)
       }
     })
