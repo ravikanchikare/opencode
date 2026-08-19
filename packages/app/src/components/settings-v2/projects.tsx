@@ -1,4 +1,4 @@
-import { Component, For, Show, createMemo, createSignal } from "solid-js"
+import { Component, For, Show, createMemo } from "solid-js"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Icon } from "@opencode-ai/ui/icon"
 import { ProjectAvatar } from "@opencode-ai/ui/project-avatar"
@@ -6,9 +6,8 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { useGlobal } from "@/context/global"
 import { getProjectAvatarVariant } from "@/context/layout"
-import { ServerConnection, serverName } from "@/context/servers"
+import { ServerConnection } from "@/context/servers"
 import { displayName } from "@/pages/layout/helpers"
-import { InlineServerSelect } from "./parts/server-select"
 import { DialogEditProjectV2 } from "../dialog-edit-project-v2"
 import "./settings-v2.css"
 
@@ -16,7 +15,6 @@ export const SettingsProjectsV2: Component = () => {
   const dialog = useDialog()
   const language = useLanguage()
   const global = useGlobal()
-  const [allServers, setAllServers] = createSignal(true)
   const selected = global.settings.server.selected
   const projects = createMemo(() => {
     const server = selected()
@@ -25,13 +23,6 @@ export const SettingsProjectsV2: Component = () => {
   })
 
   type ProjectItem = ReturnType<typeof projects>[number]
-
-  const groups = createMemo(() =>
-    global.servers
-      .list()
-      .map((server) => ({ server, projects: global.ensureServerCtx(server).projects.list() }))
-      .filter((group) => group.projects.length > 0),
-  )
 
   const openProjectSettings = (project: ProjectItem, server = selected()) => {
     if (!server) return
@@ -74,65 +65,24 @@ export const SettingsProjectsV2: Component = () => {
             <h2 class="settings-v2-tab-title">{language.t("settings.projects.title")}</h2>
             <span class="text-11-regular text-v2-text-text-muted">{language.t("settings.projects.description")}</span>
           </div>
-          <InlineServerSelect
-            all={{
-              label: language.t("settings.projects.server.all"),
-              selected: allServers,
-              onSelect: () => setAllServers(true),
-            }}
-            onServerSelect={() => setAllServers(false)}
-          />
         </div>
       </div>
 
       <div class="settings-v2-tab-body">
-        <Show
-          when={allServers()}
-          fallback={
-            <div class="flex flex-col gap-2 w-full">
-              <Show
-                when={projects().length > 0}
-                fallback={
-                  <div class="py-12 text-center text-v2-text-text-muted text-13-regular">
-                    {language.t("settings.projects.empty")}
-                  </div>
-                }
-              >
-                <Show when={selected()} keyed>
-                  {(server) => (
-                    <For each={projects()}>{(project) => <ProjectRow project={project} server={server} />}</For>
-                  )}
-                </Show>
-              </Show>
-            </div>
-          }
-        >
-          <div class="flex flex-col gap-8 w-full">
-            <Show
-              when={groups().length > 0}
-              fallback={
-                <div class="py-12 text-center text-v2-text-text-muted text-13-regular">
-                  {language.t("settings.projects.empty")}
-                </div>
-              }
-            >
-              <For each={groups()}>
-                {(group) => (
-                  <div class="settings-v2-section">
-                    <h3 class="settings-v2-section-title">
-                      {serverName(group.server) || ServerConnection.key(group.server)}
-                    </h3>
-                    <div class="flex flex-col gap-2 w-full">
-                      <For each={group.projects}>
-                        {(project) => <ProjectRow project={project} server={group.server} />}
-                      </For>
-                    </div>
-                  </div>
-                )}
-              </For>
+        <div class="flex flex-col gap-2 w-full">
+          <Show
+            when={projects().length > 0}
+            fallback={
+              <div class="py-12 text-center text-v2-text-text-muted text-13-regular">
+                {language.t("settings.projects.empty")}
+              </div>
+            }
+          >
+            <Show when={selected()} keyed>
+              {(server) => <For each={projects()}>{(project) => <ProjectRow project={project} server={server} />}</For>}
             </Show>
-          </div>
-        </Show>
+          </Show>
+        </div>
       </div>
     </>
   )
