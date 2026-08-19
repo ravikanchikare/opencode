@@ -122,12 +122,6 @@ export const DialogManageModels: Component = () => {
 export const DialogManageModelsV2: Component = () => {
   const local = useLocal()
   const language = useLanguage()
-  const dialog = useDialog()
-  const directory = () => decode64(local.slug())
-
-  const handleConnectProvider = () => {
-    void dialog.show(() => <DialogConnectProvider directory={directory()} />)
-  }
   const providerList = (providerID: string) => local.model.list().filter((x) => x.provider.id === providerID)
   const providerVisible = (providerID: string) =>
     providerList(providerID).every((x) => local.model.visible({ modelID: x.id, providerID: x.provider.id }))
@@ -163,9 +157,6 @@ export const DialogManageModelsV2: Component = () => {
           title={language.t("dialog.model.manage")}
           description={language.t("dialog.model.manage.description")}
         />
-        <Button variant="neutral" icon="plus" onClick={handleConnectProvider}>
-          {language.t("command.provider.connect")}
-        </Button>
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
         <div class="px-4 pt-px pb-3">
