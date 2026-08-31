@@ -31,7 +31,7 @@ const watcherLayer = Watcher.testLayer
 const it = testEffect(
   Layer.merge(
     AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node]), [
-      [ExtensionEnablement.node, extensionEnablementNode()],
+      ExtensionEnablement.node.replace(extensionEnablementNode()),
     ]),
     watcherLayer,
   ),

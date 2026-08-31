@@ -12,7 +12,7 @@ import { testEffect } from "./lib/effect"
 
 const it = testEffect(
   AppNodeBuilder.build(LayerNode.group([Skill.node, Agent.node, Bus.node]), [
-    [ExtensionEnablement.node, extensionEnablementNode()],
+    ExtensionEnablement.node.replace(extensionEnablementNode()),
   ]),
 )
 

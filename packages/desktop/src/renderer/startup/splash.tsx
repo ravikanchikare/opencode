@@ -1,7 +1,5 @@
 import { Splash } from "@opencode-ai/ui/logo"
 
-import "./splash.css"
-
 export function LoadingSplash(props: { deep: boolean }) {
   return (
     <div
@@ -11,7 +9,7 @@ export function LoadingSplash(props: { deep: boolean }) {
         "bg-v2-background-bg-base": !props.deep,
       }}
     >
-      <Splash class="desktop-startup-pinwheel w-16 h-20" />
+      <Splash class="w-16 h-20" />
     </div>
   )
 }

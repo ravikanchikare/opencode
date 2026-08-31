@@ -40,8 +40,7 @@ const staticIt = testEffect(
 )
 const managedIt = testEffect(
   AppNodeBuilder.build(LayerNode.group([Database.node, Bus.node, SdkPlugins.node, LocationServiceMap.node]), [
-    [
-      ManagedPluginSource.node,
+    ManagedPluginSource.node.replace(
       Layer.succeed(
         ManagedPluginSource.Service,
         ManagedPluginSource.Service.of({
@@ -55,8 +54,8 @@ const managedIt = testEffect(
             ]),
         }),
       ),
-    ],
-    [Global.node, tempGlobalLayer],
+    ),
+    Global.node.replace(tempGlobalLayer),
   ]),
 )
 const refreshNpm = makeGlobalNode({
@@ -156,6 +155,7 @@ describe("PluginSupervisor config", () => {
             path: path.join(import.meta.dir, "../plugin/fixtures/config-promise/index.ts"),
           },
           state: { status: "active" },
+          toggleable: true,
           features: { server: true, tui: true },
         })
       }),

@@ -9,7 +9,7 @@ import { testEffect } from "../lib/effect"
 import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { host } from "./host"
 
-const it = testEffect(AppNodeBuilder.build(Skill.node, [[ExtensionEnablement.node, extensionEnablementNode()]]))
+const it = testEffect(AppNodeBuilder.build(Skill.node, [ExtensionEnablement.node.replace(extensionEnablementNode())]))
 const sources = (operations: readonly ConfigPluginSource.Operation[] = []) =>
   Layer.succeed(
     ConfigPluginSource.Service,
