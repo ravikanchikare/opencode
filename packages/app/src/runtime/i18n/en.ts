@@ -363,7 +363,9 @@ export const dict = {
   "dialog.server.add.button": "Add server",
   "dialog.server.add.name": "Server name (optional)",
   "dialog.server.add.namePlaceholder": "Localhost",
-  "dialog.server.add.password": "Password",
+  "dialog.server.add.username": "Username (optional)",
+  "dialog.server.add.usernamePlaceholder": "username",
+  "dialog.server.add.password": "Password (optional)",
   "dialog.server.add.passwordPlaceholder": "password",
   "dialog.server.edit.title": "Edit server",
   "dialog.server.default.title": "Default server",
@@ -451,6 +453,7 @@ export const dict = {
   "wsl.onboarding.versionMismatch": "Installed version does not match the desktop app version.",
   "wsl.onboarding.adding": "Adding...",
 
+  "server.row.noUsername": "no username",
   "server.row.incompatible":
     "This server is running OpenCode {{version}}, which isn't compatible with this app. Upgrade it to OpenCode V2 to continue.",
 
@@ -592,6 +595,7 @@ export const dict = {
   "error.page.circular": "[Circular]",
   "error.page.report.prefix": "Please report this error to the OpenCode team",
   "error.page.report.discord": "on Discord",
+  "error.page.report.support": "to support",
   "error.page.version": "Version: {{version}}",
 
   "error.dev.rootNotFound":
@@ -921,8 +925,6 @@ export const dict = {
   "settings.extensions.tab.mcps": "MCPs",
   "settings.extensions.tab.skills": "Skills",
   "settings.extensions.availableAll": "Available to all projects",
-  "settings.extensions.manageConfig": "Manage in opencode.json",
-  "settings.extensions.addSkills": "How to add skills",
   "settings.desktop.section.wsl": "WSL",
   "settings.desktop.wsl.title": "WSL integration",
   "settings.desktop.wsl.description": "Run the OpenCode server inside WSL on Windows.",
@@ -932,8 +934,10 @@ export const dict = {
   "project.settings.scripts.description": "Configure scripts for this project",
   "project.settings.extensions.description": "View extensions available to this project",
   "project.settings.extensions.tab.lsps": "LSPs",
-  "project.settings.extensions.added": "Added to this project",
-  "project.settings.extensions.shared": "Shared with all projects",
+  "project.settings.extensions.added": "Available to this project",
+  "project.settings.extensions.defaultOn": "Default: On",
+  "project.settings.extensions.defaultOff": "Default: Off",
+  "project.settings.extensions.useDefault": "Use default",
   "project.settings.extensions.lsp.detected": "Detected language servers",
   "project.settings.extensions.lsp.description": "Auto-detected from file types",
   "project.settings.extensions.setupRequired": "Setup required",

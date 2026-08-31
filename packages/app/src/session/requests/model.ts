@@ -33,8 +33,9 @@ export function createSessionRequestModel() {
   })
 
   const permissionRequest = createMemo((): PermissionRequest | undefined => {
-    if (settings.permissions.autoApprove()) return undefined
-    return sessionPermissionRequest(data.session.list(), data.session.permission.list, params.id)
+    const request = sessionPermissionRequest(data.session.list(), data.session.permission.list, params.id)
+    if (!settings.permissions.autoApprove() || request?.confirmation === "always") return request
+    return undefined
   })
 
   const blocked = createMemo(() => {

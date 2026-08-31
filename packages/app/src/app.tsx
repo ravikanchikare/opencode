@@ -95,6 +95,7 @@ export function AppBaseProviders(
 
 export function AppInterface(props: {
   children?: JSX.Element
+  overlay?: Component
   defaultServer: ServerConnection.Key
   canonicalLocalServer?: ServerConnection.Key
   servers?: Array<ServerConnection.Any>
@@ -126,7 +127,7 @@ export function AppInterface(props: {
     >
       <SettingsProvider>
         <Dynamic component={props.router ?? Router} root={Root}>
-          <AppRoutes />
+          <AppRoutes overlay={props.overlay} />
         </Dynamic>
       </SettingsProvider>
     </ServersProvider>

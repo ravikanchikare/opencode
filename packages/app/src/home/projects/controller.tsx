@@ -13,6 +13,7 @@ import { createResource } from "solid-js"
 import { createStore } from "solid-js/store"
 import type { HomeController } from "../model"
 import { useGlobal } from "@/runtime/server/runtime"
+import { SUPPORT_LINK } from "@/brand"
 
 export function createHomeProjectsController(home: HomeController) {
   const platform = usePlatform()
@@ -126,7 +127,7 @@ export function createHomeProjectsController(home: HomeController) {
     },
     utility: {
       settings: openSettings,
-      help: () => platform.openExternal("https://opencode.ai/desktop-feedback"),
+      help: () => platform.openExternal(SUPPORT_LINK.url),
     },
   }
 }

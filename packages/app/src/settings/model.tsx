@@ -4,6 +4,7 @@ import { createSimpleContext } from "@opencode-ai/ui/context"
 import type { ReasoningMode } from "@opencode-ai/session-ui/timeline/projection"
 import { persisted } from "@/runtime/persistence/storage"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
+import { getAppComposition, type AppSettingsDefaults } from "@/composition"
 
 export type WorkspaceDefaultDestination = "last-used" | "local" | "new"
 export type WorkspaceLastUsed = "local" | "workspace"
@@ -116,7 +117,7 @@ export function terminalFontFamily(font: string | undefined) {
   return stack(font, terminalBase)
 }
 
-const defaultSettings: Settings = {
+const stockSettings: Settings = {
   general: {
     autoSave: true,
     releaseNotes: true,
@@ -164,6 +165,21 @@ const defaultSettings: Settings = {
     errors: "nope-03",
   },
 }
+
+export function resolveSettingsDefaults(overrides?: AppSettingsDefaults): Settings {
+  if (!overrides) return stockSettings
+  return {
+    general: { ...stockSettings.general, ...overrides.general },
+    appearance: { ...stockSettings.appearance, ...overrides.appearance },
+    keybinds: { ...stockSettings.keybinds, ...overrides.keybinds },
+    permissions: { ...stockSettings.permissions, ...overrides.permissions },
+    workspaces: { ...stockSettings.workspaces, ...overrides.workspaces },
+    notifications: { ...stockSettings.notifications, ...overrides.notifications },
+    sounds: { ...stockSettings.sounds, ...overrides.sounds },
+  }
+}
+
+const defaultSettings = resolveSettingsDefaults(getAppComposition().settingsDefaults)
 
 function withFallback<T>(read: () => T | undefined, fallback: T) {
   return createMemo(() => read() ?? fallback)

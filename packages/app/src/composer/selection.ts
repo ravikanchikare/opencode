@@ -9,6 +9,7 @@ import { normalizeAgentList } from "@/runtime/server/global-sync/utils"
 import { useModels } from "@/providers/models/models"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "@/providers/models/variant"
 import { useComposerState } from "./persistence"
+import { getAppComposition } from "@/composition"
 
 export function createComposerControls(input: { sessionKey: Accessor<string>; model?: ModelSelection }) {
   const layout = useLayout()
@@ -56,13 +57,17 @@ export function createComposerModelSelection(input: {
     return !!provider?.models[model.modelID] && connected().has(model.providerID)
   }
   const recent = () => models.recent.list().find(valid)
+  const configured = () => {
+    const model = getAppComposition().modelDefaults?.fallback
+    return model && valid(model) ? model : undefined
+  }
   const fallback = () =>
     providers.connected().flatMap((provider) => {
       const modelID = Object.values(provider.models)[0]?.id
       return modelID ? [{ providerID: provider.id, modelID }] : []
     })[0]
   const current = () => {
-    const key = [prompt.model.current(), input.agent()?.model, recent(), fallback()].find(
+    const key = [prompt.model.current(), input.agent()?.model, recent(), configured(), fallback()].find(
       (item): item is ModelKey => !!item && valid(item),
     )
     return key ? models.find(key) : undefined

@@ -102,6 +102,7 @@ function createGlobalModels() {
     Persist.global("model"),
     createStore<{
       user: Array<{ providerID: string; modelID: string; visibility: "show" | "hide"; favorite?: boolean }>
+      defaultsInitialized?: boolean
       recent: Array<{ providerID: string; modelID: string }>
       variant?: Record<string, string | undefined>
     }>({

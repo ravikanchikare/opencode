@@ -1,9 +1,10 @@
-import { type Accessor, createMemo } from "solid-js"
+import { type Accessor, createEffect, createMemo } from "solid-js"
 import { DateTime } from "luxon"
 import { filter, firstBy, flat, groupBy, mapValues, pipe, uniqueBy, values } from "remeda"
 import { createSimpleContext } from "@opencode-ai/ui/context"
 import { useProviders } from "@/providers/catalog/providers"
 import { useGlobal } from "@/runtime/server/runtime"
+import { getAppComposition } from "@/composition"
 
 export type ModelKey = { providerID: string; modelID: string }
 
@@ -19,6 +20,7 @@ const createModelsController = (directory: Accessor<string | undefined>) => {
   const models = useGlobal().models
   const store = models.store
   const setStore = models.set
+  const defaults = getAppComposition().modelDefaults?.visible ?? []
 
   const available = createMemo(() =>
     providers.connected().flatMap((p) =>
@@ -83,6 +85,27 @@ const createModelsController = (directory: Accessor<string | undefined>) => {
       latest: m.name.includes("(latest)"),
     })),
   )
+
+  createEffect(() => {
+    if (!models.ready() || store.defaultsInitialized || store.user.length > 0) return
+    const configured = new Set(defaults.map(modelKey))
+    const providers = new Set(defaults.map((model) => model.providerID))
+    const items = available().filter((model) => providers.has(model.provider.id))
+    if (items.length === 0) return
+    if (!defaults.every((model) => items.some((item) => modelKey({ providerID: item.provider.id, modelID: item.id }) === modelKey(model)))) {
+      return
+    }
+
+    setStore(
+      "user",
+      items.map((model) => ({
+        providerID: model.provider.id,
+        modelID: model.id,
+        visibility: configured.has(modelKey({ providerID: model.provider.id, modelID: model.id })) ? "show" : "hide",
+      })),
+    )
+    setStore("defaultsInitialized", true)
+  })
 
   const find = (key: ModelKey) => list().find((m) => m.id === key.modelID && m.provider.id === key.providerID)
 

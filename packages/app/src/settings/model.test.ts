@@ -1,5 +1,41 @@
 import { describe, expect, test } from "bun:test"
-import { migrateSettings, monoDefault, monoFontFamily, sansDefault, sansFontFamily, terminalFontFamily } from "./model"
+import {
+  migrateSettings,
+  monoDefault,
+  monoFontFamily,
+  resolveSettingsDefaults,
+  sansDefault,
+  sansFontFamily,
+  terminalFontFamily,
+} from "./model"
+
+describe("distribution settings defaults", () => {
+  test("overrides named preferences and retains stock values for the rest", () => {
+    const defaults = resolveSettingsDefaults({
+      general: {
+        reasoningMode: "full",
+        showProjectIcon: true,
+      },
+      appearance: {
+        tabLayout: "vertical",
+      },
+      notifications: {
+        errors: true,
+      },
+    })
+
+    expect(defaults.general.reasoningMode).toBe("full")
+    expect(defaults.general.showProjectIcon).toBe(true)
+    expect(defaults.general.showStatus).toBe(false)
+    expect(defaults.appearance.tabLayout).toBe("vertical")
+    expect(defaults.appearance.fontSize).toBe(14)
+    expect(defaults.notifications).toEqual({
+      agent: true,
+      permissions: true,
+      errors: true,
+    })
+  })
+})
 
 describe("settings reasoning mode migration", () => {
   test.each([

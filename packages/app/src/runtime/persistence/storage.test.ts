@@ -112,6 +112,21 @@ describe("persist localStorage resilience", () => {
     expect(result).toBeUndefined()
   })
 
+  test("normalizer fills missing defaults without replacing persisted values", () => {
+    const result = persistTesting.normalize(
+      {
+        appearance: { tabLayout: "vertical", fontSize: 14 },
+        notifications: { agent: true, errors: true },
+      },
+      '{"appearance":{"tabLayout":"horizontal"},"notifications":{"agent":false}}',
+    )
+
+    expect(JSON.parse(result!)).toEqual({
+      appearance: { tabLayout: "horizontal", fontSize: 14 },
+      notifications: { agent: false, errors: true },
+    })
+  })
+
   test("workspace storage sanitizes Windows filename characters", () => {
     const result = persistTesting.workspaceStorage("C:\\Users\\foo")
 

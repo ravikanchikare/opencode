@@ -102,6 +102,13 @@
   user-select: none;
 }
 
+.settings-nav-config-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  line-height: var(--line-height-normal);
+  user-select: text;
+}
+
 .settings-back {
   display: flex;
   height: 28px;

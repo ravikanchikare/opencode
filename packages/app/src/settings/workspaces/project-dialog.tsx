@@ -65,9 +65,17 @@ function ProjectSettingsDialog(props: { project: LocalProject; server: ServerCon
               <Icon name="code" size="small" />
               {language.t("project.settings.scripts")}
             </Tabs.Trigger>
-            <Tabs.Trigger value="extensions">
-              <Icon name="extensions" size="small" />
-              {language.t("settings.tab.extensions")}
+            <Tabs.Trigger value="mcp">
+              <Icon name="mcp" size="small" />
+              {language.t("settings.extensions.tab.mcps")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="plugins">
+              <Icon name="cube" size="small" />
+              {language.t("status.popover.tab.plugins")}
+            </Tabs.Trigger>
+            <Tabs.Trigger value="skills">
+              <Icon name="post-skill" size="small" />
+              {language.t("settings.extensions.tab.skills")}
             </Tabs.Trigger>
           </div>
         </Tabs.List>
@@ -210,8 +218,14 @@ function ProjectSettingsDialog(props: { project: LocalProject; server: ServerCon
           </form>
         </Tabs.Content>
 
-        <Tabs.Content value="extensions" class="project-settings-panel">
-          <ProjectSettingsExtensions />
+        <Tabs.Content value="mcp" class="project-settings-panel">
+          <ProjectSettingsExtensions view="mcps" />
+        </Tabs.Content>
+        <Tabs.Content value="plugins" class="project-settings-panel">
+          <ProjectSettingsExtensions view="plugins" />
+        </Tabs.Content>
+        <Tabs.Content value="skills" class="project-settings-panel">
+          <ProjectSettingsExtensions view="skills" />
         </Tabs.Content>
       </Tabs>
     </Dialog>

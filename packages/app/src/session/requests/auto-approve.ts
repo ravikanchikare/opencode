@@ -112,7 +112,13 @@ export function createPermissionAutoApprover(input: { sdk: ServerSDK; data: Data
   function approve(permission: PermissionRequest, attempt = 0) {
     // enabled() guards the retry timer path: the user may disable the setting
     // between a failed reply and its scheduled retry.
-    if (state.disposed || !enabled() || state.responded.has(permission.id)) return
+    if (
+      permission.confirmation === "always" ||
+      state.disposed ||
+      !enabled() ||
+      state.responded.has(permission.id)
+    )
+      return
     remember(permission.id)
     input.sdk.api.permission
       .reply({ sessionID: permission.sessionID, requestID: permission.id, reply: "once" })

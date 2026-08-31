@@ -14,6 +14,7 @@ import { useData } from "@/runtime/server/current"
 import { normalizeAgentList } from "@/runtime/server/global-sync/utils"
 import { useServerSDK } from "@/runtime/server/client"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
+import { getAppComposition } from "@/composition"
 
 export type ModelKey = { providerID: string; modelID: string; variant?: string }
 
@@ -160,6 +161,8 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     }
 
     const defaultModel = () => {
+      const configured = getAppComposition().modelDefaults?.fallback
+      if (configured && validModel(configured)) return configured
       for (const provider of providers.connected()) {
         const first = Object.values(provider.models)[0]
         if (!first) continue
