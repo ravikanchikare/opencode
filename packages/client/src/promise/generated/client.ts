@@ -9,6 +9,8 @@ import type {
   AgentGetOutput,
   PluginListInput,
   PluginListOutput,
+  PluginSetEnabledInput,
+  PluginSetEnabledOutput,
   SessionListInput,
   SessionListOutput,
   SessionStatsInput,
@@ -181,6 +183,10 @@ import type {
   CommandListOutput,
   SkillListInput,
   SkillListOutput,
+  SkillInventoryInput,
+  SkillInventoryOutput,
+  SkillSetEnabledInput,
+  SkillSetEnabledOutput,
   RpcCallInput,
   RpcCallOutput,
   EventSubscribeOutput,
@@ -228,6 +234,14 @@ import type {
   ShellRemoveOutput,
   ReferenceListInput,
   ReferenceListOutput,
+  ReferenceCatalogInput,
+  ReferenceCatalogOutput,
+  ReferenceCheckInput,
+  ReferenceCheckOutput,
+  ReferenceSelectInput,
+  ReferenceSelectOutput,
+  ReferenceRefreshInput,
+  ReferenceRefreshOutput,
   WorktreeListInput,
   WorktreeListOutput,
   WorktreeCreateInput,
@@ -463,6 +477,19 @@ export function make(options: ClientOptions) {
             successStatus: 200,
             declaredStatuses: [401, 400],
             empty: false,
+          },
+          requestOptions,
+        ),
+      setEnabled: (input: PluginSetEnabledInput, requestOptions?: RequestOptions) =>
+        request<PluginSetEnabledOutput>(
+          {
+            method: "PUT",
+            path: `/api/plugin/${encodeURIComponent(input.plugin)}/enabled`,
+            query: { location: input["location"] },
+            body: input["payload"],
+            successStatus: 204,
+            declaredStatuses: [404, 409, 401, 400],
+            empty: true,
           },
           requestOptions,
         ),
@@ -1595,6 +1622,31 @@ export function make(options: ClientOptions) {
           },
           requestOptions,
         ),
+      inventory: (input?: SkillInventoryInput, requestOptions?: RequestOptions) =>
+        request<SkillInventoryOutput>(
+          {
+            method: "GET",
+            path: `/api/skill/inventory`,
+            query: { location: input?.["location"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      setEnabled: (input: SkillSetEnabledInput, requestOptions?: RequestOptions) =>
+        request<SkillSetEnabledOutput>(
+          {
+            method: "PUT",
+            path: `/api/skill/${encodeURIComponent(input.skill)}/enabled`,
+            query: { location: input["location"] },
+            body: input["payload"],
+            successStatus: 204,
+            declaredStatuses: [404, 401, 400],
+            empty: true,
+          },
+          requestOptions,
+        ),
     },
     rpc: {
       call: (input: RpcCallInput, requestOptions?: RequestOptions) =>
@@ -1916,6 +1968,57 @@ export function make(options: ClientOptions) {
             method: "GET",
             path: `/api/reference`,
             query: { location: input?.["location"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      catalog: (input?: ReferenceCatalogInput, requestOptions?: RequestOptions) =>
+        request<ReferenceCatalogOutput>(
+          {
+            method: "GET",
+            path: `/api/reference/catalog`,
+            query: { location: input?.["location"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      check: (input: ReferenceCheckInput, requestOptions?: RequestOptions) =>
+        request<ReferenceCheckOutput>(
+          {
+            method: "POST",
+            path: `/api/reference/catalog/check`,
+            query: { location: input["location"] },
+            body: { ids: input["ids"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      select: (input: ReferenceSelectInput, requestOptions?: RequestOptions) =>
+        request<ReferenceSelectOutput>(
+          {
+            method: "PUT",
+            path: `/api/reference/catalog/selection`,
+            query: { location: input["location"] },
+            body: { enabled: input["enabled"], ids: input["ids"] },
+            successStatus: 200,
+            declaredStatuses: [401, 400],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      refresh: (input?: ReferenceRefreshInput, requestOptions?: RequestOptions) =>
+        request<ReferenceRefreshOutput>(
+          {
+            method: "POST",
+            path: `/api/reference/catalog/refresh`,
+            query: { location: input?.["location"] },
+            body: { ids: input?.["ids"] },
             successStatus: 200,
             declaredStatuses: [401, 400],
             empty: false,

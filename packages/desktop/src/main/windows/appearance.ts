@@ -6,6 +6,7 @@ import type { Path } from "effect"
 import { type TitlebarTheme } from "../../shared/ipc-contract"
 import { WindowFullscreenChanged, WindowPinchZoomChanged, WindowZoomChanged } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
+import { ICON_DIR } from "../constants"
 import type { DesktopPaths } from "../paths"
 import { BACKGROUND_COLOR_KEY, PINCH_ZOOM_ENABLED_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
@@ -21,6 +22,7 @@ const pinchZoomEnabled = new WeakMap<BrowserWindow, boolean>()
 const titlebarHeight = 44
 const maxZoomLevel = 10
 const minZoomLevel = 0.2
+const PACKAGED_EXTERNAL_ICON_DIR = "opencode-distribution-icons"
 let backgroundColor: string | undefined
 
 export function windowAppearance(path: Path.Path, paths: DesktopPaths.Resolved) {
@@ -125,7 +127,12 @@ export function wireFullscreen(win: BrowserWindow) {
 }
 
 function iconsDir(path: Path.Path, paths: DesktopPaths.Resolved) {
-  return app.isPackaged ? path.join(process.resourcesPath, "icons") : path.join(paths.developmentResourcesRoot, "icons")
+  if (path.isAbsolute(ICON_DIR)) {
+    return app.isPackaged ? path.join(process.resourcesPath, PACKAGED_EXTERNAL_ICON_DIR) : ICON_DIR
+  }
+  return app.isPackaged
+    ? path.join(process.resourcesPath, ICON_DIR)
+    : path.join(paths.developmentResourcesRoot, ICON_DIR)
 }
 
 function iconPath(path: Path.Path, paths: DesktopPaths.Resolved) {

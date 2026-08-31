@@ -265,6 +265,7 @@ export function Session(props: {
   createEffect(() => {
     if (local.permission.mode !== "auto") return
     permissions().forEach((request) => {
+      if (request.confirmation === "always") return
       if (autoApproved.has(request.id)) return
       autoApproved.add(request.id)
       void data.session.permission

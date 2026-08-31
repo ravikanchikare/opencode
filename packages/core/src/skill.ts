@@ -7,6 +7,7 @@ import { Context, Effect, Layer, Types } from "effect"
 import type { Agent } from "@opencode-ai/schema/agent"
 import { Skill } from "@opencode-ai/schema/skill"
 import { Bus } from "./bus.js"
+import { ExtensionEnablement } from "./extension-enablement.js"
 import { Permission } from "./permission.js"
 import { State } from "./state.js"
 
@@ -24,6 +25,8 @@ export type Source = Skill.Source
 
 export const Info = Skill.Info
 export type Info = Skill.Info
+export const Inventory = Skill.Inventory
+export type Inventory = Skill.Inventory
 export const ID = Skill.ID
 export type ID = Skill.ID
 export const Name = Skill.Name
@@ -82,6 +85,8 @@ export type Draft = {
 export interface Interface extends State.Transformable<Draft> {
   readonly get: (id: ID) => Effect.Effect<Info | undefined>
   readonly list: () => Effect.Effect<Info[]>
+  readonly inventory: (scope?: "location" | "default") => Effect.Effect<Inventory[]>
+  readonly setEnabled: (id: ID, enabled: boolean | undefined, scope?: "location" | "default") => Effect.Effect<boolean>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Skill") {}
@@ -90,6 +95,7 @@ const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const bus = yield* Bus.Service
+    const enablement = yield* ExtensionEnablement.Service
 
     const state = State.create<Data, Draft>({
       name: "skill",
@@ -116,10 +122,31 @@ const layer = Layer.effect(
       transform: state.transform,
       reload: state.reload,
       get: Effect.fn("Skill.get")(function* (id) {
-        return state.get().skills.get(id)
+        const skill = state.get().skills.get(id)
+        if (!skill || !(yield* enablement.isEnabled("skill", id))) return undefined
+        return skill
       }),
       list: Effect.fn("Skill.list")(function* () {
-        return Array.from(state.get().skills.values())
+        return yield* Effect.filter(Array.from(state.get().skills.values()), (skill) =>
+          enablement.isEnabled("skill", skill.id),
+        )
+      }),
+      inventory: Effect.fn("Skill.inventory")(function* (scope: "location" | "default" = "location") {
+        return yield* Effect.forEach(Array.from(state.get().skills.values()), (skill) =>
+          enablement
+            .state("skill", skill.id, scope)
+            .pipe(Effect.map((availability) => ({ ...skill, ...availability }))),
+        )
+      }),
+      setEnabled: Effect.fn("Skill.setEnabled")(function* (id, enabled, scope: "location" | "default" = "location") {
+        if (!state.get().skills.has(id)) return false
+        if (scope === "default") {
+          yield* enablement.setDefault("skill", id, enabled ?? true)
+        } else {
+          yield* enablement.setOverride("skill", id, enabled)
+        }
+        yield* bus.publish(Skill.Event.Updated, {})
+        return true
       }),
     })
   }),
@@ -128,5 +155,5 @@ const layer = Layer.effect(
 export const node = makeLocationNode({
   service: Service,
   layer,
-  deps: [Bus.node],
+  deps: [Bus.node, ExtensionEnablement.node],
 })

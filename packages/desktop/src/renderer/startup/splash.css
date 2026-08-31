@@ -1,0 +1,30 @@
+.desktop-startup-pinwheel {
+  color: var(--v2-text-text-faint);
+  animation:
+    desktop-startup-pinwheel-rotate 2.4s linear infinite,
+    desktop-startup-pinwheel-fade 1.8s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+@keyframes desktop-startup-pinwheel-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes desktop-startup-pinwheel-fade {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 0.75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-startup-pinwheel {
+    animation: none;
+    opacity: 0.6;
+  }
+}

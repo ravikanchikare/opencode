@@ -29,6 +29,7 @@ const RequestFields = {
   action: Permission.Request.fields.action,
   resources: Permission.Request.fields.resources,
   save: Permission.Request.fields.save,
+  confirmation: Permission.Request.fields.confirmation,
   metadata: Permission.Request.fields.metadata,
   source: Permission.Request.fields.source,
 }
@@ -176,11 +177,16 @@ const layer = Layer.effect(
         agent: input.agent,
         action: input.action,
         resources: input.resources,
+        confirmation: input.confirmation,
         metadata: input.metadata,
         source: input.source,
         effect,
       })
-      return { effect: event.effect, message: event.message, rules: all }
+      return {
+        effect: input.confirmation === "always" && event.effect !== "deny" ? ("ask" as const) : event.effect,
+        message: event.message,
+        rules: all,
+      }
     })
 
     function request(input: AssertInput, message?: string): Request {
@@ -189,7 +195,8 @@ const layer = Layer.effect(
         sessionID: input.sessionID,
         action: input.action,
         resources: input.resources,
-        save: input.save,
+        save: input.confirmation === "always" ? [] : input.save,
+        confirmation: input.confirmation,
         metadata: input.metadata,
         source: input.source,
         message,

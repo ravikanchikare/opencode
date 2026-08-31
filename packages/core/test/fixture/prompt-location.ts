@@ -1,4 +1,5 @@
 import { Bus } from "@opencode-ai/core/bus"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { Image } from "@opencode-ai/core/image"
 import { LocationServiceMap } from "@opencode-ai/core/location-service-map"
 import type { LocationServices } from "@opencode-ai/core/location-services"
@@ -12,8 +13,9 @@ import { makeGlobalNode } from "@opencode-ai/util/effect/app-node"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { FSUtil } from "@opencode-ai/util/fs-util"
 import { Effect, Layer, LayerMap } from "effect"
+import { extensionEnablementNode } from "./extension-enablement"
 
-// Plain-prompt unit fixtures use virtual directories without configured references.
+// Plain-prompt unit fixtures use virtual directories and need only prompt preparation services.
 export const promptLocationNode = makeGlobalNode({
   service: LocationServiceMap.Service,
   layer: Layer.effect(
@@ -27,11 +29,14 @@ export const promptLocationNode = makeGlobalNode({
             Layer.provideMerge(
               Layer.mergeAll(
                 LayerNode.compile(LayerNode.group([PluginHooks.node, Image.node, Skill.node]), {
-                  replacements: [Bus.node.replace(Layer.succeed(Bus.Service, bus))],
+                  replacements: [
+                    Bus.node.replace(Layer.succeed(Bus.Service, bus)),
+                    ExtensionEnablement.node.replace(extensionEnablementNode()),
+                  ],
                 }),
                 Layer.succeed(FSUtil.Service, fs),
-                Layer.succeed(PluginSupervisor.Service, { flush: Effect.void }),
                 Layer.mock(Reference.Service, { refresh: () => Effect.void }),
+                Layer.succeed(PluginSupervisor.Service, { flush: Effect.void, reload: Effect.void }),
               ),
             ),
           ) as Layer.Layer<LocationServices>,

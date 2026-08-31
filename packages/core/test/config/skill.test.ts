@@ -16,9 +16,11 @@ import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Location } from "@opencode-ai/core/location"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { SkillDiscovery } from "@opencode-ai/core/skill/discovery"
 import { WellKnown } from "@opencode-ai/core/wellknown"
 import { emptyCredentialNode, emptyWellknownNode } from "../fixture/config-nodes"
+import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { tmpdir } from "../fixture/tmpdir"
 import { location } from "../fixture/location"
 import { testEffect } from "../lib/effect"
@@ -27,7 +29,12 @@ import { host } from "../plugin/host"
 const emptyDiscovery = SkillDiscovery.Service.of({ pull: () => Effect.succeed([]) })
 const watcherLayer = Watcher.testLayer
 const it = testEffect(
-  Layer.merge(AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node])), watcherLayer),
+  Layer.merge(
+    AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node]), [
+      [ExtensionEnablement.node, extensionEnablementNode()],
+    ]),
+    watcherLayer,
+  ),
 )
 const decode = Schema.decodeUnknownSync(Info)
 

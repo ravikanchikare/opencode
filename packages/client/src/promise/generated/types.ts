@@ -14,6 +14,7 @@ export type PluginSource =
   | { type: "builtin" }
   | { type: "package"; package: string }
   | { type: "local"; path: string }
+  | { type: "managed" }
   | { type: "sdk" }
 
 export type PluginFeatures = { server?: true; tui?: true; rpc?: true }
@@ -337,6 +338,19 @@ export type SkillInfo = {
   content: string
 }
 
+export type SkillInventory = {
+  id: string
+  name: string
+  description?: string
+  slash?: boolean
+  autoinvoke?: boolean
+  location: string
+  content: string
+  enabled: boolean
+  inherited: boolean
+  defaultEnabled: boolean
+}
+
 export type RpcOutput = { output?: any }
 
 export type PermissionReply = "once" | "always" | "reject"
@@ -417,6 +431,13 @@ export type ReferenceGitSource = {
   hidden?: boolean
 }
 
+export type ReferenceAccess =
+  | { status: "unchecked" }
+  | { status: "checking" }
+  | { status: "available"; head?: string }
+  | { status: "stale"; head?: string; reason: string }
+  | { status: "unavailable"; reason: string }
+
 export type WorktreeDirectory = { directory: string; strategy?: string }
 
 export type WorktreeInfo = { directory: string }
@@ -448,7 +469,15 @@ export type ProviderRequest = {
 
 export type PermissionRule = { action: string; resource: string; effect: PermissionEffect }
 
-export type PluginInfo = { id?: string; source: PluginSource; features: PluginFeatures; state: PluginState }
+export type PluginInfo = {
+  id?: string
+  source: PluginSource
+  features: PluginFeatures
+  state: PluginState
+  toggleable?: boolean
+  inherited?: boolean
+  defaultEnabled?: boolean
+}
 
 export type SessionMessageLocationSwitched = {
   id: string
@@ -1497,6 +1526,7 @@ export type PermissionRequest = {
   action: string
   resources: Array<string>
   save?: Array<string>
+  confirmation?: "always"
   metadata?: { [x: string]: JsonValue }
   source?: PermissionSource
   message?: string
@@ -1514,6 +1544,7 @@ export type PermissionAsked = {
     action: string
     resources: Array<string>
     save?: Array<string>
+    confirmation?: "always"
     metadata?: { [x: string]: any }
     source?: PermissionSource
     message?: string
@@ -1638,6 +1669,14 @@ export type SessionStatusUpdated = {
 }
 
 export type ReferenceSource = ReferenceLocalSource | ReferenceGitSource
+
+export type ReferenceCandidate = {
+  id: string
+  name: string
+  source: ReferenceGitSource
+  description: string
+  recommended?: boolean
+}
 
 export type WorktreeList = Array<WorktreeDirectory>
 
@@ -1866,6 +1905,8 @@ export type ReferenceInfo = {
   hidden?: boolean
   source: ReferenceSource
 }
+
+export type ReferenceCatalogItem = { candidate: ReferenceCandidate; selected: boolean; access: ReferenceAccess }
 
 export type AgentInfo = {
   id: string
@@ -2096,6 +2137,8 @@ export type SessionMessageAssistantTool1 = {
 export type FormFields = [FormField, ...Array<FormField>]
 
 export type FormFields2 = [FormField1, ...Array<FormField1>]
+
+export type ReferenceCatalog = { enabled: boolean; items: Array<ReferenceCatalogItem> }
 
 export type SessionInboxInfo = SessionInboxUser | SessionInboxSynthetic | SessionInboxCompaction | SessionInboxMove
 
@@ -2354,6 +2397,22 @@ export type AgentNotFoundError = {
 export const isAgentNotFoundError = (value: unknown): value is AgentNotFoundError =>
   typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "AgentNotFoundError"
 
+export type PluginNotFoundError = {
+  readonly _tag: "PluginNotFoundError"
+  readonly plugin: string
+  readonly message: string
+}
+export const isPluginNotFoundError = (value: unknown): value is PluginNotFoundError =>
+  typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "PluginNotFoundError"
+
+export type PluginLockedError = {
+  readonly _tag: "PluginLockedError"
+  readonly plugin: string
+  readonly message: string
+}
+export const isPluginLockedError = (value: unknown): value is PluginLockedError =>
+  typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "PluginLockedError"
+
 export type InvalidCursorError = { readonly _tag: "InvalidCursorError"; readonly message: string }
 export const isInvalidCursorError = (value: unknown): value is InvalidCursorError =>
   typeof value === "object" && value !== null && "_tag" in value && value["_tag"] === "InvalidCursorError"
@@ -2581,6 +2640,16 @@ export type PluginListOutput = {
   location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
   data: Array<PluginInfo>
 }
+
+export type PluginSetEnabledInput = {
+  readonly plugin: { readonly plugin: string }["plugin"]
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+
+export type PluginSetEnabledOutput = void
 
 export type SessionListInput = {
   readonly workspace?: {
@@ -5701,6 +5770,27 @@ export type SkillListOutput = {
   data: Array<SkillInfo>
 }
 
+export type SkillInventoryInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+}
+
+export type SkillInventoryOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: Array<SkillInventory>
+}
+
+export type SkillSetEnabledInput = {
+  readonly skill: { readonly skill: string }["skill"]
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+
+export type SkillSetEnabledOutput = void
+
 export type RpcCallInput = {
   readonly rpcID: { readonly rpcID: string; readonly method: string }["rpcID"]
   readonly method: { readonly rpcID: string; readonly method: string }["method"]
@@ -6037,6 +6127,54 @@ export type ReferenceListInput = {
 export type ReferenceListOutput = {
   location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
   data: Array<ReferenceInfo>
+}
+
+export type ReferenceCatalogInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+}
+
+export type ReferenceCatalogOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: ReferenceCatalog
+}
+
+export type ReferenceCheckInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly ids: { readonly ids: ReadonlyArray<string> }["ids"]
+}
+
+export type ReferenceCheckOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: ReferenceCatalog
+}
+
+export type ReferenceSelectInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly enabled: { readonly enabled: boolean; readonly ids: ReadonlyArray<string> }["enabled"]
+  readonly ids: { readonly enabled: boolean; readonly ids: ReadonlyArray<string> }["ids"]
+}
+
+export type ReferenceSelectOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: ReferenceCatalog
+}
+
+export type ReferenceRefreshInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly ids?: { readonly ids?: ReadonlyArray<string> | undefined }["ids"]
+}
+
+export type ReferenceRefreshOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: ReferenceCatalog
 }
 
 export type WorktreeListInput = { readonly projectID: { readonly projectID: string }["projectID"] }

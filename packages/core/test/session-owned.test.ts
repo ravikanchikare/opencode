@@ -125,7 +125,6 @@ const setup = Effect.fnUntraced(function* (options?: {
       }),
   })
   const services = Layer.mergeAll(
-    Layer.mock(Reference.Service, { refresh: () => Effect.void }),
     Layer.succeed(PluginHooks.Service, hooks),
     Layer.mock(Image.Service, {}),
     options?.shell ?? Layer.mock(Shell.Service, {}),
@@ -142,10 +141,12 @@ const setup = Effect.fnUntraced(function* (options?: {
               get: (id) => Effect.succeed(id === skillInfo.id ? skillInfo : undefined),
             }),
           options?.snapshot?.(ref) ?? Layer.mock(Snapshot.Service, {}),
+          Layer.mock(Reference.Service, { refresh: () => Effect.void }),
           Layer.succeed(PluginSupervisor.Service, {
             flush: Effect.sync(() => {
               flushes.push(ref)
             }),
+            reload: Effect.void,
           }),
         ),
       ),
@@ -803,6 +804,7 @@ describe("SessionPrompt construction", () => {
                   flush: Effect.sync(() => {
                     calls.push("ready")
                   }),
+                  reload: Effect.void,
                 }),
                 Layer.mock(Image.Service, {}),
                 Layer.mock(Skill.Service, {}),
@@ -845,6 +847,7 @@ describe("SessionRevert construction", () => {
               flush: Effect.sync(() => {
                 calls.push("flush")
               }),
+              reload: Effect.void,
             }),
             Layer.mock(Snapshot.Service, {
               capture: () =>

@@ -15,6 +15,7 @@ import { Bus } from "@opencode-ai/core/bus"
 import { Location } from "@opencode-ai/core/location"
 import { LocationServiceMap } from "@opencode-ai/core/location-services"
 import { Plugin } from "@opencode-ai/core/plugin"
+import { ManagedPluginSource } from "@opencode-ai/core/plugin/managed-source"
 import { SdkPlugins } from "@opencode-ai/core/plugin/sdk"
 import { PluginSupervisor } from "@opencode-ai/core/plugin/supervisor"
 import { Model } from "@opencode-ai/core/model"
@@ -35,6 +36,27 @@ const staticIt = testEffect(
   AppNodeBuilder.build(LayerNode.group([Database.node, Bus.node, SdkPlugins.node, LocationServiceMap.node]), [
     ConfigPluginSource.node.replace(ConfigPluginSource.empty),
     Global.node.replace(tempGlobalLayer),
+  ]),
+)
+const managedIt = testEffect(
+  AppNodeBuilder.build(LayerNode.group([Database.node, Bus.node, SdkPlugins.node, LocationServiceMap.node]), [
+    [
+      ManagedPluginSource.node,
+      Layer.succeed(
+        ManagedPluginSource.Service,
+        ManagedPluginSource.Service.of({
+          operations: () =>
+            Effect.succeed([
+              {
+                type: "add",
+                target: path.join(import.meta.dir, "../plugin/fixtures/config-promise"),
+                options: { description: "Loaded from managed source" },
+              },
+            ]),
+        }),
+      ),
+    ],
+    [Global.node, tempGlobalLayer],
   ]),
 )
 const refreshNpm = makeGlobalNode({
@@ -70,6 +92,19 @@ const refreshIt = testEffect(
 )
 
 describe("PluginSupervisor config", () => {
+  managedIt.live("loads managed plugins before configuration operations", () =>
+    withLocation(
+      undefined,
+      Effect.gen(function* () {
+        yield* ready()
+        const agents = yield* Agent.Service
+        expect(yield* agents.get(Agent.ID.make("configured"))).toMatchObject({
+          description: "Loaded from managed source",
+        })
+      }),
+    ),
+  )
+
   it.live("applies selectors in order", () =>
     withLocation(
       { plugins: ["-opencode.provider.*", "opencode.provider.openai"] },

@@ -90,6 +90,7 @@ export type Error =
 
 export interface Interface {
   readonly ensure: (input: EnsureInput) => Effect.Effect<Result, Error>
+  readonly check: (input: { readonly repository: string; readonly branch?: string }) => Effect.Effect<boolean>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/RepositoryCache") {}
@@ -123,6 +124,11 @@ const layer = Layer.effect(
     const kv = yield* KV.Service
 
     return Service.of({
+      check: Effect.fn("RepositoryCache.check")(function* (input) {
+        const repository = Repository.parse(input.repository)
+        if (!repository || !Repository.isRemote(repository)) return false
+        return yield* git.remote.check({ repository: repository.remote, branch: input.branch })
+      }),
       ensure: Effect.fn("RepositoryCache.ensure")(function* (input) {
         if (input.branch) yield* validateBranch(input.branch)
 

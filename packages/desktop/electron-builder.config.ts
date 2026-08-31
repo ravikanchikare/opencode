@@ -54,19 +54,52 @@ const APP_IDS = {
   prod: "ai.opencode.desktop",
 } as const
 
+const PRODUCT_NAMES = {
+  dev: "OpenCode Dev",
+  beta: "OpenCode Beta",
+  prod: "OpenCode",
+} as const
+
+const appId = process.env.OPENCODE_DESKTOP_APP_ID?.trim() || APP_IDS[channel]
+const productName = process.env.OPENCODE_DESKTOP_NAME?.trim() || PRODUCT_NAMES[channel]
+const deepLinkScheme = process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME?.trim() || "opencode"
+const version = process.env.OPENCODE_DESKTOP_VERSION?.trim()
+if (version && !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(version))
+  throw new Error(`OPENCODE_DESKTOP_VERSION must be a semantic version, got "${version}"`)
+const adHocSigning = process.env.OPENCODE_DESKTOP_ADHOC_SIGN === "true"
+const iconDir = process.env.OPENCODE_DESKTOP_ICON_DIR?.trim() || "icons"
+const packagedExternalIconDir = "opencode-distribution-icons"
+const externalIconResources = path.isAbsolute(iconDir) ? [{ from: iconDir, to: packagedExternalIconDir }] : []
+const icon = (name: string) =>
+  path.isAbsolute(iconDir) ? path.join(iconDir, name) : `resources/${iconDir}/${name}`
+const branded = appId !== APP_IDS[channel]
+
+const updateUrl = process.env.OPENCODE_DESKTOP_UPDATE_URL?.trim()
+const updateRepo = process.env.OPENCODE_DESKTOP_UPDATE_REPO?.trim()
+if (updateUrl && updateRepo)
+  throw new Error("Set OPENCODE_DESKTOP_UPDATE_URL or OPENCODE_DESKTOP_UPDATE_REPO, not both")
+if (updateRepo && !/^[^/\s]+\/[^/\s]+$/.test(updateRepo))
+  throw new Error(`OPENCODE_DESKTOP_UPDATE_REPO must be "owner/repo", got "${updateRepo}"`)
+
+const publishFor = (stock: Configuration["publish"], appId: string) => {
+  if (updateRepo) {
+    const [owner, repo] = updateRepo.split("/")
+    return { provider: "github", owner, repo, channel: "latest", updaterCacheDirName: `${appId}-updater` } as const
+  }
+  if (updateUrl) return { provider: "generic", url: updateUrl, updaterCacheDirName: `${appId}-updater` } as const
+  return branded ? undefined : stock
+}
+
 const getBase = (appId: string): Configuration => ({
-  artifactName: "opencode-desktop-${os}-${arch}.${ext}",
+  artifactName: process.env.OPENCODE_DESKTOP_ARTIFACT_NAME?.trim() || "opencode-desktop-${os}-${arch}.${ext}",
   directories: {
     output: "dist",
     buildResources: "resources",
   },
-  // Linux launchers are .desktop files, so this is the desktop file name,
-  // not just the app id. For prod, app id "ai.opencode.desktop" becomes
-  // "ai.opencode.desktop.desktop".
-  // https://developer.gnome.org/documentation/guidelines/maintainer/integrating.html
-  // https://www.electron.build/docs/linux/
   extraMetadata: {
+    ...(branded ? { name: appId } : {}),
     desktopName: `${appId}.desktop`,
+    ...(version ? { version } : {}),
   },
   files: [
     "out/**/*",
@@ -84,8 +117,8 @@ const getBase = (appId: string): Configuration => ({
     "!**/node_modules/js-yaml/dist/{js-yaml.js,js-yaml.min.js,*.map}",
     "!**/node_modules/js-yaml/bin{,/**/*}",
   ],
-  extraResources:
-    channel !== "prod"
+  extraResources: [
+    ...(channel !== "prod"
       ? [
           {
             from: "resources/",
@@ -93,30 +126,33 @@ const getBase = (appId: string): Configuration => ({
             filter: ["opencode-cli*"],
           },
         ]
-      : [],
+      : []),
+    ...externalIconResources,
+  ],
   mac: {
     category: "public.app-category.developer-tools",
-    icon: `resources/icons/icon.icns`,
-    hardenedRuntime: true,
+    icon: icon("icon.icns"),
+    identity: adHocSigning ? "-" : undefined,
+    hardenedRuntime: !adHocSigning,
     gatekeeperAssess: false,
     entitlements: "resources/entitlements.plist",
     entitlementsInherit: "resources/entitlements.plist",
     sign: async (options) => {
-      const { sign } = await import("app-builder-lib/out/codeSign/macCodeSign")
+      const { sign } = await import("app-builder-lib/out/codeSign/macCodeSign.js")
       await sign(macSignOptions(options))
     },
-    notarize: true,
+    notarize: !adHocSigning,
     target: ["dmg", "zip"],
   },
   dmg: {
-    sign: true,
+    sign: !adHocSigning,
   },
   protocols: {
-    name: "OpenCode",
-    schemes: ["opencode"],
+    name: productName,
+    schemes: [deepLinkScheme],
   },
   win: {
-    icon: `resources/icons/icon.ico`,
+    icon: icon("icon.ico"),
     signtoolOptions: {
       sign: signWindows,
     },
@@ -126,11 +162,11 @@ const getBase = (appId: string): Configuration => ({
   nsis: {
     oneClick: true,
     perMachine: false,
-    installerIcon: `resources/icons/icon.ico`,
-    installerHeaderIcon: `resources/icons/icon.ico`,
+    installerIcon: icon("icon.ico"),
+    installerHeaderIcon: icon("icon.ico"),
   },
   linux: {
-    icon: `resources/icons`,
+    icon: path.isAbsolute(iconDir) ? iconDir : `resources/${iconDir}`,
     category: "Development",
     executableName: appId,
     desktop: {
@@ -145,39 +181,39 @@ const getBase = (appId: string): Configuration => ({
 })
 
 function getConfig() {
-  const appId = APP_IDS[channel]
   const base = getBase(appId)
+  const fpm = branded ? [] : [metainfoFpm(appId)]
 
   switch (channel) {
     case "dev": {
       return {
         ...base,
         appId,
-        productName: "OpenCode Dev",
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-dev", fpm: [metainfoFpm(appId)] },
+        productName,
+        deb: { fpm },
+        rpm: { packageName: "opencode-dev", fpm },
       }
     }
     case "beta": {
       return {
         ...base,
         appId,
-        productName: "OpenCode Beta",
-        protocols: { name: "OpenCode Beta", schemes: ["opencode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" },
-        deb: { fpm: [metainfoFpm(appId)] },
-        rpm: { packageName: "opencode-beta", fpm: [metainfoFpm(appId)] },
+        productName,
+        protocols: { name: productName, schemes: [deepLinkScheme] },
+        publish: publishFor({ provider: "github", owner: "anomalyco", repo: "opencode-beta", channel: "latest" }, appId),
+        deb: { fpm },
+        rpm: { packageName: "opencode-beta", fpm },
       }
     }
     case "prod": {
       return {
         ...base,
         appId,
-        productName: "OpenCode",
-        protocols: { name: "OpenCode", schemes: ["opencode"] },
-        publish: { provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" },
-        deb: { fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
-        rpm: { packageName: "opencode", fpm: [metainfoFpm(appId), legacyDesktopEntryFpm] },
+        productName,
+        protocols: { name: productName, schemes: [deepLinkScheme] },
+        publish: publishFor({ provider: "github", owner: "anomalyco", repo: "opencode", channel: "latest" }, appId),
+        deb: { fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
+        rpm: { packageName: "opencode", fpm: branded ? [] : [...fpm, legacyDesktopEntryFpm] },
       }
     }
   }

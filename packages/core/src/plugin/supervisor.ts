@@ -2,7 +2,7 @@ export * as PluginSupervisor from "./supervisor.js"
 export { Service, type Interface } from "./supervisor-service.js"
 
 import { Event } from "@opencode-ai/schema/config"
-import { Cause, Effect, Latch, Layer, Stream } from "effect"
+import { Cause, Effect, Latch, Layer, PubSub, Stream } from "effect"
 import path from "path"
 import { ConfigPluginSource } from "../config/plugin/source.js"
 import { makeLocationNode } from "@opencode-ai/util/effect/app-node"
@@ -96,7 +96,14 @@ export const layer = Layer.effect(
     const bus = yield* Bus.Service
     const npm = yield* Npm.Service
     const ready = yield* Latch.make()
+    const reloads = yield* PubSub.unbounded<number>()
     let observed = 0
+
+    const next = Effect.gen(function* () {
+      observed++
+      yield* ready.close
+      return observed
+    })
 
     const activate = Effect.fn("PluginSupervisor.activate")(function* () {
       // Resolve OpenCode's internal plugins with their privileged Location services.
@@ -133,17 +140,9 @@ export const layer = Layer.effect(
       }
     })
     const updates = Stream.merge(sources.changes(), bus.subscribe([Event.Updated, SdkPlugins.Updated])).pipe(
-      // Make accepted work visible to flush before coalescing the burst.
-      Stream.mapEffect(() =>
-        Effect.gen(function* () {
-          observed++
-          yield* ready.close
-          return observed
-        }),
-      ),
+      Stream.mapEffect(() => next),
     )
-    yield* Stream.concat(Stream.succeed(0), updates).pipe(
-      // Keep observing updates while activation runs, retaining only the latest generation request.
+    yield* Stream.concat(Stream.succeed(0), Stream.merge(updates, Stream.fromPubSub(reloads))).pipe(
       Stream.buffer({ capacity: 1, strategy: "sliding" }),
       Stream.debounce("100 millis"),
       Stream.runForEach((target) =>
@@ -154,7 +153,13 @@ export const layer = Layer.effect(
       ),
       Effect.forkScoped({ startImmediately: true }),
     )
-    return Service.of({ flush: ready.await })
+    return Service.of({
+      flush: ready.await,
+      reload: next.pipe(
+        Effect.tap((target) => PubSub.publish(reloads, target)),
+        Effect.andThen(ready.await),
+      ),
+    })
   }),
 )
 

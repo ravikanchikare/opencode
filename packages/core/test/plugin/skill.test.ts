@@ -4,10 +4,12 @@ import { ConfigPluginSource } from "@opencode-ai/core/config/plugin/source"
 import { Effect, Layer, Stream } from "effect"
 import { SkillPlugin } from "@opencode-ai/core/plugin/skill"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { testEffect } from "../lib/effect"
+import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { host } from "./host"
 
-const it = testEffect(AppNodeBuilder.build(Skill.node))
+const it = testEffect(AppNodeBuilder.build(Skill.node, [[ExtensionEnablement.node, extensionEnablementNode()]]))
 const sources = (operations: readonly ConfigPluginSource.Operation[] = []) =>
   Layer.succeed(
     ConfigPluginSource.Service,

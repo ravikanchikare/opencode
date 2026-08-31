@@ -158,6 +158,32 @@ describe("Permission", () => {
     }),
   )
 
+  it.effect("always confirms even when policy and hooks allow", () =>
+    Effect.gen(function* () {
+      yield* setup([{ action: "delete", resource: "*", effect: "allow" }])
+      const hooks = yield* PluginHooks.Service
+      yield* hooks.register("permission", "evaluate", (event) =>
+        Effect.sync(() => {
+          event.effect = "allow"
+        }),
+      )
+      const service = yield* Permission.Service
+      const result = yield* service.ask(
+        assertion({
+          action: "delete",
+          confirmation: "always",
+          save: ["*"],
+        }),
+      )
+
+      expect(result.effect).toBe("ask")
+      expect(yield* service.get(result.id)).toMatchObject({
+        confirmation: "always",
+        save: [],
+      })
+    }),
+  )
+
   it.effect("lets plugins review allow and ask decisions without overriding configured denies", () =>
     Effect.gen(function* () {
       const hooks = yield* PluginHooks.Service

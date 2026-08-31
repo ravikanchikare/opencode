@@ -4,11 +4,17 @@ import { Agent } from "@opencode-ai/core/agent"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Bus } from "@opencode-ai/core/bus"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Skill } from "@opencode-ai/core/skill"
+import { extensionEnablementNode } from "./fixture/extension-enablement"
 import { testEffect } from "./lib/effect"
 
-const it = testEffect(AppNodeBuilder.build(LayerNode.group([Skill.node, Agent.node, Bus.node])))
+const it = testEffect(
+  AppNodeBuilder.build(LayerNode.group([Skill.node, Agent.node, Bus.node]), [
+    [ExtensionEnablement.node, extensionEnablementNode()],
+  ]),
+)
 
 const info = (id: string, description: string) =>
   Skill.Info.make({
@@ -53,6 +59,73 @@ describe("Skill", () => {
       })
 
       expect(yield* skill.list()).toEqual([info("review", "Updated")])
+    }),
+  )
+
+  it.effect("keeps disabled skills in inventory while filtering effective lookups", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      yield* skill.transform((draft) => {
+        draft.add(info("review", "Review"))
+        draft.add(info("deploy", "Deploy"))
+      })
+
+      expect(yield* skill.setEnabled(Skill.ID.make("review"), false)).toBe(true)
+      expect(yield* skill.setEnabled(Skill.ID.make("missing"), false)).toBe(false)
+      expect(yield* skill.inventory()).toEqual([
+        { ...info("review", "Review"), enabled: false, inherited: false, defaultEnabled: true },
+        { ...info("deploy", "Deploy"), enabled: true, inherited: true, defaultEnabled: true },
+      ])
+      expect(yield* skill.list()).toEqual([info("deploy", "Deploy")])
+      expect(yield* skill.get(Skill.ID.make("review"))).toBeUndefined()
+
+      expect(yield* skill.setEnabled(Skill.ID.make("review"), true)).toBe(true)
+      expect(yield* skill.get(Skill.ID.make("review"))).toEqual(info("review", "Review"))
+    }),
+  )
+
+  it.effect("retains enablement across candidate replacement and scopes it by ID", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      const first = info("first", "Shared name")
+      const second = { ...info("second", "Shared name"), name: first.name }
+      const registration = yield* skill.transform((draft) => {
+        draft.add(first)
+        draft.add(second)
+      })
+      yield* skill.setEnabled(first.id, false)
+
+      yield* registration.dispose
+      yield* skill.transform((draft) => {
+        draft.add({ ...first, description: "Replaced" })
+        draft.add(second)
+      })
+
+      expect(yield* skill.inventory()).toEqual([
+        { ...first, description: "Replaced", enabled: false, inherited: false, defaultEnabled: true },
+        { ...second, enabled: true, inherited: true, defaultEnabled: true },
+      ])
+      expect(yield* skill.list()).toEqual([second])
+    }),
+  )
+
+  it.effect("inherits the global default until the Location overrides or restores it", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      const review = info("inherited-review", "Review")
+      yield* skill.transform((draft) => draft.add(review))
+
+      expect(yield* skill.setEnabled(review.id, false, "default")).toBe(true)
+      expect(yield* skill.get(review.id)).toBeUndefined()
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: false, inherited: true, defaultEnabled: false }])
+
+      expect(yield* skill.setEnabled(review.id, true)).toBe(true)
+      expect(yield* skill.get(review.id)).toEqual(review)
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: true, inherited: false, defaultEnabled: false }])
+
+      expect(yield* skill.setEnabled(review.id, undefined)).toBe(true)
+      expect(yield* skill.get(review.id)).toBeUndefined()
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: false, inherited: true, defaultEnabled: false }])
     }),
   )
 

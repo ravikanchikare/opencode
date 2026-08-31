@@ -2,6 +2,8 @@ import { app } from "electron"
 import { Context, Effect, FileSystem, Layer, Path } from "effect"
 import type { ServerReadyData } from "../../shared/ipc-contract"
 import { BackgroundServiceState } from "./background-service-state"
+import { APP_IDENTITY, SERVICE_ID } from "../constants"
+import { configureManagedPlugins } from "../managed-plugins"
 import { cleanStages, DesktopCli } from "./desktop-cli"
 
 export * as BackgroundService from "./background-service"
@@ -35,12 +37,20 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const cli = yield* desktopCli.resolve
   const version = mode === "initial" ? cli.version : undefined
   if (isolated) process.env.XDG_STATE_HOME = app.getPath("userData")
+  const managed = yield* Effect.sync(() =>
+    configureManagedPlugins({
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      source: process.env.OPENCODE_DESKTOP_MANAGED_PLUGIN_DIR,
+    }),
+  )
+  if (managed.length > 0) yield* Effect.logInfo("configured managed plugins", { count: managed.length })
   const client = yield* Effect.promise(() => import("@opencode-ai/client/service"))
   const service = yield* Effect.tryPromise(() =>
     client.Service.ensure({
       file:
         isolated && process.env.OPENCODE_DESKTOP_SERVER_CHANNEL === "local"
-          ? path.join(app.getPath("userData"), "opencode", "service-local.json")
+          ? path.join(app.getPath("userData"), APP_IDENTITY, client.registrationFilename("local", SERVICE_ID))
           : undefined,
       version,
       command: [...cli.command, "serve", "--service", ...(isolated ? ["--port", "0"] : [])],
@@ -52,6 +62,7 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const url = new URL(service.url)
   if (url.hostname === "0.0.0.0") url.hostname = "127.0.0.1"
   yield* Effect.logInfo("v2 CLI background service ready", {
+    username: service.auth.username,
     version,
     ...endpoint(url.origin),
   })

@@ -7,6 +7,7 @@ import { Config } from "./config.js"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Node } from "@opencode-ai/util/effect/app-node"
 import { FileMutation } from "./file-mutation.js"
+import { ExtensionEnablement } from "./extension-enablement.js"
 import { Environment } from "./environment/index.js"
 import { Formatter } from "./formatter.js"
 import { FileSystem } from "./filesystem.js"
@@ -59,6 +60,7 @@ export { Service, byLocationNode, type Interface } from "./instance/service.js"
 
 const nodes = [
   Location.node,
+  ExtensionEnablement.node,
   Environment.node,
   Config.node,
   Agent.node,

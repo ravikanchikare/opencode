@@ -38,7 +38,7 @@ export interface Context {
   readonly mcp: MCPDomain
   readonly generate: GenerateApi
   readonly permission: PermissionDomain
-  readonly plugin: PluginApi
+  readonly plugin: Pick<PluginApi, "list">
   readonly reference: ReferenceDomain
   readonly rpc: RpcDomain
   readonly session: SessionDomain

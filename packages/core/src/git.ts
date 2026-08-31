@@ -7,6 +7,7 @@ import { AbsolutePath, RelativePath } from "./schema.js"
 import { FSUtil } from "@opencode-ai/util/fs-util"
 import { AppProcess } from "@opencode-ai/util/process"
 import { makeGlobalNode } from "@opencode-ai/util/effect/app-node"
+import { Global } from "@opencode-ai/util/global"
 import { File } from "./file.js"
 import { KeyedMutex } from "./effect/keyed-mutex.js"
 
@@ -86,6 +87,7 @@ export interface Interface {
   }
   readonly remote: {
     readonly get: (repository: Repository, name?: string) => Effect.Effect<string | undefined>
+    readonly check: (input: { repository: string; branch?: string }) => Effect.Effect<boolean>
   }
   readonly history: {
     readonly head: (repository: Repository) => Effect.Effect<string | undefined>
@@ -165,6 +167,7 @@ const layer = Layer.effect(
   Effect.gen(function* () {
     const fs = yield* FSUtil.Service
     const proc = yield* AppProcess.Service
+    const global = yield* Global.Service
     const locks = KeyedMutex.makeUnsafe<string>()
     const locked = <A, E, R>(repository: Repository, effect: Effect.Effect<A, E, R>) =>
       locks.withLock(repository.gitDirectory)(effect)
@@ -192,6 +195,25 @@ const layer = Layer.effect(
       const result = yield* run(repository.worktree, proc, ["remote", "get-url", name])
       if (result.exitCode !== 0) return undefined
       return result.text.trim() || undefined
+    })
+
+    const checkRemote = Effect.fn("Git.remote.check")(function* (input: { repository: string; branch?: string }) {
+      const args = ["ls-remote", "--exit-code", input.repository, ...(input.branch ? [input.branch] : ["HEAD"])]
+      return yield* proc
+        .run(
+          ChildProcess.make("git", args, {
+            cwd: global.home,
+            env: { GIT_TERMINAL_PROMPT: "0" },
+            extendEnv: true,
+            stdin: "ignore",
+          }),
+          { maxOutputBytes: 1024 },
+        )
+        .pipe(
+          Effect.timeout("15 seconds"),
+          Effect.map((result) => result.exitCode === 0),
+          Effect.orElseSucceed(() => false),
+        )
     })
 
     const roots = Effect.fn("Git.history.rootCommits")(function* (repository: Repository) {
@@ -684,7 +706,7 @@ const layer = Layer.effect(
 
     return Service.of({
       repo: { discover, clone, create },
-      remote: { get: remote },
+      remote: { get: remote, check: checkRemote },
       history: { head, branch, defaultRemoteBranch: remoteHead, rootCommits: roots },
       sync: { fetchRemotes: fetch, fetchBranch, checkoutRemoteBranch: checkout, resetHard: reset },
       worktree: { create: worktreeCreate, remove: worktreeRemove, list: worktreeList },
@@ -700,7 +722,7 @@ const layer = Layer.effect(
   }),
 )
 
-export const node = makeGlobalNode({ service: Service, layer: layer, deps: [FSUtil.node, AppProcess.node] })
+export const node = makeGlobalNode({ service: Service, layer: layer, deps: [FSUtil.node, AppProcess.node, Global.node] })
 
 interface Result {
   readonly exitCode: number

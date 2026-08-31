@@ -128,6 +128,7 @@ const layer = Layer.effect(
                   source: definition.source ?? { type: "builtin" },
                   state: { status: "failed", error: loaded.error },
                   features: { server: true, ...definition.features },
+                  ...(isToggleable(definition) ? { toggleable: true } : {}),
                 })
 
                 if (!previous) continue
@@ -180,7 +181,12 @@ function activeInfo(plugin: Versioned): Plugin.Info {
     source: plugin.source ?? { type: "builtin" },
     state: { status: "active" },
     features: { server: true, ...plugin.features },
+    ...(isToggleable(plugin) ? { toggleable: true } : {}),
   }
+}
+
+function isToggleable(plugin: Versioned) {
+  return plugin.source?.type === "package" || plugin.source?.type === "local" || plugin.source?.type === "managed"
 }
 
 export const node = makeLocationNode({

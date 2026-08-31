@@ -1,4 +1,5 @@
 import { Schema } from "effect"
+import { Plugin } from "@opencode-ai/schema/plugin"
 import { Skill } from "@opencode-ai/schema/skill"
 
 export class InvalidRequestError extends Schema.TaggedError<InvalidRequestError>()(
@@ -126,6 +127,24 @@ export class SkillNotFoundError extends Schema.TaggedError<SkillNotFoundError>()
     message: Schema.String,
   },
   { httpApiStatus: 404 },
+) {}
+
+export class PluginNotFoundError extends Schema.TaggedError<PluginNotFoundError>()(
+  "PluginNotFoundError",
+  {
+    plugin: Plugin.ID,
+    message: Schema.String,
+  },
+  { httpApiStatus: 404 },
+) {}
+
+export class PluginLockedError extends Schema.TaggedError<PluginLockedError>()(
+  "PluginLockedError",
+  {
+    plugin: Plugin.ID,
+    message: Schema.String,
+  },
+  { httpApiStatus: 409 },
 ) {}
 
 export class McpServerNotFoundError extends Schema.TaggedError<McpServerNotFoundError>()(

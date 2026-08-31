@@ -64,6 +64,11 @@ export function requestRef(request: HttpServerRequest.HttpServerRequest): Locati
   })
 }
 
+export function hasLocationQuery(request: HttpServerRequest.HttpServerRequest) {
+  const query = new URL(request.url, "http://localhost").searchParams
+  return query.has("location") || query.has("location[directory]") || query.has("location[workspace]")
+}
+
 function decode(input: string) {
   try {
     return decodeURIComponent(input)

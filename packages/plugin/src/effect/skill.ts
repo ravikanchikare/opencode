@@ -10,7 +10,7 @@ export interface SkillDraft {
   remove(id: string): void
 }
 
-export interface SkillDomain extends SkillApi<unknown> {
+export interface SkillDomain extends Pick<SkillApi<unknown>, "list"> {
   readonly transform: Transform<SkillDraft>
   readonly reload: () => Effect.Effect<void>
 }

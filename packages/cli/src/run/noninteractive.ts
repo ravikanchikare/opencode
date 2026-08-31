@@ -132,23 +132,31 @@ export async function runNonInteractivePrompt(input: Input) {
     }
   }
 
-  const replyPermission = async (request: { id: string; action: string; resources: ReadonlyArray<string> }) => {
-    if (!input.auto) {
+  const replyPermission = async (request: {
+    id: string
+    action: string
+    resources: ReadonlyArray<string>
+    confirmation?: "always"
+  }) => {
+    const reject = !input.auto || request.confirmation === "always"
+    if (reject) {
       permissionRejected = true
       UI.println(
         UI.Style.TEXT_WARNING_BOLD + "!",
         UI.Style.TEXT_NORMAL +
-          `permission requested: ${request.action} (${request.resources.join(", ")}); auto-rejecting`,
+          `permission requested: ${request.action} (${request.resources.join(", ")}); ${
+            request.confirmation === "always" ? "explicit confirmation required; " : ""
+          }auto-rejecting`,
       )
     }
     await input.client.permission
       .reply({
         sessionID: input.sessionID,
         requestID: request.id,
-        reply: input.auto ? "once" : "reject",
+        reply: reject ? "reject" : "once",
       })
       .catch(() => {})
-    if (!input.auto) {
+    if (reject) {
       await input.client.session.interrupt({ sessionID: input.sessionID }).catch(() => {})
     }
   }

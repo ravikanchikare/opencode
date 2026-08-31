@@ -35,6 +35,8 @@ import { PluginSupervisor } from "@opencode-ai/core/plugin/supervisor"
 import { PluginHooks } from "@opencode-ai/core/plugin/hooks"
 import { Snapshot } from "@opencode-ai/core/snapshot"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
+import { extensionEnablementNode } from "./fixture/extension-enablement"
 import { tmpdirScoped } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 import { Reference } from "@opencode-ai/core/reference"
@@ -96,7 +98,10 @@ const locations = (references: Layer.Layer<Reference.Service>) =>
                   Layer.mergeAll(
                     references,
                     LayerNode.compile(LayerNode.group([PluginHooks.node, Skill.node]), {
-                      replacements: [Bus.node.replace(Layer.succeed(Bus.Service, bus))],
+                      replacements: [
+                        Bus.node.replace(Layer.succeed(Bus.Service, bus)),
+                        ExtensionEnablement.node.replace(extensionEnablementNode()),
+                      ],
                     }),
                     Layer.mock(Image.Service, {
                       normalize: (_resource, content) =>
@@ -114,7 +119,7 @@ const locations = (references: Layer.Layer<Reference.Service>) =>
                     }),
                     Layer.succeed(
                       PluginSupervisor.Service,
-                      PluginSupervisor.Service.of({ flush: Effect.sync(() => (ready = true)) }),
+                      PluginSupervisor.Service.of({ flush: Effect.sync(() => (ready = true)), reload: Effect.void }),
                     ),
                   ),
                 ),
@@ -304,6 +309,7 @@ describe("Session.prompt", () => {
               RepositoryCache.node.replace(
                 Layer.succeed(RepositoryCache.Service, {
                   ensure: (input) => cache.ensure(input).pipe(Effect.tap(() => Queue.offer(completed, undefined))),
+                  check: () => Effect.succeed(true),
                 }),
               ),
             ]),

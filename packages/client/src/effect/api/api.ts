@@ -88,8 +88,19 @@ export type PluginListInput = {
 export type PluginListOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Plugin.Info> }
 export type PluginListOperation<E = never> = (input?: PluginListInput) => Effect.Effect<PluginListOutput, E>
 
+export type PluginSetEnabledInput = {
+  readonly plugin: Plugin.ID
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+export type PluginSetEnabledOutput = void
+export type PluginSetEnabledOperation<E = never> = (
+  input: PluginSetEnabledInput,
+) => Effect.Effect<PluginSetEnabledOutput, E>
+
 export interface PluginApi<E = never> {
   readonly list: PluginListOperation<E>
+  readonly setEnabled: PluginSetEnabledOperation<E>
 }
 
 export type SessionListInput = {
@@ -1569,8 +1580,26 @@ export type SkillListInput = {
 export type SkillListOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Skill.Info> }
 export type SkillListOperation<E = never> = (input?: SkillListInput) => Effect.Effect<SkillListOutput, E>
 
+export type SkillInventoryInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+}
+export type SkillInventoryOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Skill.Inventory> }
+export type SkillInventoryOperation<E = never> = (input?: SkillInventoryInput) => Effect.Effect<SkillInventoryOutput, E>
+
+export type SkillSetEnabledInput = {
+  readonly skill: Skill.ID
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+export type SkillSetEnabledOutput = void
+export type SkillSetEnabledOperation<E = never> = (
+  input: SkillSetEnabledInput,
+) => Effect.Effect<SkillSetEnabledOutput, E>
+
 export interface SkillApi<E = never> {
   readonly list: SkillListOperation<E>
+  readonly inventory: SkillInventoryOperation<E>
+  readonly setEnabled: SkillSetEnabledOperation<E>
 }
 
 export type RpcCallInput = {
@@ -1900,8 +1929,46 @@ export type ReferenceListInput = {
 export type ReferenceListOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Reference.Info> }
 export type ReferenceListOperation<E = never> = (input?: ReferenceListInput) => Effect.Effect<ReferenceListOutput, E>
 
+export type ReferenceCatalogInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+}
+export type ReferenceCatalogOutput = { readonly location: Location.Info; readonly data: Reference.Catalog }
+export type ReferenceCatalogOperation<E = never> = (
+  input?: ReferenceCatalogInput,
+) => Effect.Effect<ReferenceCatalogOutput, E>
+
+export type ReferenceCheckInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly ids: ReadonlyArray<string>
+}
+export type ReferenceCheckOutput = { readonly location: Location.Info; readonly data: Reference.Catalog }
+export type ReferenceCheckOperation<E = never> = (input: ReferenceCheckInput) => Effect.Effect<ReferenceCheckOutput, E>
+
+export type ReferenceSelectInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly enabled: boolean
+  readonly ids: ReadonlyArray<string>
+}
+export type ReferenceSelectOutput = { readonly location: Location.Info; readonly data: Reference.Catalog }
+export type ReferenceSelectOperation<E = never> = (
+  input: ReferenceSelectInput,
+) => Effect.Effect<ReferenceSelectOutput, E>
+
+export type ReferenceRefreshInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly ids?: ReadonlyArray<string> | undefined
+}
+export type ReferenceRefreshOutput = { readonly location: Location.Info; readonly data: Reference.Catalog }
+export type ReferenceRefreshOperation<E = never> = (
+  input?: ReferenceRefreshInput,
+) => Effect.Effect<ReferenceRefreshOutput, E>
+
 export interface ReferenceApi<E = never> {
   readonly list: ReferenceListOperation<E>
+  readonly catalog: ReferenceCatalogOperation<E>
+  readonly check: ReferenceCheckOperation<E>
+  readonly select: ReferenceSelectOperation<E>
+  readonly refresh: ReferenceRefreshOperation<E>
 }
 
 export type WorktreeListInput = { readonly projectID: Project.ID }

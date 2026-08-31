@@ -5,6 +5,7 @@ import type { Event } from "electron"
 import { Context, Effect, Layer } from "effect"
 import { DeepLinksOpened } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
+import { DEEP_LINK_SCHEME } from "../constants"
 import { DesktopLogging, scoped } from "../native/logging"
 import { safeWebContentsURL } from "../windows/state"
 import { getLastFocusedWindow, makeMainWindows, setAppQuitting, setRelaunchHandler } from "../windows"
@@ -52,7 +53,7 @@ const runtime = Layer.effect(
       )
     }
     const secondInstance = (_event: Event, argv: string[]) => {
-      const urls = argv.filter((arg) => arg.startsWith("opencode://"))
+      const urls = argv.filter((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`))
       if (urls.length) {
         runFork(Effect.logInfo("deep link received via second-instance", { urls }))
         emitDeepLinks(urls)

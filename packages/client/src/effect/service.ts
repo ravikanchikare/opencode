@@ -14,20 +14,9 @@ import { matchesVersion } from "../service-version.js"
 import { PtyHandoff } from "../pty-handoff.js"
 
 export * from "../service.js"
-/** Contents of the local service registration file. */
+import { registrationFilename } from "../service.js"
 export type Info = import("../service.js").Info
 
-// Find, start, and stop the local opencode background service.
-//
-// The service daemon advertises itself through a registration file in the
-// user's state directory: url, pid, version, and the private password, with
-// 0600 permissions. That file is the complete discovery contract — reading it
-// is all a client needs to connect. The daemon's own configuration (port,
-// persisted password) is CLI-owned and never read here.
-
-// Read-only lookup: registration file plus health check and version gate.
-// Never spawns; escalation to ensure() is the caller's policy.
-/** Discover a healthy, compatible local service without starting one. */
 export const discover = Effect.fn("service.discover")(function* (options: DiscoverOptions = {}) {
   const found = (yield* registered(options.file)).service
   if (found?.state !== "ready") return undefined
@@ -35,7 +24,6 @@ export const discover = Effect.fn("service.discover")(function* (options: Discov
   return found.endpoint
 })
 
-/** Recognize an authenticated compatible service bound to an expected URL, including while it starts or fails. */
 export const incumbent = Effect.fn("service.incumbent")(function* (
   options: DiscoverOptions & { readonly url: string },
 ) {
@@ -46,10 +34,6 @@ export const incumbent = Effect.fn("service.incumbent")(function* (
   return { endpoint: found.endpoint, state: found.state }
 })
 
-// Idempotent ensure-running: reuses a healthy compatible server, replaces a
-// version-mismatched one, and otherwise spawns small contenders until a server
-// becomes discoverable. A contender is never killed merely for slow startup.
-/** Ensure a healthy, compatible local service is running. */
 export const ensure = Effect.fn("service.ensure")(function* (options: EnsureOptions = {}) {
   const timing = ensureTiming(options)
   const contenders = new Set<ServiceContender>()
@@ -124,7 +108,6 @@ export const ensure = Effect.fn("service.ensure")(function* (options: EnsureOpti
     }
     finished.forEach((item) => contenders.delete(item))
     if (failure !== undefined && contenders.size === 0) return yield* Effect.fail(failure)
-    // Keep one candidate plus one lock probe so a pre-lock stall cannot block recovery.
     if (contenders.size < 2 && Date.now() - lastSpawn >= spawnDelay) {
       yield* announce("missing")
       contenders.add(yield* spawnContender)
@@ -143,7 +126,6 @@ export const ensure = Effect.fn("service.ensure")(function* (options: EnsureOpti
   return found.value.endpoint
 })
 
-/** Stop the registered local service. */
 export const stop = Effect.fn("service.stop")(function* (options: StopOptions = {}) {
   yield* Effect.tryPromise(() => PtyHandoff.clear(options.file ?? fallback()))
   const info = yield* read(options.file)
@@ -152,16 +134,14 @@ export const stop = Effect.fn("service.stop")(function* (options: StopOptions = 
 
 function fallback() {
   const state = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  return join(state, "opencode", "service.json")
+  return join(state, process.env.OPENCODE_APP_ID?.trim() || "opencode", registrationFilename("latest"))
 }
 
-/** Create HTTP authentication headers for a service endpoint. */
 export function headers(endpoint: Endpoint) {
   if (endpoint.auth === undefined) return undefined
   return { authorization: "Basic " + btoa(endpoint.auth.username + ":" + endpoint.auth.password) }
 }
 
-/** Schema for the local service registration file. */
 export const Info = Schema.Struct({
   id: Schema.optional(Schema.String),
   version: Schema.optional(Schema.String),
@@ -174,8 +154,6 @@ const decode = Schema.decodeUnknownEffect(Schema.fromJsonString(Info))
 const decodeHealth = Schema.decodeUnknownOption(ServiceStatus.Health)
 const decodeLegacyHealth = Schema.decodeUnknownOption(Schema.Struct({ healthy: Schema.Literal(true) }))
 
-// A missing or corrupt file means no valid info; callers treat both
-// the same (the registering server self-evicts, clients rediscover).
 const read = Effect.fnUntraced(function* (file?: string) {
   const fs = yield* FileSystem.FileSystem
   const text = yield* fs.readFileString(file ?? fallback()).pipe(Effect.option)

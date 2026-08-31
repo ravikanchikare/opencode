@@ -430,6 +430,7 @@ export function fromPromise(plugin: Plugin) {
           permission: {
             hook: (name, callback) =>
               register(host.permission.hook(name, (event) => Effect.promise(() => Promise.resolve(callback(event))))),
+            assert: (input) => run(host.permission.assert(input)),
             list: adaptApiMethod(PermissionEndpoints["session.permission.list"], host.permission.list),
             get: adaptApiMethod(PermissionEndpoints["session.permission.get"], host.permission.get),
             reply: adaptApiMethod(PermissionEndpoints["session.permission.reply"], host.permission.reply),
@@ -439,6 +440,10 @@ export function fromPromise(plugin: Plugin) {
           },
           reference: {
             list: adaptApiMethod(ReferenceEndpoints["reference.list"], host.reference.list),
+            catalog: adaptApiMethod(ReferenceEndpoints["reference.catalog"], host.reference.catalog),
+            check: adaptApiMethod(ReferenceEndpoints["reference.check"], host.reference.check),
+            select: adaptApiMethod(ReferenceEndpoints["reference.select"], host.reference.select),
+            refresh: adaptApiMethod(ReferenceEndpoints["reference.refresh"], host.reference.refresh),
             transform: transform(host.reference),
             reload: () => run(host.reference.reload()),
           },

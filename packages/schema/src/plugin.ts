@@ -11,6 +11,7 @@ export const Source = Schema.Union([
   Schema.Struct({ type: Schema.Literal("builtin") }),
   Schema.Struct({ type: Schema.Literal("package"), package: Schema.String }),
   Schema.Struct({ type: Schema.Literal("local"), path: Schema.String }),
+  Schema.Struct({ type: Schema.Literal("managed") }),
   Schema.Struct({ type: Schema.Literal("sdk") }),
 ]).annotate({ identifier: "Plugin.Source" })
 export type Source = typeof Source.Type
@@ -34,6 +35,9 @@ export const Info = Schema.Struct({
   source: Source,
   features: Features,
   state: State,
+  toggleable: Schema.Boolean.pipe(optional),
+  inherited: Schema.Boolean.pipe(optional),
+  defaultEnabled: Schema.Boolean.pipe(optional),
 }).annotate({ identifier: "Plugin.Info" })
 
 const Added = ephemeral({

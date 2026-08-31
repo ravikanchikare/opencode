@@ -15,6 +15,8 @@ import type {
   AgentGetOutput,
   PluginListInput,
   PluginListOutput,
+  PluginSetEnabledInput,
+  PluginSetEnabledOutput,
   SessionListInput,
   SessionListOutput,
   SessionStatsInput,
@@ -185,6 +187,10 @@ import type {
   CommandListOutput,
   SkillListInput,
   SkillListOutput,
+  SkillInventoryInput,
+  SkillInventoryOutput,
+  SkillSetEnabledInput,
+  SkillSetEnabledOutput,
   RpcCallInput,
   RpcCallOutput,
   EventSubscribeOutput,
@@ -232,6 +238,14 @@ import type {
   ShellRemoveOutput,
   ReferenceListInput,
   ReferenceListOutput,
+  ReferenceCatalogInput,
+  ReferenceCatalogOutput,
+  ReferenceCheckInput,
+  ReferenceCheckOutput,
+  ReferenceSelectInput,
+  ReferenceSelectOutput,
+  ReferenceRefreshInput,
+  ReferenceRefreshOutput,
   WorktreeListInput,
   WorktreeListOutput,
   WorktreeCreateInput,
@@ -322,7 +336,20 @@ const EndpointPluginList = (raw: RawClient["server.plugin"]) => (input?: PluginL
     raw["plugin.list"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
   )
 
-const adaptGroupPlugin = (raw: RawClient["server.plugin"]) => ({ list: EndpointPluginList(raw) })
+type PluginSetEnabledRequest = Parameters<RawClient["server.plugin"]["plugin.setEnabled"]>[0]
+const EndpointPluginSetEnabled = (raw: RawClient["server.plugin"]) => (input: PluginSetEnabledInput) =>
+  preserveEffect<PluginSetEnabledOutput>()(
+    raw["plugin.setEnabled"]({
+      params: { plugin: input["plugin"] },
+      query: { location: input["location"] },
+      payload: input["payload"],
+    } as PluginSetEnabledRequest).pipe(Effect.mapError(mapClientError)),
+  )
+
+const adaptGroupPlugin = (raw: RawClient["server.plugin"]) => ({
+  list: EndpointPluginList(raw),
+  setEnabled: EndpointPluginSetEnabled(raw),
+})
 
 const EndpointSessionList = (raw: RawClient["server.session"]) => (input?: SessionListInput) =>
   preserveEffect<SessionListOutput>()(
@@ -1166,7 +1193,26 @@ const EndpointSkillList = (raw: RawClient["server.skill"]) => (input?: SkillList
     raw["skill.list"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
   )
 
-const adaptGroupSkill = (raw: RawClient["server.skill"]) => ({ list: EndpointSkillList(raw) })
+const EndpointSkillInventory = (raw: RawClient["server.skill"]) => (input?: SkillInventoryInput) =>
+  preserveEffect<SkillInventoryOutput>()(
+    raw["skill.inventory"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
+  )
+
+type SkillSetEnabledRequest = Parameters<RawClient["server.skill"]["skill.setEnabled"]>[0]
+const EndpointSkillSetEnabled = (raw: RawClient["server.skill"]) => (input: SkillSetEnabledInput) =>
+  preserveEffect<SkillSetEnabledOutput>()(
+    raw["skill.setEnabled"]({
+      params: { skill: input["skill"] },
+      query: { location: input["location"] },
+      payload: input["payload"],
+    } as SkillSetEnabledRequest).pipe(Effect.mapError(mapClientError)),
+  )
+
+const adaptGroupSkill = (raw: RawClient["server.skill"]) => ({
+  list: EndpointSkillList(raw),
+  inventory: EndpointSkillInventory(raw),
+  setEnabled: EndpointSkillSetEnabled(raw),
+})
 
 const EndpointRpcCall = (raw: RawClient["server.rpc"]) => (input: RpcCallInput) =>
   preserveEffect<RpcCallOutput>()(
@@ -1419,7 +1465,40 @@ const EndpointReferenceList = (raw: RawClient["server.reference"]) => (input?: R
     raw["reference.list"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
   )
 
-const adaptGroupReference = (raw: RawClient["server.reference"]) => ({ list: EndpointReferenceList(raw) })
+const EndpointReferenceCatalog = (raw: RawClient["server.reference"]) => (input?: ReferenceCatalogInput) =>
+  preserveEffect<ReferenceCatalogOutput>()(
+    raw["reference.catalog"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
+  )
+
+const EndpointReferenceCheck = (raw: RawClient["server.reference"]) => (input: ReferenceCheckInput) =>
+  preserveEffect<ReferenceCheckOutput>()(
+    raw["reference.check"]({ query: { location: input["location"] }, payload: { ids: input["ids"] } }).pipe(
+      Effect.mapError(mapClientError),
+    ),
+  )
+
+const EndpointReferenceSelect = (raw: RawClient["server.reference"]) => (input: ReferenceSelectInput) =>
+  preserveEffect<ReferenceSelectOutput>()(
+    raw["reference.select"]({
+      query: { location: input["location"] },
+      payload: { enabled: input["enabled"], ids: input["ids"] },
+    }).pipe(Effect.mapError(mapClientError)),
+  )
+
+const EndpointReferenceRefresh = (raw: RawClient["server.reference"]) => (input?: ReferenceRefreshInput) =>
+  preserveEffect<ReferenceRefreshOutput>()(
+    raw["reference.refresh"]({ query: { location: input?.["location"] }, payload: { ids: input?.["ids"] } }).pipe(
+      Effect.mapError(mapClientError),
+    ),
+  )
+
+const adaptGroupReference = (raw: RawClient["server.reference"]) => ({
+  list: EndpointReferenceList(raw),
+  catalog: EndpointReferenceCatalog(raw),
+  check: EndpointReferenceCheck(raw),
+  select: EndpointReferenceSelect(raw),
+  refresh: EndpointReferenceRefresh(raw),
+})
 
 const EndpointWorktreeList = (raw: RawClient["server.worktree"]) => (input: WorktreeListInput) =>
   preserveEffect<WorktreeListOutput>()(

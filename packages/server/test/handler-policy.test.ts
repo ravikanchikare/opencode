@@ -53,6 +53,7 @@ test("plugin readiness stays lazy and resolves the supervisor for every executio
     flush: Effect.sync(() => {
       flushes++
     }),
+    reload: Effect.void,
   })
 
   expect(flushes).toBe(0)

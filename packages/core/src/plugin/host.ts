@@ -327,6 +327,16 @@ export const make = Effect.fn("PluginHost.make")(function* (plugin: Interface, p
     },
     permission: {
       hook: (name, callback) => hooks.register("permission", name, callback),
+      assert: (input) =>
+        permission.assert(input).pipe(
+          Effect.mapError(
+            (error) =>
+              new Tool.Error({
+                message: error.message,
+                error,
+              }),
+          ),
+        ),
       list: (input) => permission.forSession(input.sessionID),
       get: (input) =>
         permission
@@ -354,6 +364,10 @@ export const make = Effect.fn("PluginHost.make")(function* (plugin: Interface, p
     },
     reference: {
       list: () => response(reference.list()),
+      catalog: () => response(reference.catalog()),
+      check: (input) => response(reference.check(input.ids)),
+      select: (input) => response(reference.select(input).pipe(Effect.andThen(reference.catalog()))),
+      refresh: (input) => response(reference.refresh(input?.ids).pipe(Effect.andThen(reference.catalog()))),
       reload: reference.reload,
       transform: (callback) =>
         reference.transform((draft) => {
@@ -361,6 +375,11 @@ export const make = Effect.fn("PluginHost.make")(function* (plugin: Interface, p
             add: (name, source) => draft.add(name, Schema.decodeUnknownSync(Reference.Source)(source)),
             remove: draft.remove,
             list: draft.list,
+            candidate: {
+              add: (candidate) => draft.candidate.add(Schema.decodeUnknownSync(Reference.Candidate)(candidate)),
+              remove: draft.candidate.remove,
+              list: draft.candidate.list,
+            },
           })
         }),
     },

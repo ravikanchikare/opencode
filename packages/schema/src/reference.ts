@@ -30,6 +30,49 @@ export const Source = Schema.Union([LocalSource, GitSource])
   .annotate({ identifier: "Reference.Source" })
 export type Source = typeof Source.Type
 
+export const Candidate = Schema.Struct({
+  id: Schema.String,
+  name: Schema.String,
+  source: GitSource,
+  description: Schema.String,
+  recommended: Schema.Boolean.pipe(optional),
+}).annotate({ identifier: "Reference.Candidate" })
+export interface Candidate extends Schema.Schema.Type<typeof Candidate> {}
+
+export const Access = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("unchecked") }),
+  Schema.Struct({ status: Schema.Literal("checking") }),
+  Schema.Struct({ status: Schema.Literal("available"), head: Schema.String.pipe(optional) }),
+  Schema.Struct({
+    status: Schema.Literal("stale"),
+    head: Schema.String.pipe(optional),
+    reason: Schema.String,
+  }),
+  Schema.Struct({ status: Schema.Literal("unavailable"), reason: Schema.String }),
+])
+  .pipe(Schema.toTaggedUnion("status"))
+  .annotate({ identifier: "Reference.Access" })
+export type Access = typeof Access.Type
+
+export const CatalogItem = Schema.Struct({
+  candidate: Candidate,
+  selected: Schema.Boolean,
+  access: Access,
+}).annotate({ identifier: "Reference.CatalogItem" })
+export interface CatalogItem extends Schema.Schema.Type<typeof CatalogItem> {}
+
+export const Catalog = Schema.Struct({
+  enabled: Schema.Boolean,
+  items: Schema.Array(CatalogItem),
+}).annotate({ identifier: "Reference.Catalog" })
+export interface Catalog extends Schema.Schema.Type<typeof Catalog> {}
+
+export const Selection = Schema.Struct({
+  enabled: Schema.Boolean,
+  ids: Schema.Array(Schema.String),
+}).annotate({ identifier: "Reference.Selection" })
+export interface Selection extends Schema.Schema.Type<typeof Selection> {}
+
 export const Info = Schema.Struct({
   name: Schema.String,
   path: AbsolutePath,
