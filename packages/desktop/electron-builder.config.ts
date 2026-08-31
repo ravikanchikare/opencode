@@ -127,6 +127,14 @@ const getBase = (appId: string): Configuration => ({
           },
         ]
       : []),
+    ...(adHocSigning && process.platform === "darwin"
+      ? [
+          {
+            from: "resources/opencode-unsigned-updater",
+            to: "opencode-unsigned-updater",
+          },
+        ]
+      : []),
     ...externalIconResources,
   ],
   mac: {

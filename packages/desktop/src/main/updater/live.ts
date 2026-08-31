@@ -18,6 +18,10 @@ export const layer = Layer.effect(
     const desktop = yield* DesktopInitialization.Service
     const platform = UPDATER_ENABLED
       ? yield* Effect.gen(function* () {
+          if (useUnsignedDarwinPlatform()) {
+            const { make } = yield* Effect.promise(() => import("./unsigned-darwin-platform"))
+            return yield* make
+          }
           const { make } = yield* Effect.promise(() => import("./platform"))
           return yield* make
         })
@@ -82,4 +86,8 @@ const show = Effect.fn("Updater.show")(function* (
 
 function promise<A>(evaluate: () => Promise<A>) {
   return Effect.tryPromise(evaluate).pipe(Effect.orDie)
+}
+
+function useUnsignedDarwinPlatform() {
+  return process.platform === "darwin" && import.meta.env.OPENCODE_DESKTOP_ADHOC_SIGN === "true"
 }

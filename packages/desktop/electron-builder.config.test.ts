@@ -300,6 +300,12 @@ test("uses a valid ad-hoc signature for an unsigned personal build", async () =>
   expect(config.mac?.hardenedRuntime).toBe(false)
   expect(config.mac?.notarize).toBe(false)
   expect(config.dmg?.sign).toBe(false)
+  if (process.platform === "darwin") {
+    expect(config.extraResources).toContainEqual({
+      from: "resources/opencode-unsigned-updater",
+      to: "opencode-unsigned-updater",
+    })
+  }
 })
 
 test("rejects a distribution version that is not semantic", async () => {
