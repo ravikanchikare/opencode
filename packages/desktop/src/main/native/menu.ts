@@ -46,7 +46,8 @@ function nativeItem(entry: DesktopMenuEntry, deps: Deps): MenuItemConstructorOpt
   if (entry.type === "separator") return { type: "separator" }
   if (entry.role) return { role: nativeRole(entry.role), label: entry.labelKey ? nativeT(entry.labelKey) : undefined }
 
-  const manualUpdate = entry.action === "app.checkForUpdates" && MANUAL_UPDATE_URL
+  const manualUpdate =
+    entry.action === "app.checkForUpdates" && !UPDATER_ENABLED ? MANUAL_UPDATE_URL : undefined
   const item: MenuItemConstructorOptions = {
     label: manualUpdate ? "Download Latest Version…" : entry.labelKey ? nativeT(entry.labelKey) : undefined,
     accelerator: entry.accelerator?.macos,
