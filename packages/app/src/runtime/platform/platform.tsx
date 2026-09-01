@@ -32,6 +32,9 @@ type PlatformBase = {
   /** App version */
   version?: string
 
+  /** Packaged product version shown to users, distinct from `version` when that is a source pin. */
+  productVersion?: string
+
   /** Open a web or mail URL in the default system application */
   openExternal(url: string): void
 

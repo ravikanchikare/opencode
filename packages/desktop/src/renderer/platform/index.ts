@@ -27,6 +27,7 @@ export function createDesktopPlatform(
     platform: "desktop",
     os,
     version: windowState.version,
+    productVersion: import.meta.env.OPENCODE_DESKTOP_VERSION?.trim() || undefined,
     windowID: windowState.id,
     ...createDesktopFiles(api, os, ACCEPTED_FILE_EXTENSIONS),
     ...createDesktopStorage(api),

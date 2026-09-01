@@ -101,6 +101,7 @@ const require = __cjs_mod__.createRequire(import.meta.url);
     },
     define: {
       "import.meta.env.OPENCODE_VERSION": JSON.stringify(process.env.OPENCODE_VERSION),
+      "import.meta.env.OPENCODE_DESKTOP_VERSION": define(process.env.OPENCODE_DESKTOP_VERSION),
       "import.meta.env.VITE_OPENCODE_CHANNEL": JSON.stringify(channel),
       "import.meta.env.VITE_OPENCODE_DESKTOP_NAME": define(process.env.OPENCODE_DESKTOP_NAME),
       "import.meta.env.VITE_OPENCODE_DESKTOP_DEEP_LINK_SCHEME": define(process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME),

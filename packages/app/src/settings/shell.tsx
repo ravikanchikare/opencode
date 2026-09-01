@@ -38,6 +38,7 @@ import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { useCommand } from "@/shell/commands/command"
 import { useSettingsSurface } from "./surface"
 import { globalConfigPath } from "./config-path"
+import { settingsVersionLines } from "./version"
 import "@/settings/settings.css"
 
 export const SettingsScreen: Component<{
@@ -240,9 +241,13 @@ export const SettingsScreen: Component<{
               )}
             </Show>
             <span>{language.t("app.name.desktop")}</span>
-            <span>
-              <bdi dir="ltr">v{platform.version}</bdi>
-            </span>
+            <For each={settingsVersionLines({ productVersion: platform.productVersion, version: platform.version })}>
+              {(line) => (
+                <span title={line.title}>
+                  <bdi dir="ltr">{line.text}</bdi>
+                </span>
+              )}
+            </For>
           </div>
         </Tabs.List>
 
