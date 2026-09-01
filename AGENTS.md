@@ -6,6 +6,23 @@
 - Base all new branches and worktrees on `v2`, or `origin/v2` when the local `v2` ref is unavailable. Do not base them on `dev`.
 - Local `main` ref may not exist; use `v2` or `origin/v2` for diffs.
 
+## Distribution integration
+
+- One task uses one branch and one Git worktree. Do not edit another agent's
+  worktree or commit directly to `v2`.
+- Rebase feature branches onto `v2`; keep the shared `v2` history append-only so
+  distribution pins remain reachable.
+- A host change required by the Workbench distribution is integrated in this
+  order: fork branch → `v2` → pushed fork SHA → starter `opencode.pin.json` →
+  starter `main`.
+- The starter pin is the release contract. Do not ask a starter build to follow
+  a moving branch or package a dirty fork checkout.
+- The starter repository's `docs/workflow.md` is the end-to-end development and
+  release procedure. In a Delta thread with both projects, the starter agent
+  selects this worktree explicitly with `bun run dev -- --fork <path>`; never
+  assume the two managed checkout paths are siblings.
+- Fork worktrees need no distribution release credentials.
+
 ## Live V2 TUI Testing
 
 - Run `bun run dev:live` from a development worktree to test its TUI against the currently elected `opencode2` background server and live sessions.
