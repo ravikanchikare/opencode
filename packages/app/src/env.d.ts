@@ -5,6 +5,8 @@ interface ImportMetaEnv {
   readonly VITE_OPENCODE_DESKTOP_NAME?: string
   readonly VITE_OPENCODE_DESKTOP_DEEP_LINK_SCHEME?: string
   readonly VITE_OPENCODE_DESKTOP_SUPPORT_URL?: string
+  readonly VITE_OPENCODE_DESKTOP_HIDE_MENU?: string
+  readonly OPENCODE_DESKTOP_HIDE_MENU?: string
 
   readonly VITE_SENTRY_DSN?: string
   readonly VITE_SENTRY_ENVIRONMENT?: string
