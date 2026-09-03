@@ -2,6 +2,7 @@ import { app } from "electron"
 import { Context, Effect, FileSystem, Layer, Path } from "effect"
 import type { ServerReadyData } from "../../shared/ipc-contract"
 import { BackgroundServiceState } from "./background-service-state"
+import { configureManagedPlugins } from "../managed-plugins"
 import { cleanStages, DesktopCli } from "./desktop-cli"
 
 export * as BackgroundService from "./background-service"
@@ -35,6 +36,14 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const cli = yield* desktopCli.resolve
   const version = mode === "initial" ? cli.version : undefined
   if (isolated) process.env.XDG_STATE_HOME = app.getPath("userData")
+  const managed = yield* Effect.sync(() =>
+    configureManagedPlugins({
+      packaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      source: process.env.OPENCODE_DESKTOP_MANAGED_PLUGIN_DIR,
+    }),
+  )
+  if (managed.length > 0) yield* Effect.logInfo("configured managed plugins", { count: managed.length })
   const client = yield* Effect.promise(() => import("@opencode-ai/client/service"))
   const service = yield* Effect.tryPromise(() =>
     client.Service.ensure({
