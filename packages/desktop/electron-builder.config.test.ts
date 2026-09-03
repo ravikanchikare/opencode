@@ -195,3 +195,214 @@ for (const channel of ["dev", "beta"] as const) {
     ])
   })
 }
+test("does not bundle the CLI in prod builds", async () => {
+  const previous = process.env.OPENCODE_CHANNEL
+  process.env.OPENCODE_CHANNEL = "prod"
+  const module = await import("./electron-builder.config.ts?no-cli-resource=prod")
+  const config = module.default as Configuration
+  if (previous === undefined) delete process.env.OPENCODE_CHANNEL
+  else process.env.OPENCODE_CHANNEL = previous
+
+  expect(config.extraResources).toEqual([])
+})
+
+test("packages a branded distribution under its own identity", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    name: process.env.OPENCODE_DESKTOP_NAME,
+    scheme: process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_NAME = "Factory"
+  process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME = "factory"
+
+  const module = await import("./electron-builder.config.ts?brand=factory")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_NAME", previous.name],
+    ["OPENCODE_DESKTOP_DEEP_LINK_SCHEME", previous.scheme],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.appId).toBe("ai.factory.desktop")
+  expect(config.productName).toBe("Factory")
+  expect(config.protocols).toEqual({ name: "Factory", schemes: ["factory"] })
+  expect(config.extraMetadata?.name).toBe("ai.factory.desktop")
+  expect(config.extraMetadata?.desktopName).toBe("ai.factory.desktop.desktop")
+  expect(config.linux?.executableName).toBe("ai.factory.desktop")
+  expect(config.deb?.fpm).toEqual([])
+  expect(config.rpm?.fpm).toEqual([])
+})
+
+test("never points a branded build at stock OpenCode's releases", async () => {
+  const previous = { channel: process.env.OPENCODE_CHANNEL, appId: process.env.OPENCODE_DESKTOP_APP_ID }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=none")
+  const config = module.default as Configuration
+
+  if (previous.channel === undefined) delete process.env.OPENCODE_CHANNEL
+  else process.env.OPENCODE_CHANNEL = previous.channel
+  if (previous.appId === undefined) delete process.env.OPENCODE_DESKTOP_APP_ID
+  else process.env.OPENCODE_DESKTOP_APP_ID = previous.appId
+
+  expect(config.publish).toBeUndefined()
+})
+
+test("publishes a branded build to the feed it was given", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    url: process.env.OPENCODE_DESKTOP_UPDATE_URL,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_UPDATE_URL = "https://updates.example.com/factory"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=feed")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_UPDATE_URL", previous.url],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.publish).toEqual({
+    provider: "generic",
+    url: "https://updates.example.com/factory",
+    updaterCacheDirName: "ai.factory.desktop-updater",
+  })
+})
+
+test("uses an explicit semantic version for a distribution release", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_VERSION
+  process.env.OPENCODE_DESKTOP_VERSION = "0.1.0"
+
+  const module = await import("./electron-builder.config.ts?distribution-version=0.1.0")
+  const config = module.default as Configuration
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_VERSION
+  else process.env.OPENCODE_DESKTOP_VERSION = previous
+
+  expect(config.extraMetadata?.version).toBe("0.1.0")
+})
+
+test("uses a valid ad-hoc signature for an unsigned personal build", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_ADHOC_SIGN
+  process.env.OPENCODE_DESKTOP_ADHOC_SIGN = "true"
+
+  const module = await import("./electron-builder.config.ts?adhoc-signing")
+  const config = module.default as Configuration
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_ADHOC_SIGN
+  else process.env.OPENCODE_DESKTOP_ADHOC_SIGN = previous
+
+  expect(config.mac?.identity).toBe("-")
+  expect(config.mac?.hardenedRuntime).toBe(false)
+  expect(config.mac?.notarize).toBe(false)
+  expect(config.dmg?.sign).toBe(false)
+  expect(JSON.stringify(config.extraResources ?? [])).not.toContain("opencode-unsigned-updater")
+})
+
+test("rejects a distribution version that is not semantic", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_VERSION
+  process.env.OPENCODE_DESKTOP_VERSION = "release-candidate"
+
+  const attempt = import("./electron-builder.config.ts?distribution-version=invalid")
+  await expect(attempt).rejects.toThrow(/semantic version/)
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_VERSION
+  else process.env.OPENCODE_DESKTOP_VERSION = previous
+})
+
+test("publishes a branded build to its own GitHub releases", async () => {
+  const previous = {
+    channel: process.env.OPENCODE_CHANNEL,
+    appId: process.env.OPENCODE_DESKTOP_APP_ID,
+    repo: process.env.OPENCODE_DESKTOP_UPDATE_REPO,
+  }
+  process.env.OPENCODE_CHANNEL = "prod"
+  process.env.OPENCODE_DESKTOP_APP_ID = "ai.factory.desktop"
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "acme/factory"
+
+  const module = await import("./electron-builder.config.ts?brand-updates=repo")
+  const config = module.default as Configuration
+
+  for (const [key, value] of [
+    ["OPENCODE_CHANNEL", previous.channel],
+    ["OPENCODE_DESKTOP_APP_ID", previous.appId],
+    ["OPENCODE_DESKTOP_UPDATE_REPO", previous.repo],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+
+  expect(config.publish).toEqual({
+    provider: "github",
+    owner: "acme",
+    repo: "factory",
+    channel: "latest",
+    updaterCacheDirName: "ai.factory.desktop-updater",
+  })
+})
+
+test("rejects an update repo that is not owner/repo", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_UPDATE_REPO
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "https://github.com/acme/factory"
+
+  const attempt = import("./electron-builder.config.ts?brand-updates=bad-repo")
+  await expect(attempt).rejects.toThrow(/owner\/repo/)
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_UPDATE_REPO
+  else process.env.OPENCODE_DESKTOP_UPDATE_REPO = previous
+})
+
+test("rejects setting both update seams at once", async () => {
+  const previous = {
+    url: process.env.OPENCODE_DESKTOP_UPDATE_URL,
+    repo: process.env.OPENCODE_DESKTOP_UPDATE_REPO,
+  }
+  process.env.OPENCODE_DESKTOP_UPDATE_URL = "https://updates.example.com/factory"
+  process.env.OPENCODE_DESKTOP_UPDATE_REPO = "acme/factory"
+
+  const attempt = import("./electron-builder.config.ts?brand-updates=both")
+  await expect(attempt).rejects.toThrow(/not both/)
+
+  for (const [key, value] of [
+    ["OPENCODE_DESKTOP_UPDATE_URL", previous.url],
+    ["OPENCODE_DESKTOP_UPDATE_REPO", previous.repo],
+  ] as const) {
+    if (value === undefined) delete process.env[key]
+    else process.env[key] = value
+  }
+})
+
+test("uses an absolute distribution icon directory", async () => {
+  const previous = process.env.OPENCODE_DESKTOP_ICON_DIR
+  process.env.OPENCODE_DESKTOP_ICON_DIR = "/assets/aai-workbench/icons"
+
+  const module = await import("./electron-builder.config.ts?icons=absolute")
+  const config = module.default as Configuration
+
+  if (previous === undefined) delete process.env.OPENCODE_DESKTOP_ICON_DIR
+  else process.env.OPENCODE_DESKTOP_ICON_DIR = previous
+
+  expect(config.mac?.icon).toBe("/assets/aai-workbench/icons/icon.icns")
+  expect(config.win?.icon).toBe("/assets/aai-workbench/icons/icon.ico")
+  expect(config.nsis?.installerIcon).toBe("/assets/aai-workbench/icons/icon.ico")
+  expect(config.nsis?.installerHeaderIcon).toBe("/assets/aai-workbench/icons/icon.ico")
+  expect(config.linux?.icon).toBe("/assets/aai-workbench/icons")
+  expect(config.extraResources).toContainEqual({ from: "/assets/aai-workbench/icons", to: "opencode-distribution-icons" })
+})
