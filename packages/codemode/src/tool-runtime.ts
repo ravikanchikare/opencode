@@ -562,23 +562,28 @@ export const make = <R>(
       )
     })
 
+  const executeSearch = (args: Array<unknown>) =>
+    Effect.suspend(() =>
+      executeTool(
+        "search",
+        searchTool,
+        args.map((arg) => copyOut(copyIn(arg, "Arguments for tool 'search'"), "json")),
+      ),
+    )
+
   return {
     root: new ToolReference([]),
     calls,
     keys: (path) => namespaceKeys(root, path),
-    search: (args) =>
-      Effect.suspend(() =>
-        executeTool(
-          "search",
-          searchTool,
-          args.map((arg) => copyOut(copyIn(arg, "Arguments for tool 'search'"), "json")),
-        ),
-      ),
+    search: executeSearch,
     execute: (path, args) =>
       Effect.gen(function* () {
-        const name = canonicalSegments(path).join(".")
+        const segments = canonicalSegments(path)
+        if (segments.length === 1 && segments[0] === "search" && lookup(root, segments) === undefined)
+          return yield* executeSearch(args)
+        const name = segments.join(".")
         const externalArgs = args.map((arg) => copyOut(copyIn(arg, `Arguments for tool '${name}'`), "json"))
-        const tool = resolve(root, path)
+        const tool = resolve(root, segments)
         return yield* executeTool(name, tool, externalArgs)
       }),
   }
