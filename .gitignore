@@ -35,3 +35,6 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+
+# TypeScript declarations emitted beside the Storybook Playwright helpers.
+packages/storybook/playwright/*.d.ts
