@@ -29,6 +29,7 @@ const RequestFields = {
   action: Permission.Request.fields.action,
   resources: Permission.Request.fields.resources,
   save: Permission.Request.fields.save,
+  message: Permission.Request.fields.message,
   metadata: Permission.Request.fields.metadata,
   source: Permission.Request.fields.source,
 }
@@ -180,7 +181,7 @@ const layer = Layer.effect(
         source: input.source,
         effect,
       })
-      return { effect: event.effect, message: event.message, rules: all }
+      return { effect: event.effect, message: event.message ?? input.message, rules: all }
     })
 
     function request(input: AssertInput, message?: string): Request {
