@@ -112,16 +112,22 @@ function DesktopWindow(props: {
       <Show when={ready()}>
         <Show when={effectiveDefaultServer()} keyed>
           {(key) => (
-            <AppInterface defaultServer={key} servers={servers()} router={router}>
+            <AppInterface
+              defaultServer={key}
+              servers={servers()}
+              router={router}
+              overlay={() => (
+                <DesktopFirstLaunchOnboarding
+                  api={props.api}
+                  initialUrl={getLastActiveUrl(props.windowState.id)}
+                  serverKey={key}
+                />
+              )}
+            >
               <DesktopStartupReady
                 routeReady={() => !initialRoute.loading}
                 onReady={props.onReady}
                 onRoute={props.onRoute}
-              />
-              <DesktopFirstLaunchOnboarding
-                api={props.api}
-                initialUrl={getLastActiveUrl(props.windowState.id)}
-                serverKey={key}
               />
               <DesktopEffects api={props.api} />
               <Suspense fallback={null}>

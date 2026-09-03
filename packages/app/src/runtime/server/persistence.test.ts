@@ -134,9 +134,16 @@ describe("server persistence schema", () => {
 
 describe("model persistence schema", () => {
   test("defaults missing state and keeps valid entries beside malformed entries", () => {
-    const decode = Schema.decodeUnknownSync(Persistence.withInitial(ModelState, { user: [], recent: [], variant: {} }))
-    expect(decode({})).toEqual({ user: [], recent: [], variant: {} })
-    expect(decode({ user: null, recent: 1, variant: [] })).toEqual({ user: [], recent: [], variant: {} })
+    const decode = Schema.decodeUnknownSync(
+      Persistence.withInitial(ModelState, { user: [], defaultsInitialized: false, recent: [], variant: {} }),
+    )
+    expect(decode({})).toEqual({ user: [], defaultsInitialized: false, recent: [], variant: {} })
+    expect(decode({ user: null, recent: 1, variant: [] })).toEqual({
+      user: [],
+      defaultsInitialized: false,
+      recent: [],
+      variant: {},
+    })
     const state = decode({
       user: [
         null,
@@ -152,6 +159,7 @@ describe("model persistence schema", () => {
         { providerID: "provider", modelID: "model", visibility: "show", favorite: true },
         { providerID: "provider", modelID: "hidden", visibility: "hide" },
       ],
+      defaultsInitialized: false,
       recent: [{ providerID: "provider", modelID: "model" }],
       variant: { model: "high" },
     })

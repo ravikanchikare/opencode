@@ -1,6 +1,7 @@
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Show } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { createHomeController } from "./model"
 import { createHomeProjectsController } from "./projects/controller"
 import { HomeUtilityNav } from "./projects/view"
@@ -9,6 +10,7 @@ import { createHomeScrollController } from "./scroll"
 import { createHomeSessionSearchController } from "./sessions/search"
 import { createHomeSessionsController } from "./sessions/controller"
 import { HomeSessions } from "./sessions/region"
+import { getAppComposition } from "@/composition"
 
 export function Home() {
   const mobile = createMediaQuery("(max-width: 767px)")
@@ -47,16 +49,15 @@ export function Home() {
             <HomeProjects projects={projects} scroll={scroll} />
           </Show>
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
+          <Dynamic
+            component={getAppComposition().homeUtilityNav ?? HomeUtilityNav}
+            class="flex lg:hidden"
+            onOpenSettings={projects.utility.settings}
+            onOpenHelp={projects.utility.help}
+            language={projects.copy.language}
+          />
         </div>
       </ScrollView>
-      <div class="hidden shrink-0 px-3 py-2 md:block lg:hidden">
-        <HomeUtilityNav
-          class="flex"
-          onOpenSettings={projects.utility.settings}
-          onOpenHelp={projects.utility.help}
-          language={projects.copy.language}
-        />
-      </div>
     </div>
   )
 }
