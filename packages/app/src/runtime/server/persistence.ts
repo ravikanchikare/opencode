@@ -98,6 +98,7 @@ export const ModelState = Persistence.struct({
       favorite: Schema.optional(Schema.Boolean),
     }),
   ),
+  defaultsInitialized: Persistence.fallback(Schema.Boolean, () => false),
   recent: Persistence.array(Persistence.struct({ providerID: Schema.String, modelID: Schema.String })),
   variant: Schema.Record(
     Schema.String,
