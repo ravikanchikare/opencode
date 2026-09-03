@@ -197,6 +197,101 @@ describe("ConfigSkillPlugin.Plugin", () => {
     ),
   )
 
+  /**
+   * `OPENCODE_MANAGED_SKILL_SOURCE_ADMISSION` is read once at plugin setup, so
+   * the variable is set around `startEntries` and restored afterwards.
+   */
+  const withAdmission = Effect.fnUntraced(function* <A, E, R>(
+    policy: { externalHarnesses: boolean },
+    effect: Effect.Effect<A, E, R>,
+  ) {
+    const key = "OPENCODE_MANAGED_SKILL_SOURCE_ADMISSION"
+    const previous = process.env[key]
+    process.env[key] = JSON.stringify(policy)
+    return yield* Effect.ensuring(
+      effect,
+      Effect.sync(() => {
+        if (previous === undefined) delete process.env[key]
+        else process.env[key] = previous
+      }),
+    )
+  })
+
+  it.live("withholds ecosystem harness skills when admission denies them", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const claude = path.join(tmp.path, "claude")
+          const agents = path.join(tmp.path, "agents")
+          const opencode = path.join(tmp.path, "opencode")
+          const home = path.join(tmp.path, "home")
+          const directory = path.join(tmp.path, "project")
+          const all = [
+            path.join(claude, "skills"),
+            path.join(agents, "skills"),
+            path.join(opencode, "skill"),
+            path.join(opencode, "skills"),
+            path.join(home, "shared"),
+          ]
+          yield* Effect.promise(() => Promise.all(all.map((item) => fs.mkdir(item, { recursive: true }))))
+
+          yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new AgentsDirectory({ type: "agents", path: AbsolutePath.make(agents) }),
+                new Directory({ type: "directory", path: AbsolutePath.make(opencode) }),
+                new Document({ type: "document", info: decode({ skills: ["~/shared"] }) }),
+              ],
+              directory,
+              home,
+            ),
+          )
+
+          const watcher = yield* Watcher.Test
+          // The two harness directories are gone; everything configured survives.
+          expect(yield* watcher.subscriptions()).toEqual(
+            [path.join(opencode, "skill"), path.join(opencode, "skills"), path.join(home, "shared")].map((item) => ({
+              path: item,
+              type: "directory",
+            })),
+          )
+        }),
+      ),
+    ),
+  )
+
+  it.live("keeps a harness directory that is also configured on its own merit", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // `.claude` is both the harness entry and an explicitly configured
+          // skills directory. The explicit configuration wins.
+          const claude = path.join(tmp.path, "claude")
+          const shared = path.join(claude, "skills")
+          const directory = path.join(tmp.path, "project")
+          yield* Effect.promise(() => fs.mkdir(shared, { recursive: true }))
+
+          yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({ type: "document", info: decode({ skills: [shared] }) }),
+              ],
+              directory,
+              tmp.path,
+            ),
+          )
+
+          const watcher = yield* Watcher.Test
+          expect(yield* watcher.subscriptions()).toEqual([{ path: shared, type: "directory" }])
+        }),
+      ),
+    ),
+  )
+
   it.live("loads directory and individual downloaded skill roots with later-source precedence", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) =>
