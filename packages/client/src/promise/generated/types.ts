@@ -14,6 +14,7 @@ export type PluginSource =
   | { type: "builtin" }
   | { type: "package"; target: string; version?: string; outdated?: true; updating?: true }
   | { type: "local"; path: string }
+  | { type: "managed" }
   | { type: "sdk" }
 
 export type PluginFeatures = { server?: true; tui?: true; rpc?: true }
