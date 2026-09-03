@@ -1,6 +1,7 @@
-import { lazy, Show, Suspense, type ParentProps } from "solid-js"
+import { lazy, Show, Suspense, type Component, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
+import { Dynamic } from "solid-js/web"
 import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
 import { Titlebar, type TitlebarUpdate } from "@/shell/titlebar/titlebar"
 import { usePlatform } from "@/runtime/platform/platform"
@@ -11,7 +12,7 @@ import { useSettings } from "@/settings/model"
 
 const DebugBar = lazy(() => import("@/shell/debug/debug-bar").then((module) => ({ default: module.DebugBar })))
 
-export default function Layout(props: ParentProps) {
+export default function Layout(props: ParentProps & { overlay?: Component }) {
   const platform = usePlatform()
   const settings = useSettingsSurface()
   const preferences = useSettings()
@@ -101,6 +102,7 @@ export default function Layout(props: ParentProps) {
           </Suspense>
         </Show>
         <ToastRegion />
+        <Show when={props.overlay}>{(Overlay) => <Dynamic component={Overlay()} />}</Show>
       </div>
     </TitlebarRightProvider>
   )

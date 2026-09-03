@@ -74,10 +74,7 @@ export const DialogConnectProvider: Component<{
   }
 
   return (
-    <Dialog
-      containerClass="!h-[min(calc(100vh_-_16px),512px)] !w-[min(calc(100vw_-_16px),640px)]"
-      class="[font-family:var(--v2-font-family-sans)] [&_[data-slot=dialog-header]]:!px-5 [&_[data-slot=dialog-header-title]]:!text-[15px] [&_[data-slot=dialog-header-title]]:!tracking-[-0.13px]"
-    >
+    <Dialog>
       <DialogHeader closeLabel={language.t("common.close")}>
         <Show
           when={controller.selected()}
@@ -249,11 +246,14 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
   )
 }
 
-function ProviderConnection(props: {
+export function ProviderConnection(props: {
   provider: string
   directory?: string
-  onBack: () => void
-  setBack: (handler: () => void) => void
+  onBack?: () => void
+  onComplete?: () => void
+  setBack?: (handler: () => void) => void
+  /** Lets an embedding dialog supply its own header. */
+  hideTitle?: boolean
 }) {
   const dialog = useDialog()
   const params = useParams()
@@ -265,6 +265,10 @@ function ProviderConnection(props: {
     provider: () => props.provider,
     directory,
     onComplete: () => {
+      if (props.onComplete) {
+        props.onComplete()
+        return
+      }
       dialog.close()
       showToast({
         variant: "success",
@@ -426,10 +430,10 @@ function ProviderConnection(props: {
       controller.auth.reset()
       return
     }
-    props.onBack()
+    props.onBack?.()
   }
 
-  props.setBack(goBack)
+  props.setBack?.(goBack)
 
   function MethodSelection() {
     return (
@@ -647,19 +651,21 @@ function ProviderConnection(props: {
 
   return (
     <div class="flex min-h-0 flex-1 flex-col">
-      <div class="flex h-10 shrink-0 items-start gap-2 px-3">
-        <ProviderIcon id={props.provider} class="mt-0.5 size-4 shrink-0 text-v2-icon-icon-base" />
-        <div class="text-[15px] font-[530] leading-5 tracking-[-0.13px] text-v2-text-text-base">
-          <Switch>
-            <Match
-              when={props.provider === "anthropic" && controller.currentMethod()?.label?.toLowerCase().includes("max")}
-            >
-              {language.t("provider.connect.title.anthropicProMax")}
-            </Match>
-            <Match when={true}>{language.t("provider.connect.title", { provider: provider().name })}</Match>
-          </Switch>
+      <Show when={!props.hideTitle}>
+        <div class="flex h-10 shrink-0 items-start gap-2 px-3">
+          <ProviderIcon id={props.provider} class="mt-0.5 size-4 shrink-0 text-v2-icon-icon-base" />
+          <div class="text-[15px] font-[530] leading-5 tracking-[-0.13px] text-v2-text-text-base">
+            <Switch>
+              <Match
+                when={props.provider === "anthropic" && controller.currentMethod()?.label?.toLowerCase().includes("max")}
+              >
+                {language.t("provider.connect.title.anthropicProMax")}
+              </Match>
+              <Match when={true}>{language.t("provider.connect.title", { provider: provider().name })}</Match>
+            </Switch>
+          </div>
         </div>
-      </div>
+      </Show>
       <div class="flex min-h-0 flex-1 flex-col">
         <div>
           <Switch>

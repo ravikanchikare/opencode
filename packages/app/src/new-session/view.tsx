@@ -15,6 +15,7 @@ import {
 } from "@/new-session/project/selector"
 import { StatusPopover } from "@/shell/status/status-popover"
 import { TitlebarRight } from "@/shell/titlebar/right-slot"
+import { showNewSessionProviderTip } from "@/composition"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useProviders } from "@/providers/catalog/providers"
@@ -94,7 +95,9 @@ export function NewSessionView(props: {
             </div>
           </div>
         </div>
-        <ProviderTip />
+        <Show when={showNewSessionProviderTip()}>
+          <ProviderTip />
+        </Show>
       </div>
     </div>
   )
