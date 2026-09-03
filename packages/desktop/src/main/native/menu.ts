@@ -9,7 +9,7 @@ import {
 import { MenuCommandTriggered } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
 
-import { UPDATER_ENABLED } from "../constants"
+import { MANUAL_UPDATE_URL, UPDATER_ENABLED } from "../constants"
 import { runDesktopMenuAction } from "./menu-actions"
 import { nativeT } from "./translations"
 
@@ -46,12 +46,18 @@ function nativeItem(entry: DesktopMenuEntry, deps: Deps): MenuItemConstructorOpt
   if (entry.type === "separator") return { type: "separator" }
   if (entry.role) return { role: nativeRole(entry.role), label: entry.labelKey ? nativeT(entry.labelKey) : undefined }
 
+  const manualUpdate =
+    entry.action === "app.checkForUpdates" && !UPDATER_ENABLED ? MANUAL_UPDATE_URL : undefined
   const item: MenuItemConstructorOptions = {
-    label: entry.labelKey ? nativeT(entry.labelKey) : undefined,
+    label: manualUpdate ? "Download Latest Version…" : entry.labelKey ? nativeT(entry.labelKey) : undefined,
     accelerator: entry.accelerator?.macos,
-    enabled: entry.enabled === "updater" ? UPDATER_ENABLED : undefined,
+    enabled: entry.enabled === "updater" ? Boolean(manualUpdate) || UPDATER_ENABLED : undefined,
   }
 
+  if (manualUpdate) {
+    item.click = () => deps.openExternal(manualUpdate)
+    return item
+  }
   if (entry.command) {
     const command = entry.command
     item.click = () => deps.trigger(command)
