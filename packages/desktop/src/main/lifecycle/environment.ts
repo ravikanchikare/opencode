@@ -5,7 +5,7 @@ import { getCACertificates, setDefaultCACertificates } from "node:tls"
 import { app } from "electron"
 import contextMenu from "electron-context-menu"
 import { Effect, FileSystem, Path } from "effect"
-import { CHANNEL } from "../constants"
+import { APP_ID, APP_IDENTITY, APP_NAME, CHANNEL, DEEP_LINK_SCHEME, SERVICE_ID } from "../constants"
 import { DesktopPaths } from "../paths"
 import { getUserShell, loadShellEnv } from "../service/shell-env"
 import { cleanupStoreFiles } from "../storage/cleanup"
@@ -32,8 +32,11 @@ export const configureApplication = Effect.fn("Application.configure")(function*
   } catch {}
   process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appID = app.isPackaged ? appIDs[CHANNEL] : "ai.opencode.desktop.dev"
-  app.setName(app.isPackaged ? appNames[CHANNEL] : "OpenCode Dev")
+  process.env.OPENCODE_APP_ID = APP_IDENTITY
+  process.env.OPENCODE_SERVICE_ID = SERVICE_ID
+
+  const appID = APP_ID ?? (app.isPackaged ? appIDs[CHANNEL] : "ai.opencode.desktop.dev")
+  app.setName(APP_NAME ?? (app.isPackaged ? appNames[CHANNEL] : "OpenCode Dev"))
   app.setAppUserModelId(appID)
   app.commandLine.appendSwitch("proxy-bypass-list", "<-loopback>")
   const features = app.commandLine.getSwitchValue("enable-features")
@@ -83,7 +86,7 @@ export const prepareDesktop = Effect.gen(function* () {
     Effect.catch((error) => Effect.logWarning("failed to clean scoped store files", { error })),
   )
   if (app.isPackaged || process.env.OPENCODE_DESKTOP_DISABLE_PROTOCOL_REGISTRATION !== "1")
-    app.setAsDefaultProtocolClient("opencode")
+    app.setAsDefaultProtocolClient(DEEP_LINK_SCHEME)
   yield* registerRendererProtocol()
   setDockIcon(path, paths)
 })
