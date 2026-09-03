@@ -4,6 +4,17 @@ import type { Permission } from "@opencode-ai/schema/permission"
 import type { Session } from "@opencode-ai/schema/session"
 import type { Hooks } from "./registration.js"
 
+export interface PermissionAssertInput {
+  readonly sessionID: Session.ID
+  readonly agent?: Agent.ID
+  readonly action: string
+  readonly resources: ReadonlyArray<string>
+  readonly save?: ReadonlyArray<string>
+  readonly message?: string
+  readonly metadata?: Record<string, unknown>
+  readonly source?: Permission.Source
+}
+
 export interface PermissionEvaluation {
   readonly sessionID: Session.ID
   readonly agent?: Agent.ID
@@ -20,5 +31,6 @@ export interface PermissionHooks {
 }
 
 export type PermissionDomain = Pick<PermissionApi, "list" | "get" | "reply"> & {
+  readonly assert: (input: PermissionAssertInput) => Promise<void>
   readonly hook: Hooks<PermissionHooks>
 }
