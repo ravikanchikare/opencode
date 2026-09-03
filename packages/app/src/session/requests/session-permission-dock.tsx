@@ -52,14 +52,14 @@ export function SessionPermissionDock(props: {
         </>
       }
     >
-      <Show when={toolDescription()}>
+      <Show when={props.request.message ?? toolDescription()}>
         <div data-slot="permission-row">
           <span data-slot="permission-spacer" aria-hidden="true" />
-          <div data-slot="permission-hint">{toolDescription()}</div>
+          <div data-slot="permission-hint">{props.request.message ?? toolDescription()}</div>
         </div>
       </Show>
 
-      <Show when={props.request.resources.length > 0}>
+      <Show when={!props.request.message && props.request.resources.length > 0}>
         <div data-slot="permission-row">
           <span data-slot="permission-spacer" aria-hidden="true" />
           <div data-slot="permission-patterns">
