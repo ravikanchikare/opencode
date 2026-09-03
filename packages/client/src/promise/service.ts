@@ -14,6 +14,7 @@ import { PtyHandoff } from "../pty-handoff.js"
 import type { ServiceHealth } from "./generated/types.js"
 
 export * from "../service.js"
+import { registrationFilename } from "../service.js"
 
 // Find, start, and stop the local opencode background service.
 //
@@ -125,7 +126,11 @@ export async function stop(options: StopOptions = {}) {
 }
 
 function fallback() {
-  return join(process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"), "opencode", "service.json")
+  return join(
+    process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state"),
+    process.env.OPENCODE_APP_ID?.trim() || "opencode",
+    registrationFilename("latest"),
+  )
 }
 
 /** Create HTTP authentication headers for a service endpoint. */
