@@ -14,6 +14,7 @@ import { matchesVersion } from "../service-version.js"
 import { PtyHandoff } from "../pty-handoff.js"
 
 export * from "../service.js"
+import { registrationFilename } from "../service.js"
 /** Contents of the local service registration file. */
 export type Info = import("../service.js").Info
 
@@ -152,7 +153,7 @@ export const stop = Effect.fn("service.stop")(function* (options: StopOptions = 
 
 function fallback() {
   const state = process.env["XDG_STATE_HOME"] ?? join(homedir(), ".local", "state")
-  return join(state, "opencode", "service.json")
+  return join(state, process.env.OPENCODE_APP_ID?.trim() || "opencode", registrationFilename("latest"))
 }
 
 /** Create HTTP authentication headers for a service endpoint. */
