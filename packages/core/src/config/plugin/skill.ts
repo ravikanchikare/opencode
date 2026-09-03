@@ -12,6 +12,7 @@ import { Location } from "../../location.js"
 import { AbsolutePath } from "../../schema.js"
 import { Skill } from "../../skill.js"
 import { SkillDiscovery } from "../../skill/discovery.js"
+import { SkillSourceAdmission } from "../../skill/source-admission.js"
 import { SkillFile } from "./skill-file.js"
 
 type Source = Skill.DirectorySource | Skill.UrlSource
@@ -25,6 +26,7 @@ export const Plugin = define({
     const global = yield* Global.Service
     const location = yield* Location.Service
     const watcher = yield* Watcher.Service
+    const admission = yield* SkillSourceAdmission.policy().pipe(Effect.orDie)
     const loaded: { entries: Entry[]; skills: Skill.Info[] } = {
       entries: yield* config.entries(),
       skills: [],
@@ -84,12 +86,21 @@ export const Plugin = define({
       const agents = loaded.entries.flatMap((entry) => (entry.type === "agents" ? [entry.path] : []))
       const directories = loaded.entries.flatMap((entry) => (entry.type === "directory" ? [entry.path] : []))
       const items = loaded.entries.flatMap((entry) => (entry.type === "document" ? (entry.info.skills ?? []) : []))
+      // Directories reached *only* because an ecosystem harness declared them.
+      // A path a later loop adds on its own merit is dropped from this set, so
+      // an explicitly configured directory is never treated as a harness.
+      const harness = new Set<string>()
       for (const directory of [...claude, ...agents]) {
-        add(Skill.DirectorySource.make({ type: "directory", path: AbsolutePath.make(path.join(directory, "skills")) }))
+        const target = AbsolutePath.make(path.join(directory, "skills"))
+        harness.add(target)
+        add(Skill.DirectorySource.make({ type: "directory", path: target }))
       }
       for (const directory of directories) {
-        add(Skill.DirectorySource.make({ type: "directory", path: AbsolutePath.make(path.join(directory, "skill")) }))
-        add(Skill.DirectorySource.make({ type: "directory", path: AbsolutePath.make(path.join(directory, "skills")) }))
+        for (const name of ["skill", "skills"]) {
+          const target = AbsolutePath.make(path.join(directory, name))
+          harness.delete(target)
+          add(Skill.DirectorySource.make({ type: "directory", path: target }))
+        }
       }
       for (const item of items) {
         if (URL.canParse(item) && /^(https?:)$/.test(new URL(item).protocol)) {
@@ -97,14 +108,15 @@ export const Plugin = define({
           continue
         }
         const expanded = item.startsWith("~/") ? path.join(global.home, item.slice(2)) : item
-        add(
-          Skill.DirectorySource.make({
-            type: "directory",
-            path: AbsolutePath.make(path.isAbsolute(expanded) ? expanded : path.join(location.directory, expanded)),
-          }),
+        const target = AbsolutePath.make(
+          path.isAbsolute(expanded) ? expanded : path.join(location.directory, expanded),
         )
+        harness.delete(target)
+        add(Skill.DirectorySource.make({ type: "directory", path: target }))
       }
-      return result
+      return result.filter((source) =>
+        SkillSourceAdmission.allows(admission, source.type === "directory" && harness.has(source.path)),
+      )
     }
 
     const load = Effect.fn("ConfigSkillPlugin.load")(function* (source: Source) {
