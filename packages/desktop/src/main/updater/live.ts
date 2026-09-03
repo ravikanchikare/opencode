@@ -1,13 +1,15 @@
 export * as UpdaterLive from "./live"
 
-import { dialog } from "electron"
-import { Effect, Layer } from "effect"
+import { app, dialog } from "electron"
+import { Effect, Layer, Option } from "effect"
 import type { UpdaterState } from "@opencode-ai/app/updater"
-import { UPDATER_ENABLED } from "../constants"
+import { APP_ID, MANUAL_UPDATE_URL, UPDATER_ENABLED } from "../constants"
 import { DesktopInitialization } from "../lifecycle/desktop-initialization"
 import { ApplicationLifecycle } from "../lifecycle"
 import { nativeT } from "../native/translations"
+import { setAppQuitting } from "../windows"
 import { make, Service } from "./index"
+import { updaterPlatformKind, type UpdaterPlatformKind } from "./select-platform"
 
 const key = "ready"
 
@@ -16,12 +18,7 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const lifecycle = yield* ApplicationLifecycle.Service
     const desktop = yield* DesktopInitialization.Service
-    const platform = UPDATER_ENABLED
-      ? yield* Effect.gen(function* () {
-          const { make } = yield* Effect.promise(() => import("./platform"))
-          return yield* make
-        })
-      : undefined
+    const platform = yield* loadPlatform(desktop.version)
     return yield* make({
       currentVersion: desktop.version,
       platform,
@@ -82,4 +79,37 @@ const show = Effect.fn("Updater.show")(function* (
 
 function promise<A>(evaluate: () => Promise<A>) {
   return Effect.tryPromise(evaluate).pipe(Effect.orDie)
+}
+
+function loadPlatform(currentVersion: string) {
+  const kind = updaterPlatformKind({
+    platform: process.platform,
+    appId: APP_ID,
+    updaterEnabled: UPDATER_ENABLED,
+  })
+  return loadPlatformKind(kind, currentVersion)
+}
+
+function loadPlatformKind(kind: UpdaterPlatformKind, currentVersion: string) {
+  if (kind === "none") return Effect.succeed(undefined)
+  if (kind === "external") {
+    return Effect.promise(() => import("./external-platform")).pipe(
+      Effect.flatMap(({ make }) =>
+        make({
+          feedUrl: import.meta.env.OPENCODE_DESKTOP_UPDATE_URL,
+          publicKey: import.meta.env.OPENCODE_DESKTOP_UPDATE_PUBLIC_KEY,
+          currentVersion,
+          appPath: app.getPath("exe").replace(/\/Contents\/MacOS\/[^/]+$/, ""),
+          packaged: app.isPackaged,
+          resourcesPath: process.resourcesPath,
+          manualUpdateUrl: MANUAL_UPDATE_URL,
+          quit: () => app.quit(),
+          setQuitting: setAppQuitting,
+        }),
+      ),
+      Effect.option,
+      Effect.map((loaded) => (Option.isSome(loaded) ? loaded.value : undefined)),
+    )
+  }
+  return Effect.promise(() => import("./platform")).pipe(Effect.flatMap(({ make }) => make))
 }
