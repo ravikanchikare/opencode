@@ -14,6 +14,8 @@ export {
 } from "./composition"
 
 export { useIntegrations } from "./providers/catalog/integrations"
+export { useMcpToggle } from "./providers/connect/mcp"
+export { pluginLabels } from "./providers/catalog/plugin"
 export { useLanguage } from "./runtime/i18n/language"
 export { useProviders } from "./providers/catalog/providers"
 export { useServer } from "./runtime/server/current"

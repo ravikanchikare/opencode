@@ -86,12 +86,6 @@ export const SettingsScreen: Component = () => {
 
   const tabComposition = getAppComposition().settingsTabs
   const hiddenTabs = new Set(tabComposition?.hide ?? [])
-  if (tabComposition?.extensions === "split") hiddenTabs.add("extensions")
-  else {
-    hiddenTabs.add("mcp")
-    hiddenTabs.add("plugins")
-    hiddenTabs.add("skills")
-  }
   const addedTabs = tabComposition?.add ?? []
   const navGroups = groupSettingsTabs(addedTabs, hiddenTabs, tabComposition?.groups)
   const addedByValue = new Map(addedTabs.map((entry) => [entry.value, entry]))
@@ -119,9 +113,6 @@ export const SettingsScreen: Component = () => {
     extensions: { icon: "extensions", label: () => language.t("settings.tab.extensions") },
     experimental: { icon: "flask", label: () => language.t("settings.tab.experimental") },
     about: { icon: "info", label: () => language.t("settings.tab.about") },
-    mcp: { icon: "mcp", label: () => language.t("settings.extensions.tab.mcps") },
-    plugins: { icon: "cube", label: () => language.t("status.popover.tab.plugins") },
-    skills: { icon: "post-skill", label: () => language.t("settings.extensions.tab.skills") },
   }
 
   const tabDetails = (value: string) => {
@@ -264,21 +255,6 @@ export const SettingsScreen: Component = () => {
           <Show when={!hiddenTabs.has("extensions")}>
             <Tabs.Content value="extensions" class="settings-panel">
               <SettingsExtensions />
-            </Tabs.Content>
-          </Show>
-          <Show when={!hiddenTabs.has("mcp")}>
-            <Tabs.Content value="mcp" class="settings-panel">
-              <SettingsExtensions view="mcps" />
-            </Tabs.Content>
-          </Show>
-          <Show when={!hiddenTabs.has("plugins")}>
-            <Tabs.Content value="plugins" class="settings-panel">
-              <SettingsExtensions view="plugins" />
-            </Tabs.Content>
-          </Show>
-          <Show when={!hiddenTabs.has("skills")}>
-            <Tabs.Content value="skills" class="settings-panel">
-              <SettingsExtensions view="skills" />
             </Tabs.Content>
           </Show>
         </SettingsServerScope>
