@@ -18,9 +18,6 @@ export const STOCK_TAB_VALUES = [
   "providers",
   "models",
   "extensions",
-  "mcp",
-  "plugins",
-  "skills",
   "experimental",
   "about",
 ] as const
@@ -30,7 +27,7 @@ export type StockSettingsTab = (typeof STOCK_TAB_VALUES)[number]
 export const STOCK_TAB_GROUPS: readonly (readonly string[])[] = [
   ["general", "appearance", "notifications", "shortcuts"],
   ["servers", "projects", "workspaces"],
-  ["providers", "models", "extensions", "mcp", "plugins", "skills"],
+  ["providers", "models", "extensions"],
   ["experimental"],
   ["about"],
 ]
