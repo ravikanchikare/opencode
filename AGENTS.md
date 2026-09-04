@@ -10,8 +10,10 @@
 
 - One task uses one branch and one Git worktree. Do not edit another agent's
   worktree or commit directly to `v2`.
-- Rebase feature branches onto `v2`; keep the shared `v2` history append-only so
-  distribution pins remain reachable.
+- Rebase feature branches onto `v2`. To sync the fork, tag the current `v2` tip,
+  rebase the fork-only commit stack onto `upstream/v2`, and publish the rewritten
+  `v2` with `--force-with-lease`. Push the archive tag so existing distribution
+  pins remain reachable.
 - A host change required by the Workbench distribution is integrated in this
   order: fork branch → `v2` → pushed fork SHA → starter `opencode.pin.json` →
   starter `main`.
