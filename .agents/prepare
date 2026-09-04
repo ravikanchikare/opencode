@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Populate a new Delta-managed worktree with local-only developer files from
+# the primary checkout. These files are deliberately Git-ignored and this
+# script never overwrites worktree-local copies.
+#
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+local_git="$(git remote get-url local 2>/dev/null || true)"
+
+if [[ -z "$local_git" || ! -d "$local_git" ]]; then
+  exit 0
+fi
+
+primary="$(cd "$(dirname "$local_git")" && pwd)"
+
+for file in AGENTS.local.md .env; do
+  source="$primary/$file"
+  target="$root/$file"
+
+  if [[ ! -f "$source" || -e "$target" ]]; then
+    continue
+  fi
+
+  cp -p "$source" "$target"
+  echo "Copied local $file from primary checkout."
+done
