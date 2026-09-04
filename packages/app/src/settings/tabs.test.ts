@@ -39,15 +39,22 @@ describe("groupSettingsTabs", () => {
     ])
   })
 
-  test("groups split stock extension views with references", () => {
+  // A distribution that replaces the single stock Extensions tab with its own
+  // MCP, Plugins, and Skills destinations hides `extensions` and contributes
+  // the three as ordinary composed tabs.
+  test("groups composed extension destinations with references", () => {
     expect(
-      groupSettingsTabs([tab("integrations"), tab("references")], new Set(["servers", "extensions"]), [
-        ["general"],
-        ["appearance", "notifications", "shortcuts"],
-        ["projects", "workspaces"],
-        ["providers", "models", "integrations"],
-        ["references", "mcp", "plugins", "skills"],
-      ]),
+      groupSettingsTabs(
+        [tab("integrations"), tab("mcp"), tab("plugins"), tab("skills"), tab("references")],
+        new Set(["servers", "extensions"]),
+        [
+          ["general"],
+          ["appearance", "notifications", "shortcuts"],
+          ["projects", "workspaces"],
+          ["providers", "models", "integrations"],
+          ["references", "mcp", "plugins", "skills"],
+        ],
+      ),
     ).toEqual([
       ["general"],
       ["appearance", "notifications", "shortcuts"],

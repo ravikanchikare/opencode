@@ -58,7 +58,6 @@ export type AppComposition = {
     add?: readonly SettingsTabEntry[]
     groups?: readonly (readonly string[])[]
     showConfigPath?: boolean
-    extensions?: "combined" | "split"
   }
 }
 
