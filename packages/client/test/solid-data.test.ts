@@ -14,6 +14,38 @@ const session = (viewed: number): SessionInfo => ({
   location: { directory: "/project" },
 })
 
+test("syncs the configured default model for a location", async () => {
+  const api = OpenCode.make({
+    baseUrl: "http://opencode.local",
+    fetch: async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      const url = new URL(request.url)
+      if (url.pathname !== "/api/model/default" || url.searchParams.get("location[directory]") !== "/project")
+        throw new Error(`Unexpected request: ${request.url}`)
+      return Response.json({
+        location: { directory: "/project", project: { id: "project", directory: "/project", canonical: "/project" } },
+        data: null,
+      })
+    },
+  })
+  const setup = createRoot((dispose) => ({
+    data: createData({
+      api: () => api,
+      directory: "/project",
+      event: { on: () => () => {}, listen: () => () => {} },
+      connection: { status: () => "connected" },
+    }),
+    dispose,
+  }))
+
+  try {
+    await setup.data.location.model.default.sync()
+    expect(setup.data.location.model.default.list()).toBeNull()
+  } finally {
+    setup.dispose()
+  }
+})
+
 test("revalidates after an event overtakes an active session read", async () => {
   let release!: () => void
   const gate = new Promise<void>((resolve) => (release = resolve))
@@ -389,7 +421,7 @@ test("refreshes global credential events across every loaded location and worksp
         data: { credentialID, integrationID: "integration" },
       }
       listeners.forEach((listener) => listener({ name: switched.type, details: switched }))
-      await wait(() => requests.length === 4)
+      await wait(() => requests.length === 6)
       expect(
         requests.map((url) => [
           url.pathname,
@@ -399,8 +431,10 @@ test("refreshes global credential events across every loaded location and worksp
       ).toEqual(
         expect.arrayContaining([
           ["/api/model", "/project", null],
+          ["/api/model/default", "/project", null],
           ["/api/provider", "/project", null],
           ["/api/model", "/other", "workspace-other"],
+          ["/api/model/default", "/other", "workspace-other"],
           ["/api/provider", "/other", "workspace-other"],
         ]),
       )
