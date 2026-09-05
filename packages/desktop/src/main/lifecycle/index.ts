@@ -70,12 +70,14 @@ const runtime = Layer.effect(
     }
     const beforeQuit = (event: Event) => {
       setAppQuitting()
+      runFork(Effect.logInfo("before-quit", { shutdownReady }))
       if (shutdownReady) return
       event.preventDefault()
       runFork(prepareToRestart.pipe(Effect.ensuring(Effect.sync(() => app.quit()))))
     }
     const willQuit = () => {
       setAppQuitting()
+      runFork(Effect.logInfo("will-quit"))
       runFork(shutdown.run)
     }
     const childProcessGone = (_event: Event, details: Electron.Details) => {
