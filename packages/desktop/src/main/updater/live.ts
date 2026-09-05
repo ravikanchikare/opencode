@@ -18,7 +18,8 @@ export const layer = Layer.effect(
   Effect.gen(function* () {
     const lifecycle = yield* ApplicationLifecycle.Service
     const desktop = yield* DesktopInitialization.Service
-    const platform = yield* loadPlatform(desktop.version)
+    const runFork = Effect.runForkWith(yield* Effect.context())
+    const platform = yield* loadPlatform(desktop.version, runFork)
     return yield* make({
       currentVersion: desktop.version,
       platform,
@@ -81,16 +82,42 @@ function promise<A>(evaluate: () => Promise<A>) {
   return Effect.tryPromise(evaluate).pipe(Effect.orDie)
 }
 
-function loadPlatform(currentVersion: string) {
+type RunFork = (effect: Effect.Effect<unknown, unknown, never>) => unknown
+
+function loadPlatform(currentVersion: string, runFork: RunFork) {
   const kind = updaterPlatformKind({
     platform: process.platform,
     appId: APP_ID,
     updaterEnabled: UPDATER_ENABLED,
   })
-  return loadPlatformKind(kind, currentVersion)
+  return loadPlatformKind(kind, currentVersion, runFork)
 }
 
-function loadPlatformKind(kind: UpdaterPlatformKind, currentVersion: string) {
+/**
+ * Terminate the app so the external updater can replace the bundle.
+ *
+ * `app.quit()` alone does not reliably get there. On a packaged Workbench build
+ * it destroys the Node environment and then leaves the process alive in
+ * `-[NSApplication run]` with a dead JavaScript loop, so Sparkle waits forever
+ * for a termination that never comes and the staged update only lands whenever
+ * the process is next killed. The graceful work is already done by this point —
+ * the updater awaits `prepareToRestart` before calling this — so escalating to
+ * an outright exit is safe, and it is what the default relaunch handler in
+ * `windows/index.ts` already does.
+ */
+function quitForUpdate(runFork: RunFork) {
+  runFork(Effect.logInfo("updater requested quit"))
+  app.quit()
+  const escalate = setTimeout(() => {
+    runFork(Effect.logInfo("updater quit did not terminate the app; exiting"))
+    app.exit(0)
+  }, quitEscalationDelay)
+  escalate.unref()
+}
+
+const quitEscalationDelay = 3_000
+
+function loadPlatformKind(kind: UpdaterPlatformKind, currentVersion: string, runFork: RunFork) {
   if (kind === "none") return Effect.succeed(undefined)
   if (kind === "external") {
     return Effect.promise(() => import("./external-platform")).pipe(
@@ -103,7 +130,7 @@ function loadPlatformKind(kind: UpdaterPlatformKind, currentVersion: string) {
           packaged: app.isPackaged,
           resourcesPath: process.resourcesPath,
           manualUpdateUrl: MANUAL_UPDATE_URL,
-          quit: () => app.quit(),
+          quit: () => quitForUpdate(runFork),
           setQuitting: setAppQuitting,
         }),
       ),
