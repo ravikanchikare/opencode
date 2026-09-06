@@ -688,6 +688,165 @@
         }
       }
     },
+    "/api/plugin/{plugin}/options": {
+      "put": {
+        "tags": ["plugin"],
+        "operationId": "v2.plugin.setOptions",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "directory": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "workspace": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "required": false,
+            "style": "deepObject",
+            "explode": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "location": {
+                      "$ref": "#/components/schemas/Location.InfoEncoded"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Plugin.Info"
+                    }
+                  },
+                  "required": ["location", "data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
+                    },
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorEncoded"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PluginNotFoundError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PluginNotFoundErrorEncoded"
+                }
+              }
+            }
+          }
+        },
+        "description": "Write a multi-select plugin option to native configuration at the selected server default or project location, then wait for activation to settle. Passing inherit removes the override at that scope.",
+        "summary": "Set plugin options",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "value": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": ["key", "value"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string"
+                      },
+                      "inherit": {
+                        "type": "boolean",
+                        "enum": [true]
+                      }
+                    },
+                    "required": ["key", "inherit"],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/plugin/update": {
       "post": {
         "tags": ["plugin"],
@@ -17134,9 +17293,89 @@
           },
           "state": {
             "$ref": "#/components/schemas/Plugin.State"
+          },
+          "options": {
+            "$ref": "#/components/schemas/Plugin.OptionState"
           }
         },
         "required": ["source", "features", "state"],
+        "additionalProperties": false
+      },
+      "Plugin.OptionChoice": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        },
+        "required": ["value", "label"],
+        "additionalProperties": false
+      },
+      "Plugin.OptionDescriptor": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["multi-select"]
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plugin.OptionChoice"
+            }
+          },
+          "default": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "secret": {
+            "type": "boolean"
+          }
+        },
+        "required": ["type", "key", "label", "choices"],
+        "additionalProperties": false
+      },
+      "Plugin.OptionState": {
+        "type": "object",
+        "properties": {
+          "descriptors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plugin.OptionDescriptor"
+            }
+          },
+          "requested": {
+            "type": "object"
+          },
+          "effective": {
+            "type": "object"
+          },
+          "inherited": {
+            "type": "boolean"
+          },
+          "scope": {
+            "type": "string",
+            "enum": ["default", "location"]
+          }
+        },
+        "required": ["descriptors", "effective", "inherited", "scope"],
         "additionalProperties": false
       },
       "Plugin.Source": {
@@ -17235,6 +17474,23 @@
             "additionalProperties": false
           }
         ]
+      },
+      "PluginNotFoundErrorEncoded": {
+        "type": "object",
+        "properties": {
+          "_tag": {
+            "type": "string",
+            "enum": ["PluginNotFoundError"]
+          },
+          "plugin": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["_tag", "plugin", "message"],
+        "additionalProperties": false
       },
       "Project": {
         "type": "object",
