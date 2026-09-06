@@ -7,6 +7,38 @@ import { Context, Effect, Layer } from "effect"
 import { Global } from "../src/global.js"
 
 describe("global", () => {
+  test("uses the application identity for every XDG root", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-global-brand-"))
+    const module = pathToFileURL(path.join(import.meta.dir, "../src/global.ts")).href
+    const result = Bun.spawnSync({
+      cmd: [
+        process.execPath,
+        "-e",
+        `const { Global } = await import(${JSON.stringify(module)}); process.stdout.write(JSON.stringify(Global.Path))`,
+      ],
+      env: {
+        ...process.env,
+        OPENCODE_APP_ID: "factory",
+        XDG_DATA_HOME: path.join(root, "data"),
+        XDG_CACHE_HOME: path.join(root, "cache"),
+        XDG_CONFIG_HOME: path.join(root, "config"),
+        XDG_STATE_HOME: path.join(root, "state"),
+        TMPDIR: path.join(root, "tmp"),
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+
+    expect(result.exitCode, result.stderr.toString()).toBe(0)
+    const paths = JSON.parse(result.stdout.toString()) as Record<string, string>
+    expect(paths.data).toBe(path.join(root, "data", "factory"))
+    expect(paths.cache).toBe(path.join(root, "cache", "factory"))
+    expect(paths.config).toBe(path.join(root, "config", "factory"))
+    expect(paths.state).toBe(path.join(root, "state", "factory"))
+    expect(paths.tmp).toBe(path.join(root, "tmp", "factory"))
+    fs.rmSync(root, { recursive: true, force: true })
+  })
+
   test("importing the module does not create directories", () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "opencode-global-import-"))
     const directories = ["data", "cache", "config", "state", "tmp"].map((directory) => path.join(root, directory))
