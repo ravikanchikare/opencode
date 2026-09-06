@@ -113,6 +113,18 @@ describe("Permission", () => {
     }),
   )
 
+  it.effect("includes a caller-provided explanation in permission requests", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const { service, fiber, request } = yield* waitForRequest({
+        message: "Publish agent version 2.0. This cannot be undone.",
+      })
+      expect(request.message).toBe("Publish agent version 2.0. This cannot be undone.")
+      yield* service.reply({ requestID: request.id, reply: "once" })
+      yield* Fiber.join(fiber)
+    }),
+  )
+
   it.effect("evaluates against an explicit agent", () =>
     Effect.gen(function* () {
       yield* setup([{ action: "read", resource: "*", effect: "allow" }])
