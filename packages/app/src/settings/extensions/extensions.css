@@ -75,6 +75,34 @@
   flex-shrink: 0;
 }
 
+.plugin-options-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  color: inherit;
+}
+
+.plugin-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.plugin-options-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plugin-options-field-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .extension-destination-reset {
   font-size: 11px;
   color: var(--v2-text-text-muted);

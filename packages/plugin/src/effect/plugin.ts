@@ -53,7 +53,24 @@ export interface Context {
 
 export interface Plugin<R = Scope.Scope> {
   readonly id: string
+  readonly options?: ReadonlyArray<OptionDescriptor>
   readonly effect: (context: Context) => Effect.Effect<void, never, R>
+}
+
+export interface OptionChoice {
+  readonly value: string
+  readonly label: string
+  readonly description?: string
+}
+
+export interface OptionDescriptor {
+  readonly type: "multi-select"
+  readonly key: string
+  readonly label: string
+  readonly description?: string
+  readonly choices: ReadonlyArray<OptionChoice>
+  readonly default?: ReadonlyArray<string>
+  readonly secret?: boolean
 }
 
 export function define<R = Scope.Scope>(plugin: Plugin<R>) {

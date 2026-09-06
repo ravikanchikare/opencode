@@ -2,7 +2,7 @@ import { Location } from "@opencode-ai/schema/location"
 import { Plugin } from "@opencode-ai/schema/plugin"
 import { Schema } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
-import { InvalidRequestError, ServiceUnavailableError } from "../errors.js"
+import { InvalidRequestError, PluginNotFoundError, ServiceUnavailableError } from "../errors.js"
 import { LocationQuery, locationQueryOpenApi } from "./location.js"
 
 export const PluginGroup = HttpApiGroup.make("server.plugin")
@@ -48,6 +48,27 @@ export const PluginGroup = HttpApiGroup.make("server.plugin")
           identifier: "v2.plugin.check",
           summary: "Check plugin updates",
           description: "Check one or all package plugins for available updates.",
+        }),
+      ),
+  )
+  .add(
+    HttpApiEndpoint.put("plugin.setOptions", "/api/plugin/:plugin/options", {
+      params: { plugin: Plugin.ID },
+      query: LocationQuery,
+      payload: Schema.Union([
+        Schema.Struct({ key: Schema.String, value: Schema.Array(Schema.String) }),
+        Schema.Struct({ key: Schema.String, inherit: Schema.Literal(true) }),
+      ]),
+      success: Location.response(Plugin.Info),
+      error: [InvalidRequestError, PluginNotFoundError],
+    })
+      .annotateMerge(locationQueryOpenApi)
+      .annotateMerge(
+        OpenApi.annotations({
+          identifier: "v2.plugin.setOptions",
+          summary: "Set plugin options",
+          description:
+            "Write a multi-select plugin option to native configuration at the selected server default or project location, then wait for activation to settle. Passing inherit removes the override at that scope.",
         }),
       ),
   )
