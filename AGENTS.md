@@ -1,10 +1,80 @@
-- After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit generated client files directly.
+# Agent instructions
+
+Adapted from [upstream's `dev` instructions](https://raw.githubusercontent.com/anomalyco/opencode/refs/heads/dev/AGENTS.md)
+for this fork's `v2` layout and runtime. Follow upstream's `@opencode/*` package
+scope and hosted-service layout under `services/`. Preserve the session semantics
+and distribution workflow below when incorporating upstream updates.
+
+- After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit `src/promise/generated`, `src/effect/generated`, or `src/effect/api` directly.
+- Client generation belongs to `packages/client`; `packages/sdk/script/build.ts` builds the composed SDK package. The upstream legacy `packages/sdk/js/script/build.ts` path does not exist in this V2 checkout.
 - Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk` composes Client, Core, and Server.
 - Current implementation changes belong in `packages/core`, `packages/cli`, `packages/server`, `packages/protocol`, `packages/schema`, and related generated client surfaces when required.
 - This repository does not use Changesets. Do not add `.changeset` files; follow the existing release workflow instead.
 - The default branch in this repo is `v2`.
 - Default new branches and worktrees to `v2`, or `origin/v2` when the local `v2` ref is unavailable, and default pull requests to target `v2`. Use another base or target branch when the requester explicitly instructs it.
 - Local `main` ref may not exist; use `v2` or `origin/v2` for diffs.
+
+## Distribution integration
+
+- `origin` is `ravikanchikare/opencode`; its default branch is `v2`, so new
+  Delta-managed OpenCode worktrees start from the fork's V2 integration line.
+- `upstream` is `anomalyco/opencode`. Fetch its V2 line explicitly before
+  comparing or updating the fork stack.
+- One task uses one branch and one Git worktree. Do not edit another agent's
+  worktree or commit directly to `v2`.
+- Rebase feature branches onto `v2`. To sync the fork, tag the current `v2` tip,
+  rebase the fork-only commit stack onto `upstream/v2`, and publish the rewritten
+  `v2` with `--force-with-lease`. Push the archive tag so existing distribution
+  pins remain reachable.
+- A host change required by the Workbench distribution is integrated in this
+  order: fork branch → `v2` → pushed fork SHA → starter `opencode.pin.json` →
+  starter `main`.
+- The starter pin is the release contract. Do not ask a starter build to follow
+  a moving branch or package a dirty fork checkout.
+- The starter repository's `docs/workflow.md` is the end-to-end development and
+  release procedure. In a Delta thread with both projects, the starter agent
+  selects this worktree explicitly with `bun run dev -- --fork <path>`; never
+  assume the two managed checkout paths are siblings.
+- Fork worktrees need no distribution release credentials.
+
+### Daily fork-stack maintenance
+
+Treat the fork stack as a small, reviewable set of extension seams, not a
+permanent record of every experiment. Before starting work and before
+publication:
+
+1. Fetch the upstream V2 line, compare the complete fork-only range with it,
+   and rebase the feature stack onto the latest `upstream/v2`. When syncing
+   the shared fork `v2`, follow the archive-tag and publication procedure above.
+2. Give upstream behavior precedence. For each fork commit, identify upstream
+   capabilities that now provide the same behavior, make the fork change
+   unnecessary, or offer a better seam. Remove those changes and call the
+   candidates out for review rather than preserving them by default.
+3. Keep each remaining commit focused on one logical seam and independently
+   reviewable. Amend, split, squash, reorder, or drop commits as the upstream
+   base evolves; do not accumulate corrective or revert commits.
+4. Resolve a rebase conflict in the existing commit when the resolution belongs
+   to that commit's purpose. Create a new commit only when the change is a
+   separate logical concern that does not fit any existing commit.
+5. Validate the rebased range with affected package tests and typechecks,
+   check the diff from `upstream/v2` to `HEAD` for whitespace errors, and review
+   the final linear log before proposing publication.
+6. After publishing a rebased fork revision, update the starter's
+   `opencode.pin.json` to the published, immutable fork SHA. Use the starter's
+   `bun run opencode:bump <sha>` workflow when available and commit the new pin.
+   Validate it on a starter feature branch, then fast-forward local `main` to
+   that commit and push `origin/main`; never push a remote ref before the
+   corresponding local commit has been reviewed and validated. Run the
+   starter's fork sync and validation before treating the fork → starter
+   integration as complete.
+
+Keep distribution-specific implementation in the enterprise starter whenever
+possible. The OpenCode fork should retain only generic, reusable seams; for
+example, a packaged build may name an updater provider in
+`updater-provider.json` and the fork loads it and forwards its `config`
+untouched, while the distribution owns that provider's implementation, native
+code, packaging payloads, feeds, keys, signing, and release automation. The
+fork names no updater technology and infers no updater from branding.
 
 ## Live V2 TUI Testing
 
