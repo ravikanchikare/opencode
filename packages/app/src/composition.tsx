@@ -61,6 +61,7 @@ export type AppNewSessionComposition = {
 }
 
 export type AppComposition = {
+  pluginOptionLabels?: Readonly<Record<string, Readonly<Record<string, string>>>>
   settingsDefaults?: AppSettingsDefaults
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>

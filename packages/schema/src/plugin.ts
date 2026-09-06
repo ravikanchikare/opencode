@@ -34,12 +34,43 @@ export const State = Schema.Union([
 ]).annotate({ identifier: "Plugin.State" })
 export type State = typeof State.Type
 
+export const OptionChoice = Schema.Struct({
+  value: Schema.String,
+  label: Schema.String,
+  description: Schema.String.pipe(optional),
+}).annotate({ identifier: "Plugin.OptionChoice" })
+export type OptionChoice = typeof OptionChoice.Type
+
+export const OptionDescriptor = Schema.Struct({
+  type: Schema.Literal("multi-select"),
+  key: Schema.String,
+  label: Schema.String,
+  description: Schema.String.pipe(optional),
+  choices: Schema.Array(OptionChoice),
+  default: Schema.Array(Schema.String).pipe(optional),
+  secret: Schema.Boolean.pipe(optional),
+}).annotate({ identifier: "Plugin.OptionDescriptor" })
+export type OptionDescriptor = typeof OptionDescriptor.Type
+
+export const OptionValues = Schema.Record(Schema.String, Schema.Unknown)
+export type OptionValues = typeof OptionValues.Type
+
+export const OptionState = Schema.Struct({
+  descriptors: Schema.Array(OptionDescriptor),
+  requested: OptionValues.pipe(optional),
+  effective: OptionValues,
+  inherited: Schema.Boolean,
+  scope: Schema.Literals(["default", "location"]),
+}).annotate({ identifier: "Plugin.OptionState" })
+export type OptionState = typeof OptionState.Type
+
 export interface Info extends Schema.Schema.Type<typeof Info> {}
 export const Info = Schema.Struct({
   id: ID.pipe(optional),
   source: Source,
   features: Features,
   state: State,
+  options: OptionState.pipe(optional),
 }).annotate({ identifier: "Plugin.Info" })
 
 const Updated = ephemeral({

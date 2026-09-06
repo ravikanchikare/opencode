@@ -55,7 +55,24 @@ export type Cleanup = () => Promise<void> | void
 
 export interface Plugin {
   readonly id: string
+  readonly options?: ReadonlyArray<OptionDescriptor>
   readonly setup: (context: Context) => Promise<Cleanup | void> | Cleanup | void
+}
+
+export interface OptionChoice {
+  readonly value: string
+  readonly label: string
+  readonly description?: string
+}
+
+export interface OptionDescriptor {
+  readonly type: "multi-select"
+  readonly key: string
+  readonly label: string
+  readonly description?: string
+  readonly choices: ReadonlyArray<OptionChoice>
+  readonly default?: ReadonlyArray<string>
+  readonly secret?: boolean
 }
 
 export function define(plugin: Plugin) {
