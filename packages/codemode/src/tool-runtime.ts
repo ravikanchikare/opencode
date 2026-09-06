@@ -390,9 +390,12 @@ export const make = <R>(
       ),
     execute: (path, args) =>
       Effect.gen(function* () {
-        const name = canonicalSegments(path).join(".")
+        const segments = canonicalSegments(path)
+        if (segments.length === 1 && segments[0] === "search" && lookup(root, segments) === undefined)
+          return yield* executeTool("search", searchTool, args.map((arg) => toData(arg, "Arguments for tool 'search'")))
+        const name = segments.join(".")
         const externalArgs = args.map((arg) => toData(arg, `Arguments for tool '${name}'`))
-        const tool = resolve(root, path)
+        const tool = resolve(root, segments)
         return yield* executeTool(name, tool, externalArgs)
       }),
   }
