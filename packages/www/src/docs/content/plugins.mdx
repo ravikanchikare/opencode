@@ -65,6 +65,28 @@ explicitly or move it under `.opencode/`.
 Plugin entries are processed in order. Prefix an ID or wildcard with `-` to disable it, use `*` for every plugin, and
 use `.*` to match an ID prefix. A later ID re-enables a plugin.
 
+An object whose `package` field is the plugin's stable ID configures options for a plugin that is already loaded from
+another source, including a packaged path. That does not load a second copy. Later entries override earlier keys, arrays
+replace, and objects are not deep-merged. Removing the object restores inherited values. String enable and disable
+selectors are unchanged.
+
+```jsonc title="opencode.jsonc"
+{
+  "plugins": [
+    {
+      "package": "acme.packaged",
+      "options": {
+        "domains": ["beta"],
+      },
+    },
+  ],
+}
+```
+
+Settings → Plugins → plugin details edits multi-select options at the selected server default or the current project.
+Project Extensions → Plugins uses the same editor. Saving writes native configuration, then waits for activation; a
+stored value is not shown as active while the plugin is failed.
+
 ```jsonc title="opencode.jsonc"
 {
   "plugins": ["*", "-opencode.provider.*", "opencode.provider.openai", "-acme.reviewer"]
