@@ -17,7 +17,6 @@
  */
 
 import { createMemo, createResource, createSignal, Show, type Component } from "solid-js"
-import type { PluginInfo } from "@opencode-ai/client"
 import { Switch } from "@opencode-ai/ui/switch"
 import { Button } from "@opencode-ai/ui/button"
 import { useIntegrations } from "@/providers/catalog/integrations"
@@ -31,6 +30,7 @@ import { SettingsServerScope } from "@/settings/server-scope"
 import { showToast } from "@/shell/notifications/toast"
 import { useMcpServers, usePlugins } from "./data"
 import { PluginOptionsEditor } from "./plugin-options-editor"
+import { currentPlugin } from "./plugin-options"
 import { pluginLabel } from "@/providers/catalog/plugin"
 import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
 import {
@@ -87,12 +87,8 @@ export const McpPanel: Component<ExtensionPanelProps> = (props) => {
  */
 export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
   const plugins = usePlugins(() => props.directory)
-  const [selected, setSelected] = createSignal<PluginInfo>()
-  const current = createMemo(() => {
-    const id = selected()?.id
-    if (!id) return
-    return plugins.rows().find((plugin) => plugin.id === id) ?? selected()
-  })
+  const [selected, setSelected] = createSignal<string>()
+  const current = createMemo(() => currentPlugin(plugins.rows(), selected()))
 
   return (
     <ExtensionDestination title="Plugins" description="Plugins loaded for this location, and any that failed to start.">
@@ -101,7 +97,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
         fallback={
           <ExtensionList each={plugins.rows()} empty="No plugins are installed">
             {(plugin) => (
-              <button type="button" class="plugin-options-open" onClick={() => setSelected(plugin)}>
+              <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id ?? ""))}>
                 <ExtensionRow
                   icon="cube"
                   name={pluginLabel(plugin)}

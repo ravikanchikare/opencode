@@ -8,15 +8,42 @@ export function optionLabel(pluginId: string, key: string, fallback: string) {
   return getAppComposition().pluginOptionLabels?.[pluginId]?.[key] ?? fallback
 }
 
-export function canReset(inherited: boolean, scope: Scope) {
-  return scope === "location" && !inherited
+/** An authored override at this scope can be removed, including a server default. */
+export function canReset(inherited: boolean, _scope?: Scope) {
+  return !inherited
 }
 
-export function selectedValues(plugin: PluginInfo, key: string): readonly string[] | undefined {
-  const requested = plugin.options?.requested?.[key]
-  const effective = plugin.options?.effective?.[key]
-  const value = plugin.options?.inherited ? effective : (requested ?? effective)
+export function strings(value: unknown): readonly string[] | undefined {
   return Array.isArray(value) ? value.map(String) : undefined
+}
+
+/** Values currently active on the plugin, not merely saved. */
+export function selectedValues(plugin: PluginInfo, key: string): readonly string[] | undefined {
+  return strings(plugin.options?.effective?.[key])
+}
+
+export function requestedValues(plugin: PluginInfo, key: string): readonly string[] | undefined {
+  return strings(plugin.options?.requested?.[key])
+}
+
+export function isSelectionActive(plugin: PluginInfo, key: string) {
+  if (plugin.state.status !== "active") return false
+  if (plugin.options?.inherited) return true
+  const requested = requestedValues(plugin, key)
+  const effective = selectedValues(plugin, key)
+  if (requested === undefined) return effective !== undefined
+  return JSON.stringify(requested) === JSON.stringify(effective)
+}
+
+/** Values shown in the editor: active tools when applied, otherwise the saved request. */
+export function editorValues(plugin: PluginInfo, key: string, fallback: readonly string[] = []) {
+  if (isSelectionActive(plugin, key)) return selectedValues(plugin, key) ?? fallback
+  return requestedValues(plugin, key) ?? selectedValues(plugin, key) ?? fallback
+}
+
+export function currentPlugin(plugins: readonly PluginInfo[], id: string | undefined) {
+  if (!id) return
+  return plugins.find((plugin) => String(plugin.id) === id)
 }
 
 export { scopeOf }

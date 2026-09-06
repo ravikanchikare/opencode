@@ -4,7 +4,7 @@ import { Checkbox } from "@opencode-ai/ui/checkbox"
 import type { PluginInfo } from "@opencode-ai/client"
 import { useServerSDK } from "@/runtime/server/client"
 import { showToast } from "@/shell/notifications/toast"
-import { canReset, optionLabel, scopeOf, selectedValues } from "./plugin-options"
+import { canReset, editorValues, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
 
 export const PluginOptionsEditor: Component<{
   plugin: PluginInfo
@@ -51,8 +51,9 @@ export const PluginOptionsEditor: Component<{
       </Show>
       <For each={props.plugin.options?.descriptors ?? []}>
         {(descriptor) => {
-          const selected = () => new Set(selectedValues(props.plugin, descriptor.key) ?? descriptor.default ?? [])
+          const selected = () => new Set(editorValues(props.plugin, descriptor.key, descriptor.default ?? []))
           const applying = () => pending() === descriptor.key
+          const applied = () => isSelectionActive(props.plugin, descriptor.key)
           return (
             <div class="plugin-options-field">
               <div class="plugin-options-field-header">
@@ -89,10 +90,14 @@ export const PluginOptionsEditor: Component<{
               <Show when={applying()}>
                 <span class="extension-destination-description">Applying…</span>
               </Show>
+              <Show when={!applying() && !applied()}>
+                <span class="extension-destination-description">Saved selection is not active</span>
+              </Show>
               <For each={descriptor.choices}>
                 {(choice) => (
                   <Checkbox
                     checked={selected().has(choice.value)}
+                    data-applied={applied() ? "true" : "false"}
                     disabled={applying()}
                     onChange={(checked) => {
                       const next = new Set(selected())
