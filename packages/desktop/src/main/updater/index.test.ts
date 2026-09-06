@@ -268,3 +268,54 @@ describe("updater", () => {
     expect(await app.updater.getState()).toEqual({ status: "installing", version: "2.0.0" })
   })
 })
+
+/**
+ * A build with no platform is not one thing. Either nothing wanted updates —
+ * a development run, a build with no feed — or an updater provider was
+ * selected and could not be used. The second is a fault, and reporting it as
+ * "Updates are disabled" leaves the user and the packager with nothing.
+ */
+describe("no platform", () => {
+  const withoutPlatform = (unavailable?: string) => {
+    const dependencies: Dependencies = {
+      currentVersion: "1.0.0",
+      ...(unavailable === undefined ? {} : { unavailable }),
+      prepareToRestart: Effect.void,
+      persistence: { get: Effect.succeed(undefined), set: () => Effect.void, clear: Effect.void },
+    }
+    const runtime = ManagedRuntime.make(layerWith(dependencies))
+    dispose.push(() => runtime.dispose())
+    return {
+      getState: () => runtime.runPromise(Effect.flatMap(Service, (service) => service.state)),
+      check: () => runtime.runPromise(Effect.flatMap(Service, (service) => service.check)),
+      started: () => runtime.runPromise(Effect.flatMap(Service, (service) => service.started)),
+    }
+  }
+
+  test("updates that were never configured are disabled", async () => {
+    const app = withoutPlatform()
+    await app.started()
+    expect(await app.getState()).toEqual({ status: "disabled" })
+  })
+
+  test("a provider that failed to load reports the diagnostic instead", async () => {
+    const app = withoutPlatform('updater provider "updater.node" is missing at /r/updater.node')
+    await app.started()
+    expect(await app.getState()).toEqual({
+      status: "error",
+      message: 'updater provider "updater.node" is missing at /r/updater.node',
+    })
+  })
+
+  /**
+   * The renderer offers "Check now" for an error state. With no platform to
+   * check, that must return the diagnostic — not hang, not throw, and not
+   * quietly turn into "up to date".
+   */
+  test("checking again re-reports the diagnostic", async () => {
+    const app = withoutPlatform("provider exploded")
+    await app.started()
+    expect(await app.check()).toEqual({ status: "error", message: "provider exploded" })
+    expect(await app.check()).toEqual({ status: "error", message: "provider exploded" })
+  })
+})
