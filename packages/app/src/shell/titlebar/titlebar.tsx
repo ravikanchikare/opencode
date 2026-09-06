@@ -6,6 +6,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Icon } from "@opencode/ui/icon"
 import { Keybind } from "@opencode/ui/keybind"
 import { Tooltip } from "@opencode/ui/tooltip"
+import { Mark } from "@opencode/ui/logo"
 
 import { LayoutRoute, useLayout } from "@/shell/state/layout"
 import { usePlatform } from "@/runtime/platform/platform"
@@ -789,6 +790,7 @@ function ChannelIndicator(props: {
   const channel = import.meta.env.VITE_OPENCODE_CHANNEL
   if (!channel || channel === "prod") return null
 
+  const branded = !!import.meta.env.VITE_OPENCODE_DESKTOP_NAME
   const label = () => language.t(`titlebar.channel.${channel}`)
   const debug = () => (channel === "dev" ? props.debugTools : undefined)
   return (
@@ -812,13 +814,27 @@ function ChannelIndicator(props: {
         aria-label={debug() ? language.t("titlebar.toggleDebugTools") : undefined}
         aria-pressed={debug()?.visible}
       >
-        <img
-          src={channel === "beta" ? betaIcon : devIcon}
-          alt={debug() ? "" : label()}
-          class="shrink-0 rounded-[4px] shadow-[var(--v2-elevation-raised)]"
-          classList={{ "size-6": props.sidebar, "size-5": !props.sidebar }}
-          draggable={false}
-        />
+        <Show
+          when={branded}
+          fallback={
+            <img
+              src={channel === "beta" ? betaIcon : devIcon}
+              alt={debug() ? "" : label()}
+              class="shrink-0 rounded-[4px] shadow-[var(--v2-elevation-raised)]"
+              classList={{ "size-6": props.sidebar, "size-5": !props.sidebar }}
+              draggable={false}
+            />
+          }
+        >
+          <span
+            role={debug() ? undefined : "img"}
+            aria-label={debug() ? undefined : label()}
+            class="shrink-0 text-v2-icon-icon-base"
+            classList={{ "size-6": props.sidebar, "size-5": !props.sidebar }}
+          >
+            <Mark class="size-full" />
+          </span>
+        </Show>
       </Dynamic>
     </Tooltip>
   )

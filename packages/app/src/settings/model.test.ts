@@ -6,6 +6,7 @@ import {
   settingsSchema,
   settingsPersistence,
   defaultSettings,
+  resolveSettingsDefaults,
   monoDefault,
   monoFontFamily,
   sansDefault,
@@ -43,6 +44,14 @@ describe("settings schema", () => {
     expect(settings.general).not.toHaveProperty("showStatus")
     expect(settings.sessionSummary).toEqual({ projectExpanded: false, serverExpanded: true })
     expect(decode(encode(settings)).sessionSummary).toEqual(settings.sessionSummary)
+  })
+
+  test("merges distribution defaults without changing stock defaults", () => {
+    expect(resolveSettingsDefaults({ general: { followUpBehavior: "queue" } })).toMatchObject({
+      general: { followUpBehavior: "queue", autoSave: true },
+      appearance: defaultSettings.appearance,
+    })
+    expect(defaultSettings.general.followUpBehavior).toBe("steer")
   })
 
   test("uses the supplied initial values independently of the current schema", () => {
