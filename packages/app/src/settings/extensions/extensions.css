@@ -1,0 +1,105 @@
+/**
+ * Rows for an extension destination — a full Settings tab showing one domain.
+ *
+ * These four destinations sit next to each other in the Settings rail whenever
+ * a composition presents them that way, and a row that changes shape between
+ * them reads as four different products. The combined Extensions tab keeps its
+ * own markup; nothing here applies to it.
+ */
+
+.extension-destination-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.extension-destination-description {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--v2-text-text-muted);
+}
+
+.extension-destination-list {
+  display: flex;
+  flex-direction: column;
+  background: var(--v2-background-bg-base);
+  border: 0.5px solid var(--v2-border-border-base);
+  border-radius: 8px;
+  padding-inline: 16px 12px;
+  overflow: hidden;
+}
+
+.extension-destination-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-block: 16px;
+  border-bottom: 0.5px solid var(--v2-border-border-base);
+}
+
+.extension-destination-row:last-child {
+  border-bottom: none;
+}
+
+.extension-destination-icon {
+  color: var(--v2-icon-icon-muted);
+  flex-shrink: 0;
+}
+
+.extension-destination-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.extension-destination-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--v2-text-text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.extension-destination-name.mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.extension-destination-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.extension-destination-reset {
+  font-size: 11px;
+  color: var(--v2-text-text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.extension-destination-reset:hover:not(:disabled) {
+  color: var(--v2-text-text-base);
+  text-decoration: underline;
+}
+
+.extension-destination-reset:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.extension-destination-status {
+  font-size: 11px;
+  color: var(--v2-text-text-muted);
+  flex-shrink: 0;
+}
+
+.extension-destination-status[data-connected="true"] {
+  color: var(--v2-text-text-base);
+}
