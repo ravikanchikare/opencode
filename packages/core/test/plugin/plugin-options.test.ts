@@ -2,7 +2,7 @@ import { describe, expect, setDefaultTimeout } from "bun:test"
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "path"
-import { Duration, Effect, Layer, LayerMap } from "effect"
+import { Duration, Effect, Layer, LayerMap, Schedule } from "effect"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Global } from "@opencode-ai/util/global"
@@ -38,6 +38,7 @@ const packaged = `export default {
   }],
   async setup(ctx) {
     const selected = Array.isArray(ctx.options.domains) ? ctx.options.domains : ["alpha", "beta"]
+    if (selected.includes("fail")) throw new Error("unavailable domain: fail")
     await ctx.command.transform((editor) => {
       for (const domain of selected) editor.add({ name: "packaged-" + domain, execute: async () => {} })
     })
@@ -155,4 +156,95 @@ describe("exact-ID plugin options", () => {
   run("ignores options on wildcard selectors", [{ package: "*", options: { domains: [] } }], ({ domains }) => {
     expect(domains).toEqual(["alpha", "beta"])
   })
+
+  run(
+    "does not register tools when option activation fails",
+    [{ package: "acme.packaged", options: { domains: ["fail"] } }],
+    ({ domains, inventory }) => {
+      const entry = inventory.find((plugin) => plugin.id === "acme.packaged")
+      expect(entry?.state.status).toBe("failed")
+      expect(String(entry?.state.status === "failed" ? entry.state.error : "")).toContain("unavailable domain: fail")
+      expect(domains).toEqual([])
+      expect(entry?.options?.effective).toEqual({ domains: ["fail"] })
+    },
+  )
+})
+
+const domainsOf = (commands: Command.Interface) =>
+  Effect.gen(function* () {
+    return [
+      (yield* commands.get("packaged-alpha")) ? "alpha" : undefined,
+      (yield* commands.get("packaged-beta")) ? "beta" : undefined,
+    ].filter((item): item is string => item !== undefined)
+  })
+
+const waitFor = (check: Effect.Effect<boolean>, message: string) =>
+  check.pipe(
+    Effect.flatMap((ready) => (ready ? Effect.void : Effect.fail(message))),
+    Effect.retry({ times: 80, schedule: Schedule.spaced("25 millis") }),
+  )
+
+const writePlugins = (root: string, plugins: readonly unknown[]) => {
+  const file = path.join(root, ".opencode/opencode.json")
+  mkdirSync(path.dirname(file), { recursive: true })
+  writeFileSync(file, JSON.stringify({ plugins }))
+  return file
+}
+
+describe("exact-ID plugin option reloads", () => {
+  const reload = (
+    name: string,
+    initial: readonly unknown[],
+    next: readonly unknown[],
+    assert: (input: {
+      readonly before: readonly string[]
+      readonly after: readonly string[]
+      readonly inventory: readonly Plugin.Info[]
+    }) => void,
+  ) => {
+    const { root, file } = workspace(initial)
+    testEffect(harness(file)).live(name, () =>
+      Effect.gen(function* () {
+        const watcher = yield* Watcher.Test
+        const locations = yield* LocationServiceMap.Service
+        yield* Effect.gen(function* () {
+          const registry = yield* Plugin.Service
+          const commands = yield* Command.Service
+          yield* registry.awaitActivation
+          const before = yield* domainsOf(commands)
+          const config = writePlugins(root, next)
+          yield* watcher.emit({ path: config, type: "update" })
+          yield* waitFor(
+            domainsOf(commands).pipe(Effect.map((domains) => JSON.stringify(domains) !== JSON.stringify(before))),
+            "options reload pending",
+          )
+          assert({ before, after: yield* domainsOf(commands), inventory: yield* registry.list() })
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))),
+        )
+      }),
+    )
+  }
+
+  reload(
+    "removes an exact-ID override and restores inherited defaults",
+    [{ package: "acme.packaged", options: { domains: ["beta"] } }],
+    [],
+    ({ before, after }) => {
+      expect(before).toEqual(["beta"])
+      expect(after).toEqual(["alpha", "beta"])
+    },
+  )
+
+  reload(
+    "rebuilds contributions when only options change",
+    [],
+    [{ package: "acme.packaged", options: { domains: ["beta"] } }],
+    ({ before, after, inventory }) => {
+      expect(before).toEqual(["alpha", "beta"])
+      expect(after).toEqual(["beta"])
+      expect(inventory.filter((plugin) => plugin.id === "acme.packaged")).toHaveLength(1)
+    },
+  )
 })
