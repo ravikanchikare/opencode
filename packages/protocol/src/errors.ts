@@ -137,6 +137,15 @@ export class SkillNotFoundError extends Schema.TaggedError<SkillNotFoundError>()
   { httpApiStatus: 404 },
 ) {}
 
+export class PluginNotFoundError extends Schema.TaggedError<PluginNotFoundError>()(
+  "PluginNotFoundError",
+  {
+    plugin: Schema.String,
+    message: Schema.String,
+  },
+  { httpApiStatus: 404 },
+) {}
+
 export class McpServerNotFoundError extends Schema.TaggedError<McpServerNotFoundError>()(
   "McpServerNotFoundError",
   {
