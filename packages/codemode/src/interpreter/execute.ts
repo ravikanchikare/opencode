@@ -2,7 +2,7 @@ import { parse, type Program } from "acorn"
 import { Cause, Effect, Scope } from "effect"
 import type { DataValue, Diagnostic, ResolvedExecutionLimits, Result } from "../codemode.js"
 import { toBoundary } from "../data.js"
-import { ToolRuntime } from "../tool-runtime.js"
+import { PropagatedToolCause, ToolRuntime } from "../tool-runtime.js"
 import { normalizeError } from "./errors.js"
 import { createBuiltins } from "./intrinsics.js"
 import { Pending } from "./promises.js"
@@ -14,7 +14,7 @@ export const executeProgram = <R>(
   limits: ResolvedExecutionLimits,
   hooks: ToolRuntime.Hooks<R>,
   globals?: (ctx: Interpreter<R>) => ReadonlyArray<readonly [string, unknown]>,
-): Effect.Effect<Result, never, R> => {
+): Effect.Effect<Result, unknown, R> => {
   if (code.trim().length === 0) {
     return Effect.succeed({
       ok: false,
@@ -88,16 +88,17 @@ export const executeProgram = <R>(
           )
 
     return operation.pipe(
-      Effect.catchCause((cause) =>
-        Cause.hasInterruptsOnly(cause)
-          ? Effect.interrupt
-          : Effect.succeed({
-              ok: false,
-              error: normalizeError(Cause.squash(cause)),
-              ...logged(),
-              toolCalls: tools.calls,
-            } satisfies Result),
-      ),
+      Effect.catchCause((cause) => {
+        if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt
+        const error = Cause.squash(cause)
+        if (error instanceof PropagatedToolCause) return Effect.failCause(error.originalCause)
+        return Effect.succeed({
+          ok: false,
+          error: normalizeError(error),
+          ...logged(),
+          toolCalls: tools.calls,
+        } satisfies Result)
+      }),
       Effect.map((result) =>
         limits.maxOutputBytes === undefined ? result : boundOutput(result, limits.maxOutputBytes),
       ),

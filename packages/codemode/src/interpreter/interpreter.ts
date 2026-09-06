@@ -43,7 +43,7 @@ import type {
 } from "acorn"
 import { Cause, Deferred, Effect, Exit } from "effect"
 import { fromJson, type Json, toBoundary } from "../data.js"
-import { ToolReference, type ToolRuntime } from "../tool-runtime.js"
+import { PropagatedToolCause, ToolReference, type ToolRuntime } from "../tool-runtime.js"
 import {
   type AstNode,
   AsyncIteratorSymbol,
@@ -988,11 +988,17 @@ class Frame<R> {
 
     const attempted = Effect.matchCauseEffect(this.evaluateStatement(body), {
       onFailure: (cause) => {
-        if (cause.reasons.some(Cause.isInterruptReason) || Cause.squash(cause) instanceof GeneratorReturn || !handler) {
+        const error = Cause.squash(cause)
+        if (
+          cause.reasons.some(Cause.isInterruptReason) ||
+          error instanceof GeneratorReturn ||
+          error instanceof PropagatedToolCause ||
+          !handler
+        ) {
           return Effect.failCause(cause)
         }
 
-        const caught = materialize(self.ctx, Cause.squash(cause))
+        const caught = materialize(self.ctx, error)
         const parameter = handler.param
         self.scopes.push()
         return Effect.gen(function* () {
@@ -1009,12 +1015,14 @@ class Frame<R> {
       result.kind === "return" || result.kind === "break" || result.kind === "continue"
 
     return Effect.matchCauseEffect(attempted, {
-      onFailure: (cause) =>
-        cause.reasons.some(Cause.isInterruptReason)
-          ? Effect.failCause(cause)
-          : Effect.flatMap(this.evaluateStatement(finalizer), (final) =>
-              isAbrupt(final) ? Effect.succeed(final) : Effect.failCause(cause),
-            ),
+      onFailure: (cause) => {
+        if (Cause.squash(cause) instanceof PropagatedToolCause)
+          return Effect.flatMap(Effect.exit(this.evaluateStatement(finalizer)), () => Effect.failCause(cause))
+        if (cause.reasons.some(Cause.isInterruptReason)) return Effect.failCause(cause)
+        return Effect.flatMap(this.evaluateStatement(finalizer), (final) =>
+          isAbrupt(final) ? Effect.succeed(final) : Effect.failCause(cause),
+        )
+      },
       onSuccess: (result) =>
         Effect.flatMap(this.evaluateStatement(finalizer), (final) =>
           isAbrupt(final) ? Effect.succeed(final) : Effect.succeed(result),

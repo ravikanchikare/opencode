@@ -1,5 +1,13 @@
 # CodeMode Interpreter Support
 
+## Host failures
+
+- Tool failures are ordinary program-visible errors and may be handled by `catch`.
+- A host may mark a selected tool cause for propagation. Marked causes bypass every
+  `catch` and preserve their original Effect cause at the host boundary.
+- `finally` still runs for marked causes, including nested finalizers. Its `return`,
+  `break`, `continue`, or failure cannot replace the marked host cause.
+
 This is the checkable support matrix for CodeMode's confined JavaScript interpreter. It tracks the language and
 standard-library surface that programs can use today, plus concrete gaps that may be implemented later.
 
