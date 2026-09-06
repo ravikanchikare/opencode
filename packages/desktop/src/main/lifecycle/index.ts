@@ -5,6 +5,7 @@ import type { Event } from "electron"
 import { Context, Effect, Layer } from "effect"
 import { DeepLinksOpened } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
+import { DEEP_LINK_SCHEME } from "../constants"
 import { DesktopLogging, scoped } from "../native/logging"
 import { DesktopStorage } from "../storage"
 import { safeWebContentsURL } from "../windows/state"
@@ -54,7 +55,7 @@ const runtime = Layer.effect(
       )
     }
     const secondInstance = (_event: Event, argv: string[]) => {
-      const urls = argv.filter((arg) => arg.startsWith("opencode://"))
+      const urls = argv.filter((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`))
       if (urls.length) {
         runFork(Effect.logInfo("deep link received via second-instance", { urls }))
         emitDeepLinks(urls)
@@ -71,12 +72,14 @@ const runtime = Layer.effect(
     }
     const beforeQuit = (event: Event) => {
       setAppQuitting()
+      runFork(Effect.logInfo("before-quit", { shutdownReady }))
       if (shutdownReady) return
       event.preventDefault()
       runFork(prepareToRestart.pipe(Effect.ensuring(Effect.sync(() => app.quit()))))
     }
     const willQuit = () => {
       setAppQuitting()
+      runFork(Effect.logInfo("will-quit"))
       runFork(shutdown.run)
     }
     const childProcessGone = (_event: Event, details: Electron.Details) => {
