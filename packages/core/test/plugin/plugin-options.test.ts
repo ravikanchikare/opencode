@@ -15,6 +15,7 @@ import { LocationServiceMap } from "@opencode-ai/core/location-services"
 import { Location } from "@opencode-ai/core/location"
 import { ManagedPluginSource } from "@opencode-ai/core/plugin/managed-source"
 import { Plugin } from "@opencode-ai/core/plugin"
+import { PluginOptionConfig } from "@opencode-ai/core/plugin/option-config"
 import { SdkPlugins } from "@opencode-ai/core/plugin/sdk"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { tempGlobalLayer } from "../fixture/global"
@@ -246,5 +247,27 @@ describe("exact-ID plugin option reloads", () => {
       expect(after).toEqual(["beta"])
       expect(inventory.filter((plugin) => plugin.id === "acme.packaged")).toHaveLength(1)
     },
+  )
+})
+
+describe("PluginOptionConfig on the instance graph", () => {
+  const { root, file } = workspace(undefined)
+  testEffect(harness(file)).effect("exposes option views to location-scoped HTTP handlers", () =>
+    Effect.gen(function* () {
+      const locations = yield* LocationServiceMap.Service
+      const viewed = yield* Effect.gen(function* () {
+        const options = yield* PluginOptionConfig.Service
+        const plugins = yield* Plugin.Service
+        yield* plugins.awaitActivation
+        const current = (yield* plugins.list()).find((plugin) => plugin.id === "acme.packaged")
+        if (!current) throw new Error("missing packaged plugin")
+        return yield* options.view(current, "location")
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))),
+      )
+      expect(viewed.options?.inherited).toBe(true)
+      expect(viewed.options?.descriptors[0]?.key).toBe("domains")
+    }),
   )
 })
