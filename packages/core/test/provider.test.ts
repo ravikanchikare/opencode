@@ -14,6 +14,7 @@ describe("Provider", () => {
       "@opencode-ai/ai/providers/google-vertex/messages",
       "@opencode-ai/ai/providers/groq",
       "@opencode-ai/ai/providers/mistral",
+      "@opencode-ai/ai/providers/openai-compatible/responses",
       "@opencode-ai/ai/providers/togetherai",
     ]
 
