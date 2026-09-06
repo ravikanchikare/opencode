@@ -4,7 +4,7 @@ import type { Plugin } from "@opencode/plugin/effect/plugin"
 import { Context, Effect, Layer } from "effect"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 import { Bus } from "../bus.js"
-import type { Generation } from "../plugin.js"
+import { fromDefinition, type Generation } from "../plugin.js"
 
 export const Updated = Bus.ephemeral({ type: "sdk.plugin.updated", schema: {} })
 
@@ -34,7 +34,10 @@ export const layer = Layer.effect(
     return Service.of({
       register: (plugin) =>
         Effect.sync(() => {
-          plugins.set(plugin.id, { ...plugin, revision: String(++revision), source: { type: "sdk" } })
+          plugins.set(
+            plugin.id,
+            fromDefinition(plugin, { revision: String(++revision), source: { type: "sdk" } }),
+          )
         }).pipe(Effect.andThen(bus.publish(Updated, {})), Effect.asVoid),
       all: () => [...plugins.values()],
     })
