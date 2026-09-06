@@ -55,3 +55,16 @@ export type Info = {
   /** Private service password, when authentication is enabled. */
   readonly password?: string
 }
+
+const DEFAULT_SERVICE_ID = "opencode"
+const slug = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, "-")
+
+export function serviceID(env: Record<string, string | undefined> = process.env) {
+  return env.OPENCODE_SERVICE_ID?.trim() || DEFAULT_SERVICE_ID
+}
+
+export function registrationFilename(channel: string, service = serviceID()) {
+  const stable = channel === "latest" || channel === "dev" || channel === "beta" || channel === "next"
+  const identity = service === DEFAULT_SERVICE_ID ? "" : `-${slug(service)}`
+  return stable ? `service${identity}.json` : `service${identity}-${slug(channel)}.json`
+}
