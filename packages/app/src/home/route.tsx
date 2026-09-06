@@ -1,6 +1,7 @@
 import { ScrollView } from "@opencode-ai/ui/scroll-view"
 import { createMediaQuery } from "@solid-primitives/media"
 import { Show } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { createHomeController } from "./model"
 import { createHomeProjectsController } from "./projects/controller"
 import { HomeUtilityNav } from "./projects/view"
@@ -9,6 +10,7 @@ import { createHomeScrollController } from "./scroll"
 import { createHomeSessionSearchController } from "./sessions/search"
 import { createHomeSessionsController } from "./sessions/controller"
 import { HomeSessions } from "./sessions/region"
+import { getAppComposition } from "@/composition"
 
 export function Home() {
   const mobile = createMediaQuery("(max-width: 767px)")
@@ -49,8 +51,15 @@ export function Home() {
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
         </div>
       </ScrollView>
+      {/*
+        Stock position: a fixed strip below the scroll region, shown only
+        between the md and lg breakpoints. Only the component is composable —
+        moving it inside `ScrollView` made it scroll away and appear below md,
+        which is a layout change no composition asked for.
+      */}
       <div class="hidden shrink-0 px-3 py-2 md:block lg:hidden">
-        <HomeUtilityNav
+        <Dynamic
+          component={getAppComposition().homeUtilityNav ?? HomeUtilityNav}
           class="flex"
           onOpenSettings={projects.utility.settings}
           onOpenHelp={projects.utility.help}
