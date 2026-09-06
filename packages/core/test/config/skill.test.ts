@@ -292,6 +292,100 @@ describe("ConfigSkillPlugin.Plugin", () => {
     ),
   )
 
+  it.live("keeps url and explicitly configured sources when harness admission is denied", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // Admission classifies sources, not skill paths: only a directory the
+          // harness loop put in the set is denied. A URL source has no path to
+          // classify, so it is structurally unconditional.
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          const pulled = path.join(tmp.path, "pulled")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "local"), { recursive: true })
+            await fs.mkdir(path.join(pulled, "remote"), { recursive: true })
+            await write(path.join(claude, "skills"), "harness", "Harness")
+            await write(configured, "local", "Local")
+            await write(pulled, "remote", "Remote")
+          })
+          const discovery = SkillDiscovery.Service.of({
+            pull: () => Effect.succeed([AbsolutePath.make(path.join(pulled, "remote"))]),
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({
+                  type: "document",
+                  info: decode({ skills: [configured, "https://example.test/skills/"] }),
+                }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+              discovery,
+            ),
+          )
+
+          expect((yield* skill.list()).map((item) => item.id).toSorted()).toEqual([
+            Skill.ID.make("local"),
+            Skill.ID.make("remote"),
+          ])
+        }),
+      ),
+    ),
+  )
+
+  it.live("reaches the same admission result after a reload", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // `refresh` rebuilds the harness set from the entries every time, so a
+          // rescan must not readmit what the first pass denied.
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "local"), { recursive: true })
+            await write(path.join(claude, "skills"), "harness", "Harness")
+            await write(configured, "local", "Local")
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({ type: "document", info: decode({ skills: [configured] }) }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+            ),
+          )
+          expect((yield* skill.list()).map((item) => item.id)).toEqual([Skill.ID.make("local")])
+
+          // Add a skill to each source, then trigger a rescan from the one that
+          // is watched. The denied source is neither watched nor reloaded.
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "late"), { recursive: true })
+            await fs.mkdir(path.join(configured, "added"), { recursive: true })
+            await write(path.join(claude, "skills"), "late", "Late")
+            await write(configured, "added", "Added")
+          })
+          yield* emitAndWait({ type: "create", path: path.join(configured, "added", "SKILL.md") })
+
+          expect((yield* skill.list()).map((item) => item.id).toSorted()).toEqual([
+            Skill.ID.make("added"),
+            Skill.ID.make("local"),
+          ])
+        }),
+      ),
+    ),
+  )
+
   it.live("loads directory and individual downloaded skill roots with later-source precedence", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) =>
