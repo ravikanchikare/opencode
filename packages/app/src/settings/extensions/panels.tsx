@@ -17,6 +17,7 @@
  */
 
 import { createMemo, createResource, createSignal, Show, type Component } from "solid-js"
+import type { PluginInfo } from "@opencode-ai/client"
 import { Switch } from "@opencode-ai/ui/switch"
 import { Button } from "@opencode-ai/ui/button"
 import { useIntegrations } from "@/providers/catalog/integrations"
@@ -29,6 +30,8 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { SettingsServerScope } from "@/settings/server-scope"
 import { showToast } from "@/shell/notifications/toast"
 import { useMcpServers, usePlugins } from "./data"
+import { PluginOptionsEditor } from "./plugin-options-editor"
+import { pluginLabel } from "@/providers/catalog/plugin"
 import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
 import {
   integrationSubtitle,
@@ -84,12 +87,41 @@ export const McpPanel: Component<ExtensionPanelProps> = (props) => {
  */
 export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
   const plugins = usePlugins(() => props.directory)
+  const [selected, setSelected] = createSignal<PluginInfo>()
+  const current = createMemo(() => {
+    const id = selected()?.id
+    if (!id) return
+    return plugins.rows().find((plugin) => plugin.id === id) ?? selected()
+  })
 
   return (
     <ExtensionDestination title="Plugins" description="Plugins loaded for this location, and any that failed to start.">
-      <ExtensionList each={plugins.names()} empty="No plugins are installed">
-        {(name) => <ExtensionRow icon="cube" name={name} mono detail={plugins.failures().get(name)} />}
-      </ExtensionList>
+      <Show
+        when={current()}
+        fallback={
+          <ExtensionList each={plugins.rows()} empty="No plugins are installed">
+            {(plugin) => (
+              <button type="button" class="plugin-options-open" onClick={() => setSelected(plugin)}>
+                <ExtensionRow
+                  icon="cube"
+                  name={pluginLabel(plugin)}
+                  mono
+                  detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                />
+              </button>
+            )}
+          </ExtensionList>
+        }
+      >
+        {(plugin) => (
+          <PluginOptionsEditor
+            plugin={plugin()}
+            directory={props.directory}
+            onBack={() => setSelected()}
+            onChanged={() => void plugins.refetch()}
+          />
+        )}
+      </Show>
     </ExtensionDestination>
   )
 }
