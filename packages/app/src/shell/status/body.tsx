@@ -61,7 +61,6 @@ export function StatusPopoverBody(props: { shown: boolean; embedded?: boolean })
             {mcpConnected() > 0 ? `${mcpConnected()} ` : ""}
             {language.t("status.popover.tab.mcp")}
           </Tabs.Trigger>
-          {/* TODO: Restore LSP status when V2 exposes it. */}
           <Tabs.Trigger value="plugins" data-slot="tab" class="text-12-regular">
             {pluginCount() > 0 ? `${pluginCount()} ` : ""}
             {language.t("status.popover.tab.plugins")}
