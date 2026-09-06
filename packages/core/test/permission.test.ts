@@ -113,6 +113,76 @@ describe("Permission", () => {
     }),
   )
 
+  it.effect("normalizes permission metadata before it becomes pending state", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const service = yield* Permission.Service
+      const special = JSON.parse('{"__proto__":"safe"}') as Record<string, unknown>
+      const metadata = {
+        omitted: undefined,
+        nested: { kept: "value", omitted: undefined },
+        array: [true, { value: 1 }],
+        ...special,
+      }
+
+      expect(yield* service.ask(assertion({ metadata }))).toMatchObject({ effect: "ask" })
+      expect(yield* service.list()).toEqual([
+        expect.objectContaining({
+          metadata: { nested: { kept: "value" }, array: [true, { value: 1 }], ["__proto__"]: "safe" },
+        }),
+      ])
+    }),
+  )
+
+  it.effect("rejects non-JSON metadata before it becomes pending state", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const service = yield* Permission.Service
+      const cyclic: Record<string, unknown> = {}
+      cyclic.self = cyclic
+      const indirect: Record<string, unknown> = { child: {} }
+      ;(indirect.child as Record<string, unknown>).parent = indirect
+      const repeated = { value: 1 }
+
+      for (const metadata of [
+        { values: [undefined] },
+        { values: [, 1] },
+        { values: [1, , 2] },
+        { values: [1, ,] },
+        { value: Number.NaN },
+        { value: Infinity },
+        { value: new Date() },
+        { value: 1n },
+        { value: Symbol("value") },
+        { value: () => undefined },
+        { value: new (class Value {})() },
+        cyclic,
+        indirect,
+      ]) {
+        const exit = yield* service.ask(assertion({ metadata })).pipe(Effect.exit)
+        expect(exit._tag).toBe("Failure")
+        expect(yield* service.list()).toEqual([])
+      }
+
+      expect(yield* service.ask(assertion({ metadata: { first: repeated, second: repeated } }))).toMatchObject({
+        effect: "ask",
+      })
+      expect(yield* service.list()).toMatchObject([{ metadata: { first: { value: 1 }, second: { value: 1 } } }])
+    }),
+  )
+
+  it.effect("includes a caller-provided explanation in permission requests", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const { service, fiber, request } = yield* waitForRequest({
+        message: "Publish agent version 2.0. This cannot be undone.",
+      })
+      expect(request.message).toBe("Publish agent version 2.0. This cannot be undone.")
+      yield* service.reply({ requestID: request.id, reply: "once" })
+      yield* Fiber.join(fiber)
+    }),
+  )
+
   it.effect("evaluates against an explicit agent", () =>
     Effect.gen(function* () {
       yield* setup([{ action: "read", resource: "*", effect: "allow" }])

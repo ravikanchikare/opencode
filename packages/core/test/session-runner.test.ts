@@ -30,6 +30,7 @@ import { Bus } from "@opencode/core/bus"
 import { Event } from "@opencode/schema/event"
 import { App } from "@opencode/core/app"
 import { Permission } from "@opencode/core/permission"
+import { PermissionSaved } from "@opencode/core/permission/saved"
 import { EventTable } from "@opencode/core/event/sql"
 import { Project } from "@opencode/core/project"
 import { ProjectTable } from "@opencode/core/project/sql"
@@ -262,7 +263,6 @@ const permissionFail = {
       }),
     }),
 }
-const permission = permissionLayer()
 const transformTools = (registry: Tool.Interface, tools: Readonly<Record<string, ToolInfo>>, options?: Tool.Options) =>
   registry.transform((editor) =>
     Object.entries(tools).forEach(([name, tool]) => editor.add({ ...tool, name, options: options ?? tool.options })),
@@ -409,7 +409,6 @@ const layer = Layer.unwrap(
       Location.node.replace(Location.boundNode({ directory: AbsolutePath.make("/project") })),
       SkillInstructions.node.replace(skillInstructions),
       ReferenceInstructions.node.replace(referenceInstructions),
-      Permission.node.replace(permission),
       Config.node.replace(config),
       PluginSupervisor.node.replace(Layer.empty),
       Plugin.node.replace(Layer.mock(Plugin.Service, { awaitActivation: Effect.void })),
@@ -456,6 +455,8 @@ const layer = Layer.unwrap(
         Form.node,
         SessionProjector.node,
         SessionStore.node,
+        PermissionSaved.node,
+        Permission.node,
         SessionInbox.node,
         Agent.node,
         Model.node,
@@ -529,6 +530,7 @@ const setup = Effect.gen(function* () {
   yield* agents.transform((editor) =>
     editor.update(Agent.ID.make("build"), (agent) => {
       agent.mode = "primary"
+      agent.permissions = [{ action: "*", resource: "*", effect: "allow" }]
     }),
   )
   yield* db
@@ -4615,6 +4617,71 @@ describe("SessionRunnerLLM", () => {
     ])
   })
 
+  scenario("stops Code Mode after rejecting a real host permission request", function* (s) {
+    const agents = yield* Agent.Service
+    const permission = yield* Permission.Service
+    const registry = yield* Tool.Service
+    const asked = yield* Deferred.make<Permission.Request>()
+    const unsubscribe = yield* s.bus.listen((event) => {
+      if (event.type !== Permission.Event.Asked.type) return Effect.void
+      return Deferred.succeed(asked, event.data as Permission.Request).pipe(Effect.asVoid)
+    })
+    yield* Effect.addFinalizer(() => unsubscribe)
+    yield* agents.transform((editor) =>
+      editor.update(Agent.ID.make("build"), (agent) => {
+        agent.permissions = []
+      }),
+    )
+    yield* transformTools(registry, {
+      host_approval: {
+        name: "host_approval",
+        description: "Requires host approval",
+        input: Schema.Struct({}),
+        output: Schema.String,
+        execute: (_, context) =>
+          permission
+            .assert({
+              action: "host_approval",
+              resources: ["protected-resource"],
+              sessionID: context.sessionID,
+              agent: context.agent,
+              source: { type: "tool", messageID: context.messageID, id: context.id },
+            })
+            .pipe(Effect.mapError((error) => new ToolFailure({ message: "Permission denied: host approval", error })))
+            .pipe(Effect.as({ output: "approved", content: "approved" })),
+      },
+    })
+    yield* s.admit("Request host approval through Code Mode")
+    yield* s.llm.push(
+      TestLLM.tool("call-codemode", "execute", { code: "return await tools.host_approval()" }),
+      TestLLM.stop(),
+    )
+
+    const run = yield* s.resume.pipe(Effect.exit, Effect.forkChild)
+    const request = yield* Deferred.await(asked)
+    expect(request).toMatchObject({
+      action: "host_approval",
+      resources: ["protected-resource"],
+      sessionID,
+      source: { type: "tool", messageID: expect.any(String), id: "call-codemode" },
+    })
+    yield* permission.reply({ requestID: request.id, reply: "reject" })
+    const exit = yield* Fiber.join(run)
+
+    expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") expect(Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+    expect(s.requests).toHaveLength(1)
+    expect(yield* s.context).toMatchObject([
+      Expected.user("Request host approval through Code Mode"),
+      Expected.assistant({}, [
+        Expected.failedTool(
+          { id: "call-codemode" },
+          { error: { type: "aborted", message: "The user declined this tool call" } },
+        ),
+      ]),
+    ])
+  })
+
   scenario("returns permission corrections to the model and continues", function* (s) {
     const registry = yield* Tool.Service
     yield* transformTools(
@@ -4679,26 +4746,42 @@ describe("SessionRunnerLLM", () => {
     expect(yield* recordedEventTypes(sessionID)).not.toContain("session.step.failed.1")
   })
 
-  scenario("interrupts runner continuation when a question is cancelled", function* (s) {
+  scenario("interrupts runner continuation when the real question form is dismissed", function* (s) {
     const registry = yield* Tool.Service
-    yield* transformTools(
-      registry,
-      {
-        question: {
-          name: "question",
-          description: "Ask the user",
-          input: Schema.Struct({}),
-          output: Schema.Struct({}),
-          execute: () => Effect.die(new QuestionTool.CancelledError()),
+    const forms = yield* Form.Service
+    const created = yield* Deferred.make<Form.Info>()
+    const unsubscribe = yield* s.bus.listen((event) => {
+      if (event.type !== Form.Event.Created.type) return Effect.void
+      return Deferred.succeed(created, (event.data as { readonly form: Form.Info }).form).pipe(Effect.asVoid)
+    })
+    yield* Effect.addFinalizer(() => unsubscribe)
+    yield* QuestionTool.Plugin.effect(
+      host({
+        tool: {
+          transform: registry.transform,
+          reload: () => Effect.void,
+          hook: () => Effect.die("unused tool hook"),
         },
-      },
-      { codemode: false },
+      }),
     )
     yield* s.admit("Ask then stop")
 
-    yield* s.llm.push(TestLLM.tool("call-question", "question", {}), [])
+    yield* s.llm.push(
+      TestLLM.tool("call-question", "question", {
+        questions: [
+          {
+            question: "Continue?",
+            header: "Continue",
+            options: [{ label: "Yes", description: "Continue" }],
+          },
+        ],
+      }),
+      TestLLM.stop(),
+    )
 
     const run = yield* s.resume.pipe(Effect.exit, Effect.forkChild)
+    const form = yield* Deferred.await(created)
+    yield* forms.cancel(form.id)
     const exit = yield* Fiber.join(run)
 
     expect(exit._tag).toBe("Failure")
@@ -4709,6 +4792,62 @@ describe("SessionRunnerLLM", () => {
       Expected.assistant({}, [
         Expected.failedTool(
           { id: "call-question" },
+          { error: { type: "aborted", message: "The user dismissed this question" } },
+        ),
+      ]),
+    ])
+  })
+
+  scenario("interrupts Code Mode when the real question form is dismissed", function* (s) {
+    const registry = yield* Tool.Service
+    const forms = yield* Form.Service
+    const created = yield* Deferred.make<Form.Info>()
+    const unsubscribe = yield* s.bus.listen((event) => {
+      if (event.type !== Form.Event.Created.type) return Effect.void
+      return Deferred.succeed(created, (event.data as { readonly form: Form.Info }).form).pipe(Effect.asVoid)
+    })
+    yield* Effect.addFinalizer(() => unsubscribe)
+    yield* QuestionTool.Plugin.effect(
+      host({
+        tool: {
+          transform: registry.transform,
+          reload: () => Effect.void,
+          hook: () => Effect.die("unused tool hook"),
+        },
+      }),
+    )
+    yield* registry.transform((editor) =>
+      editor.update(QuestionTool.name, (tool) => {
+        tool.options = {}
+      }),
+    )
+    yield* s.admit("Ask through Code Mode then stop")
+    yield* s.llm.push(
+      TestLLM.tool("call-codemode-question", "execute", {
+        code: `return await tools.question({
+          questions: [{
+            question: "Continue?",
+            header: "Continue",
+            options: [{ label: "Yes", description: "Continue" }],
+          }],
+        })`,
+      }),
+      TestLLM.stop(),
+    )
+
+    const run = yield* s.resume.pipe(Effect.exit, Effect.forkChild)
+    const form = yield* Deferred.await(created)
+    yield* forms.cancel(form.id)
+    const exit = yield* Fiber.join(run)
+
+    expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") expect(Cause.hasInterruptsOnly(exit.cause)).toBe(true)
+    expect(s.requests).toHaveLength(1)
+    expect(yield* s.context).toMatchObject([
+      Expected.user("Ask through Code Mode then stop"),
+      Expected.assistant({}, [
+        Expected.failedTool(
+          { id: "call-codemode-question" },
           { error: { type: "aborted", message: "The user dismissed this question" } },
         ),
       ]),

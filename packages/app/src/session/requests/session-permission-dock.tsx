@@ -37,29 +37,31 @@ export function SessionPermissionDock(props: {
             <Button variant="ghost" size="normal" onClick={() => props.onDecide("reject")} disabled={props.responding}>
               {language.t("ui.permission.deny")}
             </Button>
-            <Button
-              variant="neutral"
-              size="normal"
-              onClick={() => props.onDecide("always")}
-              disabled={props.responding}
-            >
-              {language.t("ui.permission.allowAlways")}
-            </Button>
-            <Button variant="submit" size="normal" onClick={() => props.onDecide("once")} disabled={props.responding}>
+            <Show when={(props.request.save?.length ?? 0) > 0}>
+              <Button
+                variant="neutral"
+                size="normal"
+                onClick={() => props.onDecide("always")}
+                disabled={props.responding}
+              >
+                {language.t("ui.permission.allowAlways")}
+              </Button>
+            </Show>
+            <Button variant="contrast" size="normal" onClick={() => props.onDecide("once")} disabled={props.responding}>
               {language.t("ui.permission.allowOnce")}
             </Button>
           </div>
         </>
       }
     >
-      <Show when={toolDescription()}>
+      <Show when={props.request.message ?? toolDescription()}>
         <div data-slot="permission-row">
           <span data-slot="permission-spacer" aria-hidden="true" />
-          <div data-slot="permission-hint">{toolDescription()}</div>
+          <div data-slot="permission-hint">{props.request.message ?? toolDescription()}</div>
         </div>
       </Show>
 
-      <Show when={props.request.resources.length > 0}>
+      <Show when={!props.request.message && props.request.resources.length > 0}>
         <div data-slot="permission-row">
           <span data-slot="permission-spacer" aria-hidden="true" />
           <div data-slot="permission-patterns">

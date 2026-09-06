@@ -46,6 +46,8 @@ export type Options<Provided extends Record<string, unknown> = {}> = {
   tools?: Provided & Tools<Services<Provided>>
   /** Hooks around every tool and extension call the program makes; see `Hooks`. */
   hooks?: ToolRuntime.Hooks<Services<Provided>>
+  /** Lets a host preserve selected tool causes rather than making them program-visible errors. */
+  propagateToolCause?: ToolRuntime.Hooks<Services<Provided>>["propagateToolCause"]
   /** Host functions exposed as globals; see `Extension.make`. */
   extensions?: ReadonlyArray<Extension>
   /** Resource limits enforced on each execution. */
@@ -120,7 +122,7 @@ export type Result = typeof Result.Type
 /** Reusable confined runtime over explicit tools. */
 export type Runtime<R = never> = {
   readonly catalog: ReadonlyArray<ToolDescription>
-  readonly execute: (code: string) => Effect.Effect<Result, never, R>
+  readonly execute: (code: string) => Effect.Effect<Result, unknown, R>
 }
 
 const validateLimit = (name: keyof ExecutionLimits, value: number | undefined, minimum: number): number | undefined => {
@@ -139,7 +141,7 @@ const resolveExecutionLimits = (limits?: ExecutionLimits): ResolvedExecutionLimi
 /** Executes one Effect-native CodeMode program without constructing a reusable runtime. */
 export const execute = <const Provided extends Record<string, unknown>>(
   options: ExecuteOptions<Provided>,
-): Effect.Effect<Result, never, Services<Provided>> => make(options).execute(options.code)
+): Effect.Effect<Result, unknown, Services<Provided>> => make(options).execute(options.code)
 
 /** Creates an Effect-native runtime over explicit, schema-described tools. */
 export const make = <const Provided extends Record<string, unknown> = {}>(
@@ -160,6 +162,14 @@ export const make = <const Provided extends Record<string, unknown> = {}>(
       return prepared.catalog
     },
     execute: (code) =>
-      executeProgram(code, prepared, limits, options.hooks ?? {}, (ctx) => extensionGlobals(ctx, extensions)),
+      executeProgram(
+        code,
+        prepared,
+        limits,
+        options.propagateToolCause === undefined
+          ? (options.hooks ?? {})
+          : { ...options.hooks, propagateToolCause: options.propagateToolCause },
+        (ctx) => extensionGlobals(ctx, extensions),
+      ),
   }
 }
