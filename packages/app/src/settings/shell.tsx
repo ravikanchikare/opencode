@@ -1,10 +1,12 @@
-import { Component, createEffect, createMemo, For, Show, onMount, startTransition } from "solid-js"
+import { Component, createEffect, createMemo, createResource, For, Show, onMount, startTransition } from "solid-js"
 import { createStore } from "solid-js/store"
+import { Dynamic } from "solid-js/web"
 import { Tabs } from "@opencode/ui/tabs"
-import { Icon } from "@opencode/ui/icon"
+import { Icon, type IconProps } from "@opencode/ui/icon"
 import { Menu } from "@opencode/ui/menu"
 import { Button } from "@opencode/ui/button"
 import { useLanguage } from "@/runtime/i18n/language"
+import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsGeneral } from "./general/general"
 import { SettingsAppearance } from "./appearance/appearance"
 import { SettingsExperimental } from "./experimental/experimental"
@@ -18,37 +20,22 @@ import { SettingsProjects } from "./workspaces/projects"
 import { SettingsExtensions } from "./providers/extensions"
 import { SettingsAbout } from "./about/about"
 import { SettingsServerScope } from "./server-scope"
+import { EXTENSION_PANELS } from "./extensions/panels"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { useLayout } from "@/shell/state/layout"
 import { useTabs } from "@/shell/tabs/tabs"
 import { useGlobal, useServerCtx } from "@/runtime/server/runtime"
+import { getAppComposition, type SettingsTabEntry } from "@/composition"
+import { groupSettingsTabs, type StockSettingsTab } from "./tabs"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
 import { useSettingsSurface } from "./surface"
+import { globalConfigPath } from "./config-path"
+import { settingsVersionLines } from "./version"
 import "@/settings/settings.css"
-
-const sections = [
-  [
-    { value: "general", icon: "sliders", label: "settings.tab.preferences" },
-    { value: "appearance", icon: "appearance", label: "settings.general.section.appearance" },
-    { value: "notifications", icon: "notifications", label: "settings.tab.notifications" },
-    { value: "shortcuts", icon: "keyboard", label: "settings.tab.shortcuts" },
-  ],
-  [
-    { value: "servers", icon: "server", label: "status.popover.tab.servers" },
-    { value: "projects", icon: "folder", label: "settings.tab.projects" },
-    { value: "workspaces", icon: "outline-worktree", label: "settings.tab.workspaces" },
-  ],
-  [
-    { value: "providers", icon: "providers", label: "settings.providers.title" },
-    { value: "models", icon: "models", label: "settings.models.title" },
-    { value: "extensions", icon: "extensions", label: "settings.tab.extensions" },
-  ],
-  [{ value: "experimental", icon: "flask", label: "settings.tab.experimental" }],
-  [{ value: "about", icon: "info", label: "settings.tab.about" }],
-] as const
 
 export const SettingsScreen: Component = () => {
   const language = useLanguage()
+  const platform = usePlatform()
   const dialog = useDialog()
   const surface = useSettingsSurface()
   const layout = useLayout()
@@ -100,6 +87,60 @@ export const SettingsScreen: Component = () => {
     surface.open("providers")
   }
 
+  const resetWorktreeFilter = (value: string) => {
+    if (value === "workspaces") setState("worktreeFilterReset", (current) => current + 1)
+  }
+
+  const tabComposition = getAppComposition().settingsTabs
+  const hiddenTabs = new Set(tabComposition?.hide ?? [])
+  const addedTabs = tabComposition?.add ?? []
+  const navGroups = groupSettingsTabs(addedTabs, hiddenTabs, tabComposition?.groups)
+  const addedByValue = new Map(addedTabs.map((entry) => [entry.value, entry]))
+  const [configEntries] = createResource(
+    () => {
+      if (!tabComposition?.showConfigPath) return
+      const ctx = serverCtx()
+      if (ctx?.sdk.connection.status() !== "connected") return
+      return ctx
+    },
+    (ctx) => ctx.sdk.api.config.get(),
+  )
+  const configPath = createMemo(() => globalConfigPath(configEntries() ?? []))
+  const productVersionLines = () => settingsVersionLines({ productVersion: platform.productVersion })
+  const stockTabs: Record<StockSettingsTab, { icon: IconProps["name"]; label: () => string }> = {
+    general: { icon: "sliders", label: () => language.t("settings.tab.preferences") },
+    appearance: { icon: "appearance", label: () => language.t("settings.general.section.appearance") },
+    notifications: { icon: "notifications", label: () => language.t("settings.tab.notifications") },
+    shortcuts: { icon: "keyboard", label: () => language.t("settings.tab.shortcuts") },
+    servers: { icon: "server", label: () => language.t("status.popover.tab.servers") },
+    projects: { icon: "folder", label: () => language.t("settings.tab.projects") },
+    workspaces: { icon: "outline-worktree", label: () => language.t("settings.tab.workspaces") },
+    providers: { icon: "providers", label: () => language.t("settings.providers.title") },
+    models: { icon: "models", label: () => language.t("settings.models.title") },
+    extensions: { icon: "extensions", label: () => language.t("settings.tab.extensions") },
+    experimental: { icon: "flask", label: () => language.t("settings.tab.experimental") },
+    about: { icon: "info", label: () => language.t("settings.tab.about") },
+  }
+
+  const tabDetails = (value: string) => {
+    const entry = addedByValue.get(value)
+    if (entry) return { value: entry.value, icon: entry.icon, label: entry.label }
+    if (!(value in stockTabs)) return
+    const stock = stockTabs[value as StockSettingsTab]
+    return { value, icon: stock.icon, label: stock.label() }
+  }
+
+  const NavTab: Component<{ value: string }> = (tabProps) => {
+    const item = tabDetails(tabProps.value)
+    if (!item) return
+    return (
+      <Tabs.Trigger value={item.value} onClick={() => resetWorktreeFilter(item.value)}>
+        <Icon name={item.icon} />
+        {item.label}
+      </Tabs.Trigger>
+    )
+  }
+
   return (
     <div
       ref={root}
@@ -126,12 +167,7 @@ export const SettingsScreen: Component = () => {
           </button>
           <Menu placement="bottom-end" gutter={8}>
             <Menu.Trigger as={Button} size="normal" variant="outline" class="settings-mobile-menu-trigger">
-              <span>
-                {language.t(
-                  sections.flat().find((section) => section.value === surface.tab())?.label ??
-                    "settings.tab.preferences",
-                )}
-              </span>
+              <span>{tabDetails(surface.tab())?.label ?? language.t("settings.tab.preferences")}</span>
               <Icon name="chevron-down" size="small" />
             </Menu.Trigger>
             <Menu.Portal>
@@ -140,26 +176,27 @@ export const SettingsScreen: Component = () => {
                   value={surface.tab()}
                   onChange={(value) => void startTransition(() => surface.open(value))}
                 >
-                  <For each={sections}>
+                  <For each={navGroups}>
                     {(group, index) => (
                       <>
                         <Show when={index() > 0}>
                           <Menu.Separator />
                         </Show>
                         <For each={group}>
-                          {(section) => (
-                            <Menu.RadioItem
-                              value={section.value}
-                              closeOnSelect
-                              onSelect={() => {
-                                if (section.value === "workspaces")
-                                  setState("worktreeFilterReset", (value) => value + 1)
-                              }}
-                            >
-                              <Icon name={section.icon} />
-                              {language.t(section.label)}
-                            </Menu.RadioItem>
-                          )}
+                          {(value) => {
+                            const item = tabDetails(value)
+                            if (!item) return
+                            return (
+                              <Menu.RadioItem
+                                value={item.value}
+                                closeOnSelect
+                                onSelect={() => resetWorktreeFilter(item.value)}
+                              >
+                                <Icon name={item.icon} />
+                                {item.label}
+                              </Menu.RadioItem>
+                            )
+                          }}
                         </For>
                       </>
                     )}
@@ -176,22 +213,10 @@ export const SettingsScreen: Component = () => {
               <span>{language.t("settings.backToApp")}</span>
             </button>
             <div class="flex flex-col gap-4 w-full">
-              <For each={sections}>
+              <For each={navGroups}>
                 {(group) => (
                   <div class="flex flex-col gap-1 w-full">
-                    <For each={group}>
-                      {(section) => (
-                        <Tabs.Trigger
-                          value={section.value}
-                          onClick={() => {
-                            if (section.value === "workspaces") setState("worktreeFilterReset", (value) => value + 1)
-                          }}
-                        >
-                          <Icon name={section.icon} />
-                          {language.t(section.label)}
-                        </Tabs.Trigger>
-                      )}
-                    </For>
+                    <For each={group}>{(value) => <NavTab value={value} />}</For>
                   </div>
                 )}
               </For>
@@ -211,12 +236,16 @@ export const SettingsScreen: Component = () => {
         <Tabs.Content value="shortcuts" class="settings-panel">
           <SettingsKeybinds />
         </Tabs.Content>
-        <Tabs.Content value="experimental" class="settings-panel">
-          <SettingsExperimental />
-        </Tabs.Content>
-        <Tabs.Content value="servers" class="settings-panel">
-          <SettingsServers />
-        </Tabs.Content>
+        <Show when={!hiddenTabs.has("experimental")}>
+          <Tabs.Content value="experimental" class="settings-panel">
+            <SettingsExperimental />
+          </Tabs.Content>
+        </Show>
+        <Show when={!hiddenTabs.has("servers")}>
+          <Tabs.Content value="servers" class="settings-panel">
+            <SettingsServers />
+          </Tabs.Content>
+        </Show>
         <Tabs.Content value="projects" class="settings-panel">
           <SettingsProjects />
         </Tabs.Content>
@@ -228,18 +257,62 @@ export const SettingsScreen: Component = () => {
             />
           </Tabs.Content>
           <Tabs.Content value="providers" class="settings-panel">
-            <SettingsProviders directory={directory()} onBack={showProviders} />
+            <Dynamic
+              component={getAppComposition().settingsProviders ?? SettingsProviders}
+              directory={directory()}
+              onBack={showProviders}
+            />
           </Tabs.Content>
           <Tabs.Content value="models" class="settings-panel">
             <SettingsModels />
           </Tabs.Content>
-          <Tabs.Content value="extensions" class="settings-panel">
-            <SettingsExtensions />
-          </Tabs.Content>
+          <Show when={!hiddenTabs.has("extensions")}>
+            <Tabs.Content value="extensions" class="settings-panel">
+              <SettingsExtensions />
+            </Tabs.Content>
+          </Show>
+          {/*
+            Composed tabs render *inside* the scope, so a registration gets the
+            selected server and this location without wrapping itself. They used
+            to render after the closing tag: a composed tab opened from Home had
+            no server context at all and `useServer` threw, and one opened from a
+            session silently borrowed that route's server.
+          */}
+          <For each={addedTabs}>
+            {(entry) => (
+              <Tabs.Content value={entry.value} class="settings-panel">
+                <Dynamic
+                  component={entry.panel ? EXTENSION_PANELS[entry.panel] : entry.content!}
+                  directory={directory()}
+                  onBack={showProviders}
+                />
+              </Tabs.Content>
+            )}
+          </For>
         </SettingsServerScope>
-        <Tabs.Content value="about" class="settings-panel settings-about">
-          <SettingsAbout active={surface.tab() === "about"} />
-        </Tabs.Content>
+        <Show when={!hiddenTabs.has("about")}>
+          <Tabs.Content value="about" class="settings-panel settings-about">
+            <SettingsAbout active={surface.tab() === "about"} />
+            <Show when={productVersionLines().length > 0 || configPath()}>
+              <div class="settings-about-distribution">
+                <For each={productVersionLines()}>
+                  {(line) => (
+                    <p title={line.title}>
+                      <bdi dir="ltr">{line.text}</bdi>
+                    </p>
+                  )}
+                </For>
+                <Show when={configPath()}>
+                  {(path) => (
+                    <p class="settings-about-config-path" title={path()}>
+                      <bdi dir="ltr">{path()}</bdi>
+                    </p>
+                  )}
+                </Show>
+              </div>
+            </Show>
+          </Tabs.Content>
+        </Show>
       </Tabs>
     </div>
   )
