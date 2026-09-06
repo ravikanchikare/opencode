@@ -9,9 +9,25 @@ export {
   type ProviderConnectionBannerSurfaceProps,
   type SettingsPanelProps,
   type SettingsProvidersSurfaceProps,
+  type SettingsExtensionPanel,
   type SettingsTabContentProps,
   type SettingsTabEntry,
 } from "./composition"
+
+export {
+  EXTENSION_PANELS,
+  ExtensionDestination,
+  ExtensionList,
+  ExtensionRow,
+  IntegrationsPanel,
+  McpPanel,
+  PluginsPanel,
+  SkillsPanel,
+  integrationAuthLabel,
+  type ExtensionPanelName,
+  type ExtensionPanelProps,
+} from "./settings/extensions/panels"
+export { useMcpServers, usePlugins, type ExtensionScope, type McpRow } from "./settings/extensions/data"
 
 export { useIntegrations } from "./providers/catalog/integrations"
 export { useMcpToggle } from "./providers/connect/mcp"

@@ -19,6 +19,7 @@ import { SettingsProjects } from "./workspaces/projects"
 import { SettingsExtensions } from "./providers/extensions"
 import { SettingsAbout } from "./about/about"
 import { SettingsServerScope } from "./server-scope"
+import { EXTENSION_PANELS } from "./extensions/panels"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLayout } from "@/shell/state/layout"
 import { useTabs } from "@/shell/tabs/tabs"
@@ -257,6 +258,24 @@ export const SettingsScreen: Component = () => {
               <SettingsExtensions />
             </Tabs.Content>
           </Show>
+          {/*
+            Composed tabs render *inside* the scope, so a registration gets the
+            selected server and this location without wrapping itself. They used
+            to render after the closing tag: a composed tab opened from Home had
+            no server context at all and `useServer` threw, and one opened from a
+            session silently borrowed that route's server.
+          */}
+          <For each={addedTabs}>
+            {(entry) => (
+              <Tabs.Content value={entry.value} class="settings-panel">
+                <Dynamic
+                  component={entry.panel ? EXTENSION_PANELS[entry.panel] : entry.content!}
+                  directory={directory()}
+                  onBack={showProviders}
+                />
+              </Tabs.Content>
+            )}
+          </For>
         </SettingsServerScope>
         <Show when={!hiddenTabs.has("about")}>
           <Tabs.Content value="about" class="settings-panel settings-about">
@@ -281,13 +300,6 @@ export const SettingsScreen: Component = () => {
             </Show>
           </Tabs.Content>
         </Show>
-        <For each={addedTabs}>
-          {(entry) => (
-            <Tabs.Content value={entry.value} class="settings-panel">
-              <Dynamic component={entry.content} directory={directory()} onBack={showProviders} />
-            </Tabs.Content>
-          )}
-        </For>
       </Tabs>
     </div>
   )

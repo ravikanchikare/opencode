@@ -24,13 +24,27 @@ export type ProviderConnectionBannerSurfaceProps = {}
 export type SettingsProvidersSurfaceProps = SettingsPanelProps
 export type SettingsTabContentProps = SettingsPanelProps
 
-export type SettingsTabEntry = {
+/**
+ * A destination the host already implements. Naming one is how a composition
+ * says "present MCP as its own tab" without restating what an MCP tab does —
+ * see `settings/extensions/panels.tsx`.
+ */
+export type SettingsExtensionPanel = "mcp" | "plugins" | "skills" | "integrations"
+
+type SettingsTabNavigation = {
   value: string
   icon: IconProps["name"]
   label: string
-  content: Component<SettingsTabContentProps>
   before?: string
 }
+
+/**
+ * Either the composition supplies the body, or it names a native panel and
+ * supplies navigation metadata only. The union is exclusive so a registration
+ * cannot quietly carry both and leave which one wins to reading order.
+ */
+export type SettingsTabEntry = SettingsTabNavigation &
+  ({ content: Component<SettingsTabContentProps>; panel?: never } | { panel: SettingsExtensionPanel; content?: never })
 
 export type AppSettingsDefaults = {
   general?: Partial<Settings["general"]>
