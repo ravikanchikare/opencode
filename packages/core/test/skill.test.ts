@@ -4,11 +4,17 @@ import { Agent } from "@opencode-ai/core/agent"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Bus } from "@opencode-ai/core/bus"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Skill } from "@opencode-ai/core/skill"
+import { extensionEnablementNode } from "./fixture/extension-enablement"
 import { testEffect } from "./lib/effect"
 
-const it = testEffect(AppNodeBuilder.build(LayerNode.group([Skill.node, Agent.node, Bus.node])))
+const it = testEffect(
+  AppNodeBuilder.build(LayerNode.group([Skill.node, Agent.node, Bus.node]), [
+    ExtensionEnablement.node.replace(extensionEnablementNode()),
+  ]),
+)
 
 const info = (id: string, description: string) =>
   Skill.Info.make({
@@ -72,6 +78,130 @@ describe("Skill", () => {
       })
 
       expect(yield* skill.list()).toEqual([info("review", "Updated")])
+    }),
+  )
+
+  it.effect("keeps disabled skills in inventory while filtering effective lookups", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      yield* skill.transform((draft) => {
+        draft.add(info("review", "Review"))
+        draft.add(info("deploy", "Deploy"))
+      })
+
+      expect(yield* skill.setEnabled(Skill.ID.make("review"), false)).toBe(true)
+      expect(yield* skill.setEnabled(Skill.ID.make("missing"), false)).toBe(false)
+      expect(yield* skill.inventory()).toEqual([
+        { ...info("review", "Review"), enabled: false, inherited: false, defaultEnabled: true },
+        { ...info("deploy", "Deploy"), enabled: true, inherited: true, defaultEnabled: true },
+      ])
+      expect(yield* skill.list()).toEqual([info("deploy", "Deploy")])
+      expect(yield* skill.get(Skill.ID.make("review"))).toBeUndefined()
+
+      expect(yield* skill.setEnabled(Skill.ID.make("review"), true)).toBe(true)
+      expect(yield* skill.get(Skill.ID.make("review"))).toEqual(info("review", "Review"))
+    }),
+  )
+
+  /**
+   * The property a plugin transform could not provide. A transform that removes
+   * skills only sees the draft as it stood when the transform replayed, so a
+   * candidate contributed by a *later* registration stayed usable. Filtering at
+   * `list` and `get` is indifferent to registration order.
+   */
+  it.effect("filters a disabled skill contributed by a later transform registration", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      yield* skill.transform((draft) => draft.add(info("ordered-review", "Early")))
+      yield* skill.setEnabled(Skill.ID.make("ordered-review"), false)
+
+      // Registered after the choice: it re-contributes the disabled candidate
+      // and adds a fresh one, exactly where a filtering transform would lose.
+      yield* skill.transform((draft) => {
+        draft.add(info("ordered-review", "Late"))
+        draft.add(info("ordered-audit", "Late audit"))
+      })
+      yield* skill.setEnabled(Skill.ID.make("ordered-audit"), false)
+
+      expect(yield* skill.list()).toEqual([])
+      expect(yield* skill.get(Skill.ID.make("ordered-review"))).toBeUndefined()
+      expect(yield* skill.get(Skill.ID.make("ordered-audit"))).toBeUndefined()
+      // Both stay inventory-visible so Settings can switch them back on.
+      expect((yield* skill.inventory()).map((item) => [item.id, item.enabled])).toEqual([
+        [Skill.ID.make("ordered-review"), false],
+        [Skill.ID.make("ordered-audit"), false],
+      ])
+    }),
+  )
+
+  /**
+   * Embedded builtins reach the host the same way a plugin's do — `SkillPlugin`
+   * calls `ctx.skill.transform` with a `/builtin/...` location — so the boundary
+   * that covers one covers the other.
+   */
+  it.effect("filters an embedded builtin skill like any other candidate", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      const builtin = Skill.Info.make({
+        id: Skill.ID.make("embedded-opencode"),
+        name: Skill.Name.make("OpenCode"),
+        description: "Builtin",
+        location: AbsolutePath.make("/builtin/opencode.md"),
+        content: "# opencode",
+      })
+      yield* skill.transform((draft) => draft.add(builtin))
+
+      expect(yield* skill.setEnabled(builtin.id, false)).toBe(true)
+      expect(yield* skill.list()).toEqual([])
+      expect(yield* skill.get(builtin.id)).toBeUndefined()
+      expect(yield* skill.inventory()).toEqual([
+        { ...builtin, enabled: false, inherited: false, defaultEnabled: true },
+      ])
+    }),
+  )
+
+  it.effect("retains enablement across candidate replacement and scopes it by ID", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      const first = info("first", "Shared name")
+      const second = { ...info("second", "Shared name"), name: first.name }
+      const registration = yield* skill.transform((draft) => {
+        draft.add(first)
+        draft.add(second)
+      })
+      yield* skill.setEnabled(first.id, false)
+
+      yield* registration.dispose
+      yield* skill.transform((draft) => {
+        draft.add({ ...first, description: "Replaced" })
+        draft.add(second)
+      })
+
+      expect(yield* skill.inventory()).toEqual([
+        { ...first, description: "Replaced", enabled: false, inherited: false, defaultEnabled: true },
+        { ...second, enabled: true, inherited: true, defaultEnabled: true },
+      ])
+      expect(yield* skill.list()).toEqual([second])
+    }),
+  )
+
+  it.effect("inherits the global default until the Location overrides or restores it", () =>
+    Effect.gen(function* () {
+      const skill = yield* Skill.Service
+      const review = info("inherited-review", "Review")
+      yield* skill.transform((draft) => draft.add(review))
+
+      expect(yield* skill.setEnabled(review.id, false, "default")).toBe(true)
+      expect(yield* skill.get(review.id)).toBeUndefined()
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: false, inherited: true, defaultEnabled: false }])
+
+      expect(yield* skill.setEnabled(review.id, true)).toBe(true)
+      expect(yield* skill.get(review.id)).toEqual(review)
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: true, inherited: false, defaultEnabled: false }])
+
+      expect(yield* skill.setEnabled(review.id, undefined)).toBe(true)
+      expect(yield* skill.get(review.id)).toBeUndefined()
+      expect(yield* skill.inventory()).toEqual([{ ...review, enabled: false, inherited: true, defaultEnabled: false }])
     }),
   )
 

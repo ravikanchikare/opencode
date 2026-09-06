@@ -16,9 +16,11 @@ import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Location } from "@opencode-ai/core/location"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { SkillDiscovery } from "@opencode-ai/core/skill/discovery"
 import { WellKnown } from "@opencode-ai/core/wellknown"
 import { emptyCredentialNode, emptyWellknownNode } from "../fixture/config-nodes"
+import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { tmpdir } from "../fixture/tmpdir"
 import { location } from "../fixture/location"
 import { testEffect } from "../lib/effect"
@@ -27,7 +29,12 @@ import { host } from "../plugin/host"
 const emptyDiscovery = SkillDiscovery.Service.of({ pull: () => Effect.succeed([]) })
 const watcherLayer = Watcher.testLayer
 const it = testEffect(
-  Layer.merge(AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node])), watcherLayer),
+  Layer.merge(
+    AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node]), [
+      ExtensionEnablement.node.replace(extensionEnablementNode()),
+    ]),
+    watcherLayer,
+  ),
 )
 const decode = Schema.decodeUnknownSync(Info)
 
@@ -192,6 +199,259 @@ describe("ConfigSkillPlugin.Plugin", () => {
           )
           const watcher = yield* Watcher.Test
           expect(yield* watcher.subscriptions()).toEqual(expected.map((item) => ({ path: item, type: "directory" })))
+        }),
+      ),
+    ),
+  )
+
+  /**
+   * `OPENCODE_MANAGED_SKILL_SOURCE_ADMISSION` is read once at plugin setup, so
+   * the variable is set around `startEntries` and restored afterwards.
+   */
+  const withAdmission = Effect.fnUntraced(function* <A, E, R>(
+    policy: { externalHarnesses: boolean },
+    effect: Effect.Effect<A, E, R>,
+  ) {
+    const key = "OPENCODE_MANAGED_SKILL_SOURCE_ADMISSION"
+    const previous = process.env[key]
+    process.env[key] = JSON.stringify(policy)
+    return yield* Effect.ensuring(
+      effect,
+      Effect.sync(() => {
+        if (previous === undefined) delete process.env[key]
+        else process.env[key] = previous
+      }),
+    )
+  })
+
+  it.live("withholds ecosystem harness skills when admission denies them", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const claude = path.join(tmp.path, "claude")
+          const agents = path.join(tmp.path, "agents")
+          const opencode = path.join(tmp.path, "opencode")
+          const home = path.join(tmp.path, "home")
+          const directory = path.join(tmp.path, "project")
+          const all = [
+            path.join(claude, "skills"),
+            path.join(agents, "skills"),
+            path.join(opencode, "skill"),
+            path.join(opencode, "skills"),
+            path.join(home, "shared"),
+          ]
+          yield* Effect.promise(() => Promise.all(all.map((item) => fs.mkdir(item, { recursive: true }))))
+
+          yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new AgentsDirectory({ type: "agents", path: AbsolutePath.make(agents) }),
+                new Directory({ type: "directory", path: AbsolutePath.make(opencode) }),
+                new Document({ type: "document", info: decode({ skills: ["~/shared"] }) }),
+              ],
+              directory,
+              home,
+            ),
+          )
+
+          const watcher = yield* Watcher.Test
+          // The two harness directories are gone; everything configured survives.
+          expect(yield* watcher.subscriptions()).toEqual(
+            [path.join(opencode, "skill"), path.join(opencode, "skills"), path.join(home, "shared")].map((item) => ({
+              path: item,
+              type: "directory",
+            })),
+          )
+        }),
+      ),
+    ),
+  )
+
+  it.live("keeps a harness directory that is also configured on its own merit", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // `.claude` is both the harness entry and an explicitly configured
+          // skills directory. The explicit configuration wins.
+          const claude = path.join(tmp.path, "claude")
+          const shared = path.join(claude, "skills")
+          const directory = path.join(tmp.path, "project")
+          yield* Effect.promise(() => fs.mkdir(shared, { recursive: true }))
+
+          yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({ type: "document", info: decode({ skills: [shared] }) }),
+              ],
+              directory,
+              tmp.path,
+            ),
+          )
+
+          const watcher = yield* Watcher.Test
+          expect(yield* watcher.subscriptions()).toEqual([{ path: shared, type: "directory" }])
+        }),
+      ),
+    ),
+  )
+
+  it.live("keeps url and explicitly configured sources when harness admission is denied", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // Admission classifies sources, not skill paths: only a directory the
+          // harness loop put in the set is denied. A URL source has no path to
+          // classify, so it is structurally unconditional.
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          const pulled = path.join(tmp.path, "pulled")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "local"), { recursive: true })
+            await fs.mkdir(path.join(pulled, "remote"), { recursive: true })
+            await write(path.join(claude, "skills"), "harness", "Harness")
+            await write(configured, "local", "Local")
+            await write(pulled, "remote", "Remote")
+          })
+          const discovery = SkillDiscovery.Service.of({
+            pull: () => Effect.succeed([AbsolutePath.make(path.join(pulled, "remote"))]),
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({
+                  type: "document",
+                  info: decode({ skills: [configured, "https://example.test/skills/"] }),
+                }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+              discovery,
+            ),
+          )
+
+          expect((yield* skill.list()).map((item) => item.id).toSorted()).toEqual([
+            Skill.ID.make("local"),
+            Skill.ID.make("remote"),
+          ])
+        }),
+      ),
+    ),
+  )
+
+  it.live("reaches the same admission result after a reload", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          // `refresh` rebuilds the harness set from the entries every time, so a
+          // rescan must not readmit what the first pass denied.
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "local"), { recursive: true })
+            await write(path.join(claude, "skills"), "harness", "Harness")
+            await write(configured, "local", "Local")
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({ type: "document", info: decode({ skills: [configured] }) }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+            ),
+          )
+          expect((yield* skill.list()).map((item) => item.id)).toEqual([Skill.ID.make("local")])
+
+          // Add a skill to each source, then trigger a rescan from the one that
+          // is watched. The denied source is neither watched nor reloaded.
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "late"), { recursive: true })
+            await fs.mkdir(path.join(configured, "added"), { recursive: true })
+            await write(path.join(claude, "skills"), "late", "Late")
+            await write(configured, "added", "Added")
+          })
+          yield* emitAndWait({ type: "create", path: path.join(configured, "added", "SKILL.md") })
+
+          expect((yield* skill.list()).map((item) => item.id).toSorted()).toEqual([
+            Skill.ID.make("added"),
+            Skill.ID.make("local"),
+          ])
+        }),
+      ),
+    ),
+  )
+
+  /**
+   * The two mechanisms are independent and compose in one direction only.
+   * Admission decides whether a source produces a candidate at all; a denied
+   * source is absent even from inventory, so Settings cannot switch it back on.
+   * Enablement decides whether an existing candidate is available, and a
+   * disabled candidate stays in inventory precisely so it can be restored.
+   */
+  it.live("keeps source admission ahead of enablement, and enablement inventory-visible", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "precedence-harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "precedence-off"), { recursive: true })
+            await fs.mkdir(path.join(configured, "precedence-on"), { recursive: true })
+            await fs.mkdir(path.join(tmp.path, "pulled", "precedence-url"), { recursive: true })
+            await write(path.join(claude, "skills"), "precedence-harness", "Harness")
+            await write(configured, "precedence-off", "Disabled")
+            await write(configured, "precedence-on", "Enabled")
+            await write(path.join(tmp.path, "pulled"), "precedence-url", "From a catalog")
+          })
+          // A url source produces ordinary candidates, so enablement reaches
+          // them by id like any other.
+          const discovery = SkillDiscovery.Service.of({
+            pull: () => Effect.succeed([AbsolutePath.make(path.join(tmp.path, "pulled", "precedence-url"))]),
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({
+                  type: "document",
+                  info: decode({ skills: [configured, "https://example.test/skills/"] }),
+                }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+              discovery,
+            ),
+          )
+
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-off"), false)).toBe(true)
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-url"), false)).toBe(true)
+          // Never admitted, so there is nothing to disable or restore.
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-harness"), false)).toBe(false)
+
+          expect((yield* skill.inventory()).map((item) => [item.id, item.enabled])).toEqual([
+            [Skill.ID.make("precedence-off"), false],
+            [Skill.ID.make("precedence-on"), true],
+            [Skill.ID.make("precedence-url"), false],
+          ])
+          expect((yield* skill.list()).map((item) => item.id)).toEqual([Skill.ID.make("precedence-on")])
+          expect(yield* skill.get(Skill.ID.make("precedence-off"))).toBeUndefined()
+          expect(yield* skill.get(Skill.ID.make("precedence-url"))).toBeUndefined()
+          expect(yield* skill.get(Skill.ID.make("precedence-harness"))).toBeUndefined()
         }),
       ),
     ),

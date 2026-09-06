@@ -5,10 +5,14 @@ import { Document, Info } from "@opencode-ai/schema/config"
 import { Effect, Layer, Stream } from "effect"
 import { SkillPlugin } from "@opencode-ai/core/plugin/skill"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { testEffect } from "../lib/effect"
+import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { host } from "./host"
 
-const it = testEffect(AppNodeBuilder.build(Skill.node))
+const it = testEffect(
+  AppNodeBuilder.build(Skill.node, [ExtensionEnablement.node.replace(extensionEnablementNode())]),
+)
 const config = (plugins: Info["plugins"] = []) =>
   Layer.succeed(
     Config.Service,
