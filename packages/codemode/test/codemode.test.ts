@@ -593,6 +593,37 @@ describe("CodeMode schema flexibility", () => {
     expect(search.ok).toBe(true)
   })
 
+  test("accepts tools.search as a catalog search compatibility alias", async () => {
+    const lookup = Tool.make({
+      description: "Look up a user",
+      input: Schema.Struct({ login: Schema.String }),
+      execute: ({ login }) => Effect.succeed(login),
+    })
+    const runtime = CodeMode.make({ tools: { users: { lookup } } })
+
+    const result = await Effect.runPromise(
+      runtime.execute(`return await tools.search({ query: "look up user", limit: 10 })`),
+    )
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value).toMatchObject({ items: [{ path: "tools.users.lookup" }] })
+  })
+
+  test("preserves a registered root search tool", async () => {
+    const search = Tool.make({
+      description: "Search an application",
+      input: Schema.Struct({ query: Schema.String }),
+      output: Schema.String,
+      execute: ({ query }) => Effect.succeed(`application:${query}`),
+    })
+    const runtime = CodeMode.make({ tools: { search } })
+
+    const result = await Effect.runPromise(runtime.execute(`return await tools.search({ query: "customer" })`))
+
+    expect(result.ok).toBe(true)
+    if (result.ok) expect(result.value).toBe("application:customer")
+  })
+
   test("renders JSON Schema outputs and $defs references", async () => {
     const lookup = Tool.make({
       description: "Look up a user",

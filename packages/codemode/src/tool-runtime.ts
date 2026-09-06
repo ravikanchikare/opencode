@@ -409,7 +409,14 @@ export const make = <R>(
     keys: (path) => namespaceKeys(root, path),
     search: (args) => Effect.suspend(() => executeTool("search", searchTool, args)),
     execute: (path, args) =>
-      Effect.suspend(() => executeTool(canonicalSegments(path).join("."), resolve(root, path), args)),
+      Effect.gen(function* () {
+        const segments = canonicalSegments(path)
+        if (segments.length === 1 && segments[0] === "search" && lookup(root, segments) === undefined)
+          return yield* executeTool("search", searchTool, args)
+        const name = segments.join(".")
+        const tool = resolve(root, segments)
+        return yield* executeTool(name, tool, args)
+      }),
   }
 }
 
