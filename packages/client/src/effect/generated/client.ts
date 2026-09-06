@@ -19,6 +19,8 @@ import type {
   PluginAwaitActivationOutput,
   PluginCheckInput,
   PluginCheckOutput,
+  PluginSetOptionsInput,
+  PluginSetOptionsOutput,
   PluginUpdateInput,
   PluginUpdateOutput,
   SessionListInput,
@@ -342,6 +344,16 @@ const EndpointPluginCheck = (raw: RawClient["server.plugin"]) => (input?: Plugin
     ),
   )
 
+type PluginSetOptionsRequest = Parameters<RawClient["server.plugin"]["plugin.setOptions"]>[0]
+const EndpointPluginSetOptions = (raw: RawClient["server.plugin"]) => (input: PluginSetOptionsInput) =>
+  preserveEffect<PluginSetOptionsOutput>()(
+    raw["plugin.setOptions"]({
+      params: { plugin: input["plugin"] },
+      query: { location: input["location"] },
+      payload: input["payload"],
+    } as PluginSetOptionsRequest).pipe(Effect.mapError(mapClientError)),
+  )
+
 const EndpointPluginUpdate = (raw: RawClient["server.plugin"]) => (input: PluginUpdateInput) =>
   preserveEffect<PluginUpdateOutput>()(
     raw["plugin.update"]({ query: { location: input["location"] }, payload: { targets: input["targets"] } }).pipe(
@@ -353,6 +365,7 @@ const adaptGroupPlugin = (raw: RawClient["server.plugin"]) => ({
   list: EndpointPluginList(raw),
   awaitActivation: EndpointPluginAwaitActivation(raw),
   check: EndpointPluginCheck(raw),
+  setOptions: EndpointPluginSetOptions(raw),
   update: EndpointPluginUpdate(raw),
 })
 
