@@ -18,10 +18,24 @@ export interface Interface {
 
 export type Failure = Plugin.Info & { readonly state: Extract<Plugin.State, { readonly status: "failed" }> }
 
-export type Generation = PluginDefinition & {
+export type Generation = Omit<PluginDefinition, "options"> & {
   readonly revision: string
   readonly source?: Plugin.Source
   readonly features?: Plugin.Features
+  readonly optionValues?: Record<string, unknown>
+  readonly optionDescriptors?: PluginDefinition["options"]
+}
+
+export function fromDefinition(
+  plugin: PluginDefinition,
+  extra: Pick<Generation, "revision"> & Partial<Pick<Generation, "source" | "features" | "optionValues">>,
+): Generation {
+  return {
+    id: plugin.id,
+    effect: plugin.effect,
+    ...extra,
+    ...(plugin.options ? { optionDescriptors: plugin.options } : {}),
+  }
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Plugin") {}

@@ -39,6 +39,7 @@ describe("an empty composition is upstream", () => {
     expect(composition.providerConnectionBanner).toBeUndefined()
     expect(composition.settingsDefaults).toBeUndefined()
     expect(composition.settingsTabs).toBeUndefined()
+    expect(composition.pluginOptionLabels).toBeUndefined()
   })
 
   test("keeps stock settings defaults", () => {
