@@ -7,8 +7,12 @@ import { useMcpToggle } from "@/providers/connect/mcp"
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
-import { pluginLabels } from "@/providers/catalog/plugin"
+import { pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
+import { PluginOptionsEditor } from "@/settings/extensions/plugin-options-editor"
+import { currentPlugin } from "@/settings/extensions/plugin-options"
+import type { PluginInfo } from "@opencode-ai/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
+import "@/settings/extensions/extensions.css"
 
 type SkillItem = {
   name: string
@@ -94,21 +98,35 @@ export const ProjectSettingsExtensions: Component = () => {
     data.location.mcp.server.list({ directory: directorySDK().directory })?.find((server) => server.name === name)
       ?.status.status === "connected"
 
-  const [globalPluginList] = createResource(
+  const [globalPluginList, { refetch: refetchGlobalPlugins }] = createResource(
     () => serverSDK.connection.status() === "connected",
-    () => serverSDK.api.plugin.list().then((result) => result.data),
-    { initialValue: [] },
+    async () => {
+      await serverSDK.api.plugin.awaitActivation()
+      return serverSDK.api.plugin.list().then((result) => result.data)
+    },
+    { initialValue: [] as PluginInfo[] },
   )
-  const [projectPluginList] = createResource(
+  const [projectPluginList, { refetch: refetchProjectPlugins }] = createResource(
     () => (serverSDK.connection.status() === "connected" ? directorySDK().directory : undefined),
-    (directory) => serverSDK.api.plugin.list({ location: { directory } }).then((result) => result.data),
-    { initialValue: [] },
+    async (directory) => {
+      const location = { directory }
+      await serverSDK.api.plugin.awaitActivation({ location })
+      return serverSDK.api.plugin.list({ location }).then((result) => result.data)
+    },
+    { initialValue: [] as PluginInfo[] },
   )
-  const globalPlugins = createMemo(() => pluginLabels(globalPluginList.latest ?? []))
+  const globalPlugins = createMemo(() => (globalPluginList.latest ?? []).filter((plugin) => plugin.source.type !== "builtin"))
   const projectPlugins = createMemo(() => {
-    const shared = new Set(globalPlugins())
-    return pluginLabels(projectPluginList.latest ?? []).filter((name) => !shared.has(name))
+    const shared = new Set(pluginLabels(globalPlugins()))
+    return (projectPluginList.latest ?? []).filter(
+      (plugin) => plugin.source.type !== "builtin" && !shared.has(pluginLabel(plugin)),
+    )
   })
+  const [selectedPlugin, setSelectedPlugin] = createSignal<string>()
+  const current = createMemo(() =>
+    currentPlugin([...(projectPluginList.latest ?? []), ...(globalPluginList.latest ?? [])], selectedPlugin()),
+  )
+  const refetchPlugins = () => Promise.all([refetchGlobalPlugins(), refetchProjectPlugins()])
 
   const serverSkills = createMemo(() => data.location.skill.list() ?? [])
   const projectSkills = createMemo(() => {
@@ -138,7 +156,15 @@ export const ProjectSettingsExtensions: Component = () => {
     </For>
   )
 
-  const pluginRows = (items: string[]) => <For each={items}>{(name) => <ExtensionRow icon="cube" name={name} />}</For>
+  const pluginRows = (items: PluginInfo[]) => (
+    <For each={items}>
+      {(plugin) => (
+        <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id ?? ""))}>
+          <ExtensionRow icon="cube" name={pluginLabel(plugin)} />
+        </button>
+      )}
+    </For>
+  )
 
   const skillRows = (items: SkillItem[]) => (
     <For each={items}>{(item) => <ExtensionRow icon="post-skill" name={item.name} />}</For>
@@ -174,14 +200,30 @@ export const ProjectSettingsExtensions: Component = () => {
 
         <Tabs.Content value="plugins">
           <div class="project-settings-extension-section">
-            <div class="project-settings-extension-section-header">
-              <span>{language.t("project.settings.extensions.added")}</span>
-              <span>{language.t("settings.extensions.manageConfig")}</span>
-            </div>
-            <Show when={projectPlugins().length > 0}>
-              <ExtensionCard>{pluginRows(projectPlugins())}</ExtensionCard>
+            <Show
+              when={current()}
+              fallback={
+                <>
+                  <div class="project-settings-extension-section-header">
+                    <span>{language.t("project.settings.extensions.added")}</span>
+                    <span>{language.t("settings.extensions.manageConfig")}</span>
+                  </div>
+                  <Show when={projectPlugins().length > 0}>
+                    <ExtensionCard>{pluginRows(projectPlugins())}</ExtensionCard>
+                  </Show>
+                  <SharedSection count={globalPlugins().length}>{pluginRows(globalPlugins())}</SharedSection>
+                </>
+              }
+            >
+              {(plugin) => (
+                <PluginOptionsEditor
+                  plugin={plugin()}
+                  directory={directorySDK().directory}
+                  onBack={() => setSelectedPlugin()}
+                  onChanged={() => void refetchPlugins()}
+                />
+              )}
             </Show>
-            <SharedSection count={globalPlugins().length}>{pluginRows(globalPlugins())}</SharedSection>
           </div>
         </Tabs.Content>
 

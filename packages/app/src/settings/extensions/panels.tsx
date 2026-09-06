@@ -29,6 +29,9 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { SettingsServerScope } from "@/settings/server-scope"
 import { showToast } from "@/shell/notifications/toast"
 import { useMcpServers, usePlugins } from "./data"
+import { PluginOptionsEditor } from "./plugin-options-editor"
+import { currentPlugin } from "./plugin-options"
+import { pluginLabel } from "@/providers/catalog/plugin"
 import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
 import {
   integrationSubtitle,
@@ -84,12 +87,37 @@ export const McpPanel: Component<ExtensionPanelProps> = (props) => {
  */
 export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
   const plugins = usePlugins(() => props.directory)
+  const [selected, setSelected] = createSignal<string>()
+  const current = createMemo(() => currentPlugin(plugins.rows(), selected()))
 
   return (
     <ExtensionDestination title="Plugins" description="Plugins loaded for this location, and any that failed to start.">
-      <ExtensionList each={plugins.names()} empty="No plugins are installed">
-        {(name) => <ExtensionRow icon="cube" name={name} mono detail={plugins.failures().get(name)} />}
-      </ExtensionList>
+      <Show
+        when={current()}
+        fallback={
+          <ExtensionList each={plugins.rows()} empty="No plugins are installed">
+            {(plugin) => (
+              <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id ?? ""))}>
+                <ExtensionRow
+                  icon="cube"
+                  name={pluginLabel(plugin)}
+                  mono
+                  detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                />
+              </button>
+            )}
+          </ExtensionList>
+        }
+      >
+        {(plugin) => (
+          <PluginOptionsEditor
+            plugin={plugin()}
+            directory={props.directory}
+            onBack={() => setSelected()}
+            onChanged={() => void plugins.refetch()}
+          />
+        )}
+      </Show>
     </ExtensionDestination>
   )
 }
