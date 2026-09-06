@@ -36,8 +36,18 @@ it.live(
     Effect.gen(function* () {
       const directory = yield* tmpdirScoped()
       const location = Location.Ref.make({ directory: AbsolutePath.make(directory.path) })
-      const first = { id: Session.ID.make("ses_instance_first"), tool: "instance_first", temperature: 0.1 }
-      const second = { id: Session.ID.make("ses_instance_second"), tool: "instance_second", temperature: 0.2 }
+      const first = {
+        id: Session.ID.make("ses_instance_first"),
+        tool: "instance_first",
+        temperature: 0.1,
+        metadata: { retained: "first", omitted: undefined },
+      }
+      const second = {
+        id: Session.ID.make("ses_instance_second"),
+        tool: "instance_second",
+        temperature: 0.2,
+        metadata: { source: "second" },
+      }
       const configs = [first, second]
       const boots: Session.ID[] = []
       const executed: Session.ID[] = []
@@ -252,8 +262,15 @@ it.live(
               sessionID: config.id,
               action: "instance-test",
               resources: [config.tool],
+              metadata: config.metadata,
             }
             expect(yield* permissions.ask(permission)).toEqual({ id: permission.id, effect: "ask" })
+            const secondPermission = {
+              ...permission,
+              id: Permission.ID.create(),
+              resources: [`${config.tool}:second`],
+            }
+            expect(yield* permissions.ask(secondPermission)).toEqual({ id: secondPermission.id, effect: "ask" })
             const foreignID = config.id === first.id ? second.id : first.id
             const foreignForm = yield* forms.create({
               sessionID: foreignID,
@@ -268,7 +285,30 @@ it.live(
             return {
               session,
               form,
-              permission: { ...permission, message: config.tool },
+              permission: {
+                id: permission.id,
+                sessionID: permission.sessionID,
+                action: permission.action,
+                resources: permission.resources,
+                ...(config.metadata === undefined
+                  ? {}
+                  : {
+                      metadata: config.id === first.id ? { retained: "first" } : config.metadata,
+                    }),
+                message: config.tool,
+              },
+              secondPermission: {
+                id: secondPermission.id,
+                sessionID: secondPermission.sessionID,
+                action: secondPermission.action,
+                resources: secondPermission.resources,
+                ...(config.metadata === undefined
+                  ? {}
+                  : {
+                      metadata: config.id === first.id ? { retained: "first" } : config.metadata,
+                    }),
+                message: config.tool,
+              },
               foreignForm,
               foreignPermission,
             }
@@ -281,7 +321,9 @@ it.live(
         expect(yield* Effect.promise<unknown>(() => forms.json())).toEqual({ data: [entry.form] })
         const permissions = yield* request(`/api/session/${entry.session.id}/permission`)
         expect(permissions.status).toBe(200)
-        expect(yield* Effect.promise<unknown>(() => permissions.json())).toEqual({ data: [entry.permission] })
+        expect(yield* Effect.promise<unknown>(() => permissions.json())).toEqual({
+          data: [entry.permission, entry.secondPermission],
+        })
 
         // These IDs exist in the selected instance, but belong to the other Session.
         expect((yield* request(`/api/session/${entry.session.id}/form/${entry.foreignForm.id}`)).status).toBe(404)
@@ -318,6 +360,11 @@ it.live(
             decision: "once",
           })).status,
         ).toBe(204)
+        expect(
+          (yield* request(`/api/session/${entry.session.id}/permission/${entry.secondPermission.id}/reply`, {
+            decision: "once",
+          })).status,
+        ).toBe(204)
         yield* Effect.gen(function* () {
           const forms = yield* Form.Service
           const permissions = yield* Permission.Service
@@ -326,6 +373,7 @@ it.live(
             answer: { answer: entry.session.id },
           })
           expect(yield* permissions.get(entry.permission.id)).toBeUndefined()
+          expect(yield* permissions.get(entry.secondPermission.id)).toBeUndefined()
         }).pipe(instances.provide(entry.session))
       }
       expect(boots).toEqual([first.id, second.id])
