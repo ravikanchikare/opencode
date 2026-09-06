@@ -28,9 +28,11 @@ import { LocationServiceMap } from "@opencode-ai/core/location-service-map"
 import type { LocationServices } from "@opencode-ai/core/location-services"
 import { Image } from "@opencode-ai/core/image"
 import { Plugin } from "@opencode-ai/core/plugin"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { PluginHooks } from "@opencode-ai/core/plugin/hooks"
 import { Snapshot } from "@opencode-ai/core/snapshot"
 import { Skill } from "@opencode-ai/core/skill"
+import { extensionEnablementNode } from "./fixture/extension-enablement"
 import { tmpdirScoped } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 
@@ -72,7 +74,10 @@ const locations = makeGlobalNode({
           // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
           Layer.mergeAll(
             LayerNode.compile(LayerNode.group([PluginHooks.node, Skill.node]), {
-              replacements: [Bus.node.replace(Layer.succeed(Bus.Service, bus))],
+              replacements: [
+                Bus.node.replace(Layer.succeed(Bus.Service, bus)),
+                ExtensionEnablement.node.replace(extensionEnablementNode()),
+              ],
             }),
             Layer.mock(Image.Service, {
               normalize: (_resource, content) =>
