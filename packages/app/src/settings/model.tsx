@@ -3,6 +3,7 @@ import { createEffect, createMemo } from "solid-js"
 import { Effect, Option, Schema, SchemaGetter } from "effect"
 import { createSimpleContext } from "@opencode/ui/context"
 import { timelinePresets, type TimelineCategory, type TimelineDetail } from "@opencode/session-ui/timeline/detail"
+import { getAppComposition, type AppSettingsDefaults } from "@/composition"
 import { persisted } from "@/runtime/persistence/storage"
 import { Persistence } from "@/runtime/persistence/schema"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
@@ -269,6 +270,22 @@ export const defaultSettings: Settings = {
   },
 }
 
+export function resolveSettingsDefaults(overrides?: AppSettingsDefaults): Settings {
+  if (!overrides) return defaultSettings
+  return {
+    general: { ...defaultSettings.general, ...overrides.general },
+    // Panel expansion the host persists as the user works; not a distribution
+    // preference, so it passes through rather than joining AppSettingsDefaults.
+    sessionSummary: defaultSettings.sessionSummary,
+    appearance: { ...defaultSettings.appearance, ...overrides.appearance },
+    keybinds: overrides.keybinds ?? defaultSettings.keybinds,
+    permissions: { ...defaultSettings.permissions, ...overrides.permissions },
+    workspaces: { ...defaultSettings.workspaces, ...overrides.workspaces },
+    notifications: { ...defaultSettings.notifications, ...overrides.notifications },
+    sounds: { ...defaultSettings.sounds, ...overrides.sounds },
+  }
+}
+
 function withFallback<T>(read: () => T | undefined, fallback: T) {
   return createMemo(() => read() ?? fallback)
 }
@@ -277,6 +294,7 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
   name: "Settings",
   gate: false,
   init: () => {
+    const defaultSettings = resolveSettingsDefaults(getAppComposition().settingsDefaults)
     const [store, setStore, , ready] = persisted({ key: "settings.v3" }, settingsPersistence, defaultSettings)
     const showFileTree = withFallback(() => store.general?.showFileTree, defaultSettings.general.showFileTree)
     const showSearch = withFallback(() => store.general?.showSearch, defaultSettings.general.showSearch)
