@@ -1,4 +1,6 @@
 import { app } from "electron"
+import { readPackagedProvider } from "./updater/packaged-provider"
+import { selectUpdater, stockUpdateFeedConfigured, type UpdaterSelection } from "./updater/selection"
 
 type Channel = "local" | "dev" | "beta" | "prod"
 const raw = import.meta.env.OPENCODE_CHANNEL
@@ -20,10 +22,22 @@ export const SERVICE_ID =
     .replace(/^-+|-+$/g, "") ||
   "opencode"
 
-export const UPDATER_ENABLED =
-  app.isPackaged &&
-  CHANNEL !== "dev" &&
-  (!APP_ID ||
-    Boolean(
-      import.meta.env.OPENCODE_DESKTOP_UPDATE_URL?.trim() || import.meta.env.OPENCODE_DESKTOP_UPDATE_REPO?.trim(),
-    ))
+/**
+ * Which updater this build runs, resolved once.
+ *
+ * Read lazily: `process.resourcesPath` is only meaningful in a packaged app,
+ * and nothing should pay for a filesystem read at import time.
+ */
+let selection: UpdaterSelection | undefined
+export function updaterSelection(): UpdaterSelection {
+  return (selection ??= selectUpdater({
+    packaged: app.isPackaged,
+    channel: CHANNEL,
+    provider: readPackagedProvider({ packaged: app.isPackaged, resourcesPath: process.resourcesPath }),
+    stockFeed: stockUpdateFeedConfigured({
+      appId: APP_ID,
+      updateUrl: import.meta.env.OPENCODE_DESKTOP_UPDATE_URL,
+      updateRepo: import.meta.env.OPENCODE_DESKTOP_UPDATE_REPO,
+    }),
+  }))
+}

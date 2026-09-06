@@ -7,7 +7,6 @@ interface ImportMetaEnv {
   readonly OPENCODE_DESKTOP_ICON_DIR?: string
   readonly OPENCODE_DESKTOP_UPDATE_URL?: string
   readonly OPENCODE_DESKTOP_UPDATE_REPO?: string
-  readonly OPENCODE_DESKTOP_UPDATE_PUBLIC_KEY?: string
   readonly OPENCODE_DESKTOP_MANUAL_UPDATE_URL?: string
   readonly OPENCODE_DESKTOP_HIDE_MENU?: string
   readonly OPENCODE_APP_ID?: string

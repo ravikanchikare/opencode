@@ -16,6 +16,12 @@ export type Platform = {
 export type Dependencies = {
   readonly currentVersion: string
   readonly platform?: Platform
+  /**
+   * Why there is no platform, when a provider was selected and could not be
+   * used. Distinct from having no platform at all: this build wants updates
+   * and cannot deliver them, so it opens in `error` rather than `disabled`.
+   */
+  readonly unavailable?: string
   readonly prepareToRestart: Effect.Effect<void, unknown>
   readonly persistence: {
     readonly get: Effect.Effect<{ version: string } | undefined, unknown>
@@ -44,7 +50,11 @@ export const layerWith = (dependencies: Dependencies) => Layer.effect(Service, m
 
 export const make = Effect.fn("Updater.make")(function* (dependencies: Dependencies) {
   const runFork = Effect.runForkWith(yield* Effect.context())
-  let state: UpdaterState = dependencies.platform ? { status: "idle" } : { status: "disabled" }
+  let state: UpdaterState = dependencies.platform
+    ? { status: "idle" }
+    : dependencies.unavailable
+      ? { status: "error", message: dependencies.unavailable }
+      : { status: "disabled" }
   let pending: Deferred.Deferred<UpdaterState> | undefined
   let installing: Deferred.Deferred<void, unknown> | undefined
   const listeners = new Set<(state: UpdaterState) => void>()

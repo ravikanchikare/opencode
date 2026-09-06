@@ -69,9 +69,11 @@ publication:
 
 Keep distribution-specific implementation in the enterprise starter whenever
 possible. The OpenCode fork should retain only generic, reusable seams; for
-example, branded macOS loads a starter-provided updater platform while the
-starter owns Sparkle, native code, packaging payloads, appcasts, signing, and
-release automation.
+example, a packaged build may name an updater provider in
+`updater-provider.json` and the fork loads it and forwards its `config`
+untouched, while the distribution owns that provider's implementation, native
+code, packaging payloads, feeds, keys, signing, and release automation. The
+fork names no updater technology and infers no updater from branding.
 
 ## Live V2 TUI Testing
 
