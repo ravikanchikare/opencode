@@ -383,6 +383,16 @@ export const make = Effect.fn("PluginHost.make")(function* (
     },
     permission: {
       hook: (name, callback) => hooks.register("permission", name, callback),
+      assert: (input) =>
+        permission.assert(input).pipe(
+          Effect.mapError(
+            (error) =>
+              new Tool.Error({
+                message: error.message,
+                error,
+              }),
+          ),
+        ),
       list: (input) => permission.forSession(input.sessionID),
       get: (input) =>
         permission
