@@ -49,15 +49,23 @@ export function Home() {
             <HomeProjects projects={projects} scroll={scroll} />
           </Show>
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
-          <Dynamic
-            component={getAppComposition().homeUtilityNav ?? HomeUtilityNav}
-            class="flex lg:hidden"
-            onOpenSettings={projects.utility.settings}
-            onOpenHelp={projects.utility.help}
-            language={projects.copy.language}
-          />
         </div>
       </ScrollView>
+      {/*
+        Stock position: a fixed strip below the scroll region, shown only
+        between the md and lg breakpoints. Only the component is composable —
+        moving it inside `ScrollView` made it scroll away and appear below md,
+        which is a layout change no composition asked for.
+      */}
+      <div class="hidden shrink-0 px-3 py-2 md:block lg:hidden">
+        <Dynamic
+          component={getAppComposition().homeUtilityNav ?? HomeUtilityNav}
+          class="flex"
+          onOpenSettings={projects.utility.settings}
+          onOpenHelp={projects.utility.help}
+          language={projects.copy.language}
+        />
+      </div>
     </div>
   )
 }

@@ -74,7 +74,10 @@ export const DialogConnectProvider: Component<{
   }
 
   return (
-    <Dialog>
+    <Dialog
+      containerClass="!h-[min(calc(100vh_-_16px),512px)] !w-[min(calc(100vw_-_16px),640px)]"
+      class="[font-family:var(--v2-font-family-sans)] [&_[data-slot=dialog-header]]:!px-5 [&_[data-slot=dialog-header-title]]:!text-[15px] [&_[data-slot=dialog-header-title]]:!tracking-[-0.13px]"
+    >
       <DialogHeader closeLabel={language.t("common.close")}>
         <Show
           when={controller.selected()}
