@@ -1,5 +1,5 @@
 export * as Plugin from "./plugin.js"
-export { Event, ID, Info, Source, State } from "@opencode-ai/schema/plugin"
+export { Event, ID, Info, OptionDescriptor, OptionState, Source, State } from "@opencode-ai/schema/plugin"
 
 import { Plugin } from "@opencode-ai/schema/plugin"
 import { Node } from "@opencode-ai/util/effect/app-node"
@@ -9,10 +9,11 @@ import { Cause, Context, Effect, Exit, Latch, Layer, Logger, Queue, References, 
 import { Bus } from "./bus.js"
 import { KV } from "./kv.js"
 import { PluginHost } from "./plugin/host.js"
+import { PluginOptions } from "./plugin/options.js"
 import { type Failure, type Generation, Service } from "./plugin/service.js"
 import { State } from "./state.js"
 
-export { awaitActivation, type Generation, type Interface, Service } from "./plugin/service.js"
+export { awaitActivation, fromDefinition, type Generation, type Interface, Service } from "./plugin/service.js"
 
 const layer = Layer.effect(
   Service,
@@ -62,7 +63,11 @@ const layer = Layer.effect(
         })
       })
       const exit = yield* Effect.suspend(() =>
-        plugin.effect({ ...host, storage: PluginHost.storage(kv, plugin.id) }),
+        plugin.effect({
+          ...host,
+          storage: PluginHost.storage(kv, plugin.id),
+          options: plugin.optionValues ?? {},
+        }),
       ).pipe(
         grouped,
         inherit,
@@ -284,13 +289,27 @@ type PendingFailure = {
 
 function slotInfo(slot: Slot): Plugin.Info {
   const failure = slot.activation?.failure ?? (slot.error === undefined ? undefined : { error: slot.error })
+  const descriptors = slot.plugin.optionDescriptors ?? []
+  const effective = slot.plugin.optionValues ?? {}
   return {
     id: Plugin.ID.make(slot.plugin.id),
     source: slot.plugin.source ?? { type: "builtin" },
     state: failure === undefined ? { status: "active" } : { status: "failed", ...failure },
     features: { server: true, ...slot.plugin.features },
+    ...(descriptors.length
+      ? {
+          options: {
+            descriptors,
+            effective: PluginOptions.publicValues(effective, descriptors),
+            inherited: true,
+            scope: "location" as const,
+          },
+        }
+      : {}),
   }
 }
+
+
 
 export const node: LayerNode.Provider<Service, PersistentPty.UnavailableError, typeof Node.tags.values.location> =
   Node.makeLocationNode({
