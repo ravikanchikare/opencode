@@ -6,6 +6,7 @@ import {
   settingsSchema,
   settingsPersistence,
   defaultSettings,
+  resolveSettingsDefaults,
   monoDefault,
   monoFontFamily,
   sansDefault,
@@ -34,6 +35,14 @@ describe("settings timeline detail migration", () => {
 })
 
 describe("settings schema", () => {
+  test("merges distribution defaults without changing stock defaults", () => {
+    expect(resolveSettingsDefaults({ general: { followUpBehavior: "queue" } })).toMatchObject({
+      general: { followUpBehavior: "queue", autoSave: true },
+      appearance: defaultSettings.appearance,
+    })
+    expect(defaultSettings.general.followUpBehavior).toBe("steer")
+  })
+
   test("uses the supplied initial values independently of the current schema", () => {
     const initial = {
       ...defaultSettings,
