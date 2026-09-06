@@ -59,7 +59,7 @@ export function useMcpServers(directory: ExtensionScope) {
 export function usePlugins(directory: ExtensionScope) {
   const serverSDK = useServerSDK()
 
-  const [plugins] = createResource(
+  const [plugins, { refetch }] = createResource(
     () => scopeKey(serverSDK.connection.status() === "connected", directory()),
     async (key: string) => {
       const location = locationOf(key === "@server" ? undefined : key)
@@ -72,6 +72,9 @@ export function usePlugins(directory: ExtensionScope) {
   )
 
   const names = createMemo(() => pluginLabels(plugins.latest ?? []))
+  const rows = createMemo(() =>
+    (plugins.latest ?? []).filter((plugin) => plugin.source.type !== "builtin"),
+  )
 
   /** Failure text by label, so a row can explain why a plugin is not loaded. */
   const failures = createMemo(
@@ -83,7 +86,7 @@ export function usePlugins(directory: ExtensionScope) {
       ),
   )
 
-  return { names, failures }
+  return { names, rows, failures, refetch }
 }
 
 /**

@@ -1,16 +1,38 @@
 import { Plugin } from "@opencode/core/plugin"
+import { PluginOptionConfig } from "@opencode/core/plugin/option-config"
 import { PluginUpdate } from "@opencode/core/plugin/update"
-import { InvalidRequestError, ServiceUnavailableError } from "@opencode/protocol/errors"
+import { InvalidRequestError, PluginNotFoundError, ServiceUnavailableError } from "@opencode/protocol/errors"
 import { Cause, Effect, Exit } from "effect"
+import { HttpServerRequest } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { Api } from "../api"
-import { response } from "../location"
+import { hasLocationQuery, response } from "../location"
+
+const scoped = Effect.fn("plugin.scopedInventory")(function* () {
+  const plugins = yield* Plugin.Service
+  const options = yield* PluginOptionConfig.Service
+  const scope = hasLocationQuery(yield* HttpServerRequest.HttpServerRequest) ? ("location" as const) : ("default" as const)
+  yield* plugins.awaitActivation
+  const inventory = yield* plugins.list()
+  return {
+    scope,
+    inventory: yield* Effect.forEach(inventory, (info) => options.view(info, scope)),
+  }
+})
 
 export const PluginHandler = HttpApiBuilder.group(Api, "server.plugin", (handlers) =>
   handlers
     .handle("plugin.list", () =>
       Effect.gen(function* () {
-        return yield* response(Plugin.Service.use((plugin) => plugin.list()))
+        const options = yield* PluginOptionConfig.Service
+        const scope = hasLocationQuery(yield* HttpServerRequest.HttpServerRequest)
+          ? ("location" as const)
+          : ("default" as const)
+        return yield* response(
+          Plugin.Service.use((plugin) => plugin.list()).pipe(
+            Effect.flatMap((inventory) => Effect.forEach(inventory, (info) => options.view(info, scope))),
+          ),
+        )
       }),
     )
     .handle("plugin.awaitActivation", () => Plugin.awaitActivation)
@@ -52,6 +74,38 @@ export const PluginHandler = HttpApiBuilder.group(Api, "server.plugin", (handler
             }),
           ),
         )
+      }),
+    )
+    .handle("plugin.setOptions", (ctx) =>
+      Effect.gen(function* () {
+        const { scope, inventory } = yield* scoped()
+        const current = inventory.find((plugin) => plugin.id === ctx.params.plugin)
+        if (!current)
+          return yield* new PluginNotFoundError({
+            plugin: ctx.params.plugin,
+            message: `Plugin not found: ${ctx.params.plugin}`,
+          })
+        const descriptor = current.options?.descriptors.find((item) => item.key === ctx.payload.key)
+        if (!descriptor)
+          return yield* new InvalidRequestError({
+            message: `Plugin option is not configurable: ${ctx.payload.key}`,
+            field: "key",
+          })
+        const value = "value" in ctx.payload ? ctx.payload.value : undefined
+        const options = yield* PluginOptionConfig.Service
+        yield* options.set(ctx.params.plugin, ctx.payload.key, value, scope, current.options?.descriptors).pipe(
+          Effect.mapError((error) => new InvalidRequestError({ message: error.message, field: "value" })),
+        )
+        const plugins = yield* Plugin.Service
+        yield* Effect.sleep("200 millis")
+        yield* plugins.awaitActivation
+        const refreshed = (yield* scoped()).inventory.find((plugin) => plugin.id === ctx.params.plugin)
+        if (!refreshed)
+          return yield* new PluginNotFoundError({
+            plugin: ctx.params.plugin,
+            message: `Plugin not found after applying options: ${ctx.params.plugin}`,
+          })
+        return yield* response(Effect.succeed(refreshed))
       }),
     )
     .handle("plugin.update", (ctx) =>

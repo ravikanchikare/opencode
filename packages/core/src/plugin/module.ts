@@ -10,6 +10,7 @@ import { stat } from "node:fs/promises"
 import { fileURLToPath, pathToFileURL } from "url"
 import type { ConfigPluginSource } from "../config/plugin/source.js"
 import type { Generation } from "../plugin.js"
+import { PluginOptions } from "./options.js"
 import { PluginPromise } from "./promise.js"
 import { Watcher } from "../filesystem/watcher.js"
 
@@ -61,10 +62,12 @@ const Module = Schema.Struct({
   default: Schema.Union([
     Schema.Struct({
       id: Schema.String,
+      options: Schema.Unknown.pipe(Schema.optional),
       effect: Schema.declare<Plugin["effect"]>((input): input is Plugin["effect"] => typeof input === "function"),
     }),
     Schema.Struct({
       id: Schema.String,
+      options: Schema.Unknown.pipe(Schema.optional),
       setup: Schema.declare<Parameters<typeof PluginPromise.fromPromise>[0]["setup"]>(
         (input): input is Parameters<typeof PluginPromise.fromPromise>[0]["setup"] => typeof input === "function",
       ),
@@ -113,7 +116,21 @@ const load = Effect.fn("PluginModule.load")(function* (
         }),
     ),
   )).default
-  const plugin = "effect" in value ? value : PluginPromise.fromPromise(value)
+  const plugin =
+    "effect" in value
+      ? { id: value.id, effect: value.effect }
+      : PluginPromise.fromPromise({ id: value.id, setup: value.setup })
+  const optionDescriptors =
+    value.options === undefined
+      ? undefined
+      : yield* Effect.try({
+          try: () => PluginOptions.requireDescriptors(value.options),
+          catch: (cause) =>
+            new LoadError({
+              message: cause instanceof Error ? cause.message : "Plugin option descriptors are invalid.",
+              cause,
+            }),
+        })
   return {
     id: plugin.id,
     features: {
@@ -121,6 +138,8 @@ const load = Effect.fn("PluginModule.load")(function* (
       ...(entrypoints.rpc ? { rpc: true as const } : {}),
     },
     revision: JSON.stringify([operation, loaded.version]),
+    optionValues: operation.options,
+    ...(optionDescriptors ? { optionDescriptors } : {}),
     source: path.isAbsolute(operation.target)
       ? { type: "local" as const, path: fileURLToPath(entrypoint) }
       : {
@@ -128,6 +147,6 @@ const load = Effect.fn("PluginModule.load")(function* (
           target: operation.target,
           ...(installed?.version ? { version: installed.version } : {}),
         },
-    effect: (host) => plugin.effect({ ...host, options: operation.options }),
+    effect: (host) => plugin.effect(host),
   } satisfies Generation
 })
