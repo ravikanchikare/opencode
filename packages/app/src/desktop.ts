@@ -1,4 +1,9 @@
 export { AppBaseProviders, AppInterface, preloadRoute } from "./app"
+export {
+  getAppComposition,
+  type OnboardingSurfaceProps,
+  type ProviderConnectionBannerSurfaceProps,
+} from "./composition"
 export { ACCEPTED_FILE_EXTENSIONS } from "./runtime/platform/file-picker"
 export { useCommand } from "./shell/commands/command"
 export { currentRoute, type LayoutRoute, useCurrentRoute } from "./shell/state/layout"
@@ -15,6 +20,8 @@ export type {
   BrowserPaneTarget,
 } from "./runtime/platform/browser-pane"
 export { ServerConnection, useServers } from "./runtime/server/registry"
+export { ServerProvider } from "./runtime/server/current"
+export { useSettingsSurface } from "./settings/surface"
 export { useTabs } from "./shell/tabs/tabs"
 export { createDraftStore } from "./runtime/persistence/drafts"
 export { createNamespaceStorage, type NamespaceStorage } from "./runtime/persistence/namespace"
