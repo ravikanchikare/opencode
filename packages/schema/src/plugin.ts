@@ -17,7 +17,6 @@ export const Source = Schema.Union([
     updating: Schema.Literal(true).pipe(optional),
   }),
   Schema.Struct({ type: Schema.Literal("local"), path: Schema.String }),
-  Schema.Struct({ type: Schema.Literal("managed") }),
   Schema.Struct({ type: Schema.Literal("sdk") }),
 ]).annotate({ identifier: "Plugin.Source" })
 export type Source = typeof Source.Type

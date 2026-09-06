@@ -5,6 +5,19 @@ import { Context, Effect, Layer, Schema } from "effect"
 import path from "path"
 import type { ConfigPluginSource } from "../config/plugin/source.js"
 
+/**
+ * Absolute plugin paths a packaged distribution delivers with the application.
+ *
+ * The packager is responsible for whatever verification it wants to do before
+ * naming these — the desktop app checks a manifest and a SHA-256 per file — but
+ * that all happens before this point. What arrives here is a list of paths, and
+ * what leaves is ordinary `add` operations: they are placed ahead of anything
+ * the user configured so authored configuration is applied last and wins, and
+ * from there they load, are classified, and are selected exactly like any other
+ * plugin. Nothing downstream can tell where they came from, and nothing should:
+ * an authored `-<id>` or `-*` removes one, and its inventory entry reports the
+ * `local` source that its absolute path earns it.
+ */
 const Entries = Schema.Array(Schema.String)
 const decode = Schema.decodeUnknownEffect(Schema.fromJsonString(Entries))
 
