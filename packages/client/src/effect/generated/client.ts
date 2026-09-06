@@ -191,6 +191,10 @@ import type {
   CommandListOutput,
   SkillListInput,
   SkillListOutput,
+  SkillInventoryInput,
+  SkillInventoryOutput,
+  SkillSetEnabledInput,
+  SkillSetEnabledOutput,
   RpcCallInput,
   RpcCallOutput,
   EventSubscribeOutput,
@@ -1196,7 +1200,26 @@ const EndpointSkillList = (raw: RawClient["server.skill"]) => (input?: SkillList
     raw["skill.list"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
   )
 
-const adaptGroupSkill = (raw: RawClient["server.skill"]) => ({ list: EndpointSkillList(raw) })
+const EndpointSkillInventory = (raw: RawClient["server.skill"]) => (input?: SkillInventoryInput) =>
+  preserveEffect<SkillInventoryOutput>()(
+    raw["skill.inventory"]({ query: { location: input?.["location"] } }).pipe(Effect.mapError(mapClientError)),
+  )
+
+type SkillSetEnabledRequest = Parameters<RawClient["server.skill"]["skill.setEnabled"]>[0]
+const EndpointSkillSetEnabled = (raw: RawClient["server.skill"]) => (input: SkillSetEnabledInput) =>
+  preserveEffect<SkillSetEnabledOutput>()(
+    raw["skill.setEnabled"]({
+      params: { skill: input["skill"] },
+      query: { location: input["location"] },
+      payload: input["payload"],
+    } as SkillSetEnabledRequest).pipe(Effect.mapError(mapClientError)),
+  )
+
+const adaptGroupSkill = (raw: RawClient["server.skill"]) => ({
+  list: EndpointSkillList(raw),
+  inventory: EndpointSkillInventory(raw),
+  setEnabled: EndpointSkillSetEnabled(raw),
+})
 
 const EndpointRpcCall = (raw: RawClient["server.rpc"]) => (input: RpcCallInput) =>
   preserveEffect<RpcCallOutput>()(
