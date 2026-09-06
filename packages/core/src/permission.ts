@@ -29,6 +29,7 @@ const RequestFields = {
   action: Permission.Request.fields.action,
   resources: Permission.Request.fields.resources,
   save: Permission.Request.fields.save,
+  message: Permission.Request.fields.message,
   metadata: Permission.Request.fields.metadata,
   source: Permission.Request.fields.source,
 }
@@ -185,7 +186,7 @@ const layer = Layer.effect(
         source: input.source,
         effect,
       })
-      return { effect: event.effect, message: event.message, rules: all }
+      return { effect: event.effect, message: event.message ?? input.message, rules: all }
     })
 
     function request(input: AssertInput, message?: string): Request {
@@ -222,28 +223,30 @@ const layer = Layer.effect(
 
     const ask = Effect.fn("Permission.ask")(function* (input: AssertInput) {
       if (closed) return { id: input.id ?? ID.create(), effect: "deny" as const }
-      const result = yield* evaluateInput(input)
-      const value = request(input, result.message)
-      if (result.effect === "ask") yield* create(value, input.agent)
+      const normalized = { ...input, metadata: normalizeMetadata(input.metadata) }
+      const result = yield* evaluateInput(normalized)
+      const value = request(normalized, result.message)
+      if (result.effect === "ask") yield* create(value, normalized.agent)
       return { id: value.id, effect: result.effect }
     })
 
     const assert = Effect.fn("Permission.assert")((input: AssertInput) =>
       Effect.gen(function* () {
         if (closed) return yield* Effect.die(new DeclinedError())
-        const result = yield* evaluateInput(input)
+        const normalized = { ...input, metadata: normalizeMetadata(input.metadata) }
+        const result = yield* evaluateInput(normalized)
         return yield* Effect.uninterruptibleMask((restore) =>
           Effect.gen(function* () {
             if (result.effect === "deny") {
               return yield* new BlockedError({
-                rules: relevant(input, result.rules),
-                permission: input.action,
-                resources: input.resources,
+                rules: relevant(normalized, result.rules),
+                permission: normalized.action,
+                resources: normalized.resources,
                 reason: result.message,
               })
             }
             if (result.effect === "allow") return
-            const item = yield* create(request(input, result.message), input.agent)
+            const item = yield* create(request(normalized, result.message), normalized.agent)
             return yield* restore(Deferred.await(item.deferred)).pipe(
               // Deliberate defect tunnel: leaves wrap execution in blanket `mapError`, which
               // must not convert a user's decline into model-facing tool output. The decline
@@ -335,6 +338,48 @@ const layer = Layer.effect(
     return Service.of({ ask, assert, reply, get, forSession, list, close })
   }),
 )
+
+function normalizeMetadata(metadata: AssertInput["metadata"]): Request["metadata"] {
+  if (metadata === undefined) return undefined
+  return Object.fromEntries(
+    Object.entries(metadata).flatMap(([key, value]) =>
+      value === undefined ? [] : [[key, normalizeMetadataValue(value, new Set())]],
+    ),
+  )
+}
+
+function normalizeMetadataValue(value: unknown, seen: Set<object>): Schema.Json {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) return value
+    throw new TypeError("Permission metadata must contain finite JSON numbers.")
+  }
+  if (Array.isArray(value)) {
+    if (seen.has(value)) throw new TypeError("Permission metadata must not contain circular values.")
+    seen.add(value)
+    const normalized = Array.from(value, (item) => {
+      if (item === undefined) throw new TypeError("Permission metadata arrays must not contain undefined values.")
+      return normalizeMetadataValue(item, seen)
+    })
+    seen.delete(value)
+    return normalized
+  }
+  if (typeof value === "object") {
+    if (seen.has(value)) throw new TypeError("Permission metadata must not contain circular values.")
+    const prototype = Object.getPrototypeOf(value)
+    if (prototype !== Object.prototype && prototype !== null)
+      throw new TypeError("Permission metadata must contain plain JSON objects.")
+    seen.add(value)
+    const normalized = Object.fromEntries(
+      Object.entries(value).flatMap(([key, item]) =>
+        item === undefined ? [] : [[key, normalizeMetadataValue(item, seen)]],
+      ),
+    )
+    seen.delete(value)
+    return normalized
+  }
+  throw new TypeError("Permission metadata must contain JSON values.")
+}
 
 export const node = makeLocationNode({
   service: Service,

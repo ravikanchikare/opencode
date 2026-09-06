@@ -1,16 +1,10 @@
 export * as CodeModeTool from "./tool.js"
 
 import { CodeMode, Namespace, Tool, toolError } from "@opencode/codemode"
-import type {
-  Content,
-  Context,
-  Error,
-  Info,
-  Metadata,
-  Namespace as ToolNamespace,
-  Result,
-} from "@opencode/schema/tool"
-import { Effect, Ref, Schema, Semaphore } from "effect"
+import type { Content, Context, Error, Info, Metadata, Namespace as ToolNamespace, Result } from "@opencode/schema/tool"
+import { Cause, Effect, Ref, Schema, Semaphore } from "effect"
+import { Permission } from "../permission.js"
+import { QuestionTool } from "../tool/plugin/question.js"
 import { definition, normalizedName } from "../tool/runtime.js"
 import { CodeModeCatalog } from "./catalog.js"
 import { CodeModeWeb } from "./web.js"
@@ -68,6 +62,13 @@ const description = [
   "Await every call whose completion matters; pending calls are interrupted when execution ends. Run independent calls concurrently with `Promise.all`.",
 ].join("\n")
 
+const propagateHostCause = (cause: Cause.Cause<unknown>) =>
+  cause.reasons.some(
+    (reason) =>
+      Cause.isDieReason(reason) &&
+      (reason.defect instanceof Permission.DeclinedError || reason.defect instanceof QuestionTool.CancelledError),
+  )
+
 export const create = (
   inventory: Inventory,
   executeTool: (name: string, tool: Info, input: unknown, context: Context) => Effect.Effect<Result, Error>,
@@ -104,8 +105,8 @@ export const create = (
               const text = content.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n")
               return text === "" ? null : text
             }),
-          progressHooks(record),
-        ).execute(code)
+          { ...progressHooks(record), propagateToolCause: propagateHostCause },
+        ).execute(code) as Effect.Effect<CodeMode.Result, Error>
         const toolCalls = yield* Ref.get(calls)
         const collected = (yield* Ref.get(files))
           .toSorted((left, right) => left.index - right.index)

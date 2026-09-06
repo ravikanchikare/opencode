@@ -1,9 +1,15 @@
 import { describe, expect } from "bun:test"
+import { Agent } from "@opencode/core/agent"
+import { CodeModeTool } from "@opencode/core/codemode/tool"
 import { AppNodeBuilder } from "@opencode/core/effect/app-node-builder"
 import { Location } from "@opencode/core/location"
+import { Permission } from "@opencode/core/permission"
 import { AbsolutePath } from "@opencode/core/schema"
+import { Session } from "@opencode/core/session"
+import { SessionMessage } from "@opencode/core/session/message"
 import { Tool } from "@opencode/core/tool"
-import { Effect, Schema } from "effect"
+import type { Info } from "@opencode/schema/tool"
+import { Cause, Effect, Schema } from "effect"
 import { it } from "./lib/effect"
 
 describe("CodeMode", () => {
@@ -41,6 +47,52 @@ describe("CodeMode", () => {
           },
         ],
       })
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(
+        AppNodeBuilder.build(Tool.node, [
+          Location.node.replace(Location.boundNode({ directory: AbsolutePath.make("/project") })),
+        ]),
+      ),
+    ),
+  )
+
+  it.effect("propagates declined embedded tool execution instead of returning null", () =>
+    Effect.gen(function* () {
+      let executions = 0
+      const embedded: Info = {
+        name: "declined",
+        description: "Requires approval",
+        input: Schema.Struct({}),
+        output: Schema.String,
+        execute: () => Effect.die(new Permission.DeclinedError()),
+      }
+      const codeMode = CodeModeTool.create({ tools: new Map([["declined", embedded]]) }, () =>
+        Effect.sync(() => {
+          executions += 1
+        }).pipe(Effect.andThen(Effect.die(new Permission.DeclinedError()))),
+      )
+      const exit = yield* codeMode
+        .execute(
+          { code: "try { return await tools.declined() } catch { return null }" },
+          {
+            sessionID: Session.ID.make("ses_codemode"),
+            agent: Agent.ID.make("build"),
+            messageID: SessionMessage.ID.make("msg_codemode"),
+            id: Tool.CallID.make("call_codemode"),
+            progress: () => Effect.void,
+          },
+        )
+        .pipe(Effect.exit)
+
+      expect(exit._tag).toBe("Failure")
+      expect(executions).toBe(1)
+      if (exit._tag === "Failure")
+        expect(
+          exit.cause.reasons.some(
+            (reason) => Cause.isDieReason(reason) && reason.defect instanceof Permission.DeclinedError,
+          ),
+        ).toBe(true)
     }).pipe(
       Effect.scoped,
       Effect.provide(
