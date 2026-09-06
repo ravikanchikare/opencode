@@ -187,6 +187,31 @@
   text-decoration: underline;
 }
 
+.settings-about-distribution {
+  display: flex;
+  width: 100%;
+  max-width: 560px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-block-end: 32px;
+  color: var(--v2-text-text-muted);
+  font-size: 13px;
+  line-height: var(--line-height-base);
+  text-align: center;
+}
+
+.settings-about-distribution p {
+  margin: 0;
+}
+
+.settings-about-config-path {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  line-height: var(--line-height-normal);
+  user-select: text;
+}
+
 .settings-back {
   display: flex;
   height: 28px;
