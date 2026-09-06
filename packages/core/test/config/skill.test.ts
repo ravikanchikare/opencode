@@ -16,9 +16,11 @@ import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Location } from "@opencode-ai/core/location"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { Skill } from "@opencode-ai/core/skill"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { SkillDiscovery } from "@opencode-ai/core/skill/discovery"
 import { WellKnown } from "@opencode-ai/core/wellknown"
 import { emptyCredentialNode, emptyWellknownNode } from "../fixture/config-nodes"
+import { extensionEnablementNode } from "../fixture/extension-enablement"
 import { tmpdir } from "../fixture/tmpdir"
 import { location } from "../fixture/location"
 import { testEffect } from "../lib/effect"
@@ -27,7 +29,12 @@ import { host } from "../plugin/host"
 const emptyDiscovery = SkillDiscovery.Service.of({ pull: () => Effect.succeed([]) })
 const watcherLayer = Watcher.testLayer
 const it = testEffect(
-  Layer.merge(AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node])), watcherLayer),
+  Layer.merge(
+    AppNodeBuilder.build(LayerNode.group([Skill.node, Bus.node, FSUtil.node]), [
+      ExtensionEnablement.node.replace(extensionEnablementNode()),
+    ]),
+    watcherLayer,
+  ),
 )
 const decode = Schema.decodeUnknownSync(Info)
 
@@ -381,6 +388,70 @@ describe("ConfigSkillPlugin.Plugin", () => {
             Skill.ID.make("added"),
             Skill.ID.make("local"),
           ])
+        }),
+      ),
+    ),
+  )
+
+  /**
+   * The two mechanisms are independent and compose in one direction only.
+   * Admission decides whether a source produces a candidate at all; a denied
+   * source is absent even from inventory, so Settings cannot switch it back on.
+   * Enablement decides whether an existing candidate is available, and a
+   * disabled candidate stays in inventory precisely so it can be restored.
+   */
+  it.live("keeps source admission ahead of enablement, and enablement inventory-visible", () =>
+    Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const claude = path.join(tmp.path, "claude")
+          const configured = path.join(tmp.path, "configured")
+          yield* Effect.promise(async () => {
+            await fs.mkdir(path.join(claude, "skills", "precedence-harness"), { recursive: true })
+            await fs.mkdir(path.join(configured, "precedence-off"), { recursive: true })
+            await fs.mkdir(path.join(configured, "precedence-on"), { recursive: true })
+            await fs.mkdir(path.join(tmp.path, "pulled", "precedence-url"), { recursive: true })
+            await write(path.join(claude, "skills"), "precedence-harness", "Harness")
+            await write(configured, "precedence-off", "Disabled")
+            await write(configured, "precedence-on", "Enabled")
+            await write(path.join(tmp.path, "pulled"), "precedence-url", "From a catalog")
+          })
+          // A url source produces ordinary candidates, so enablement reaches
+          // them by id like any other.
+          const discovery = SkillDiscovery.Service.of({
+            pull: () => Effect.succeed([AbsolutePath.make(path.join(tmp.path, "pulled", "precedence-url"))]),
+          })
+
+          const skill = yield* withAdmission(
+            { externalHarnesses: false },
+            startEntries(
+              [
+                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
+                new Document({
+                  type: "document",
+                  info: decode({ skills: [configured, "https://example.test/skills/"] }),
+                }),
+              ],
+              path.join(tmp.path, "project"),
+              tmp.path,
+              discovery,
+            ),
+          )
+
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-off"), false)).toBe(true)
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-url"), false)).toBe(true)
+          // Never admitted, so there is nothing to disable or restore.
+          expect(yield* skill.setEnabled(Skill.ID.make("precedence-harness"), false)).toBe(false)
+
+          expect((yield* skill.inventory()).map((item) => [item.id, item.enabled])).toEqual([
+            [Skill.ID.make("precedence-off"), false],
+            [Skill.ID.make("precedence-on"), true],
+            [Skill.ID.make("precedence-url"), false],
+          ])
+          expect((yield* skill.list()).map((item) => item.id)).toEqual([Skill.ID.make("precedence-on")])
+          expect(yield* skill.get(Skill.ID.make("precedence-off"))).toBeUndefined()
+          expect(yield* skill.get(Skill.ID.make("precedence-url"))).toBeUndefined()
+          expect(yield* skill.get(Skill.ID.make("precedence-harness"))).toBeUndefined()
         }),
       ),
     ),

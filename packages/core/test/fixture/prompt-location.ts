@@ -1,4 +1,5 @@
 import { Bus } from "@opencode-ai/core/bus"
+import { ExtensionEnablement } from "@opencode-ai/core/extension-enablement"
 import { Image } from "@opencode-ai/core/image"
 import { LocationServiceMap } from "@opencode-ai/core/location-service-map"
 import type { LocationServices } from "@opencode-ai/core/location-services"
@@ -9,6 +10,7 @@ import type { Location } from "@opencode-ai/schema/location"
 import { makeGlobalNode } from "@opencode-ai/util/effect/app-node"
 import { LayerNode } from "@opencode-ai/util/effect/layer-node"
 import { Effect, Layer, LayerMap } from "effect"
+import { extensionEnablementNode } from "./extension-enablement"
 
 // Plain-prompt unit fixtures use virtual directories.
 export const promptLocationNode = makeGlobalNode({
@@ -23,6 +25,7 @@ export const promptLocationNode = makeGlobalNode({
             replacements: [
               Bus.node.replace(Layer.succeed(Bus.Service, bus)),
               Plugin.node.replace(Layer.mock(Plugin.Service, { awaitActivation: Effect.void })),
+              ExtensionEnablement.node.replace(extensionEnablementNode()),
             ],
           }) as Layer.Layer<LocationServices>,
       )
