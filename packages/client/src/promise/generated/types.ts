@@ -24,7 +24,12 @@ export type PluginFeatures = { server?: true; tui?: true; rpc?: true }
 
 export type PluginState = { status: "active" } | { status: "failed"; error: string; ref?: string }
 
-export type PluginOptionChoice = { value: string; label: string; description?: string }
+export type PluginOptionChoice = {
+  value: string
+  label: string
+  description?: string
+  tools?: Array<{ name: string; description: string; input?: { [x: string]: JsonValue } }>
+}
 
 export type SessionForkBoundary = { type: "before"; messageID: string } | { type: "through"; messageID: string }
 
@@ -2124,6 +2129,8 @@ export type ConfigEntry =
 
 export type PluginInfo = {
   id?: string
+  name?: string
+  description?: string
   source: PluginSource
   features: PluginFeatures
   state: PluginState
