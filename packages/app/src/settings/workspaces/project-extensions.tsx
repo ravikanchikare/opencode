@@ -19,9 +19,9 @@ import { useMcpToggle } from "@/providers/connect/mcp"
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
-import { pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
+import { pluginDisplayName, pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
 import { PluginOptionsEditor } from "@/settings/extensions/plugin-options-editor"
-import { currentPlugin } from "@/settings/extensions/plugin-options"
+import { currentPlugin, hasPluginDetails } from "@/settings/extensions/plugin-options"
 import type { PluginInfo } from "@opencode/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { configuredLanguageServers } from "./project-lsp"
@@ -41,7 +41,7 @@ const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
 )
 
 const ExtensionRow: Component<{
-  icon: "mcp" | "cube" | "post-skill" | "code"
+  icon: "mcp" | "puzzle-piece" | "post-skill" | "code"
   name: string
   description?: JSX.Element
   children?: JSX.Element
@@ -307,9 +307,16 @@ export const ProjectSettingsExtensions: Component<{
   const pluginRows = (items: PluginInfo[]) => (
     <For each={items}>
       {(plugin) => (
-        <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id ?? ""))}>
-          <ExtensionRow icon="cube" name={pluginLabel(plugin)} />
-        </button>
+        <Show
+          when={hasPluginDetails(plugin)}
+          fallback={<ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} />}
+        >
+          <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id))}>
+            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)}>
+              <Icon name="chevron-right" size="small" />
+            </ExtensionRow>
+          </button>
+        </Show>
       )}
     </For>
   )
@@ -384,7 +391,7 @@ export const ProjectSettingsExtensions: Component<{
                     plugin={plugin()}
                     directory={directorySDK().directory}
                     onBack={() => setSelectedPlugin()}
-                    onChanged={() => void refetchPlugins()}
+                    onChanged={() => refetchPlugins()}
                   />
                 )}
               </Show>
