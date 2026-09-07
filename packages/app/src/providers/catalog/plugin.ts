@@ -10,3 +10,7 @@ export function pluginLabel(plugin: PluginInfo) {
 export function pluginLabels(plugins: readonly PluginInfo[]) {
   return plugins.filter((plugin) => plugin.source.type !== "builtin").map(pluginLabel)
 }
+
+export function pluginDisplayName(plugin: PluginInfo) {
+  return plugin.name ?? pluginLabel(plugin)
+}

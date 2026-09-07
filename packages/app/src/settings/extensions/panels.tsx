@@ -19,6 +19,7 @@
 import { createMemo, createResource, createSignal, Show, type Component } from "solid-js"
 import { Switch } from "@opencode-ai/ui/switch"
 import { Button } from "@opencode-ai/ui/button"
+import { Icon } from "@opencode-ai/ui/icon"
 import { useIntegrations } from "@/providers/catalog/integrations"
 import { useProviders } from "@/providers/catalog/providers"
 import { useMcpToggle } from "@/providers/connect/mcp"
@@ -27,11 +28,12 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { useServerSDK } from "@/runtime/server/client"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { SettingsServerScope } from "@/settings/server-scope"
+import { InlineServerSelect } from "@/settings/server-select"
 import { showToast } from "@/shell/notifications/toast"
 import { useMcpServers, usePlugins } from "./data"
 import { PluginOptionsEditor } from "./plugin-options-editor"
-import { currentPlugin } from "./plugin-options"
-import { pluginLabel } from "@/providers/catalog/plugin"
+import { currentPlugin, hasPluginDetails } from "./plugin-options"
+import { pluginDisplayName } from "@/providers/catalog/plugin"
 import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
 import {
   integrationSubtitle,
@@ -91,34 +93,57 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
   const current = createMemo(() => currentPlugin(plugins.rows(), selected()))
 
   return (
-    <ExtensionDestination title="Plugins" description="Plugins loaded for this location, and any that failed to start.">
-      <Show
-        when={current()}
-        fallback={
+    <Show
+      when={current()}
+      fallback={
+        <ExtensionDestination
+          title="Plugins"
+          description="Plugins loaded for this location, and any that failed to start."
+        >
           <ExtensionList each={plugins.rows()} empty="No plugins are installed">
             {(plugin) => (
-              <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id ?? ""))}>
-                <ExtensionRow
-                  icon="cube"
-                  name={pluginLabel(plugin)}
-                  mono
-                  detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
-                />
-              </button>
+              <Show
+                when={hasPluginDetails(plugin)}
+                fallback={
+                  <ExtensionRow
+                    icon="puzzle-piece"
+                    name={pluginDisplayName(plugin)}
+                    mono={!plugin.name}
+                    detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                  />
+                }
+              >
+                <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id))}>
+                  <ExtensionRow
+                    icon="puzzle-piece"
+                    name={pluginDisplayName(plugin)}
+                    mono={!plugin.name}
+                    detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                  >
+                    <Icon name="chevron-right" size="small" class="extension-destination-icon" />
+                  </ExtensionRow>
+                </button>
+              </Show>
             )}
           </ExtensionList>
-        }
-      >
-        {(plugin) => (
+        </ExtensionDestination>
+      }
+    >
+      {(plugin) => (
+        <div class="settings-tab-body extension-destination">
+          <div class="plugin-details-toolbar">
+            <span />
+            <InlineServerSelect />
+          </div>
           <PluginOptionsEditor
             plugin={plugin()}
             directory={props.directory}
             onBack={() => setSelected()}
-            onChanged={() => void plugins.refetch()}
+            onChanged={() => plugins.refetch()}
           />
-        )}
-      </Show>
-    </ExtensionDestination>
+        </div>
+      )}
+    </Show>
   )
 }
 
@@ -289,11 +314,14 @@ export const IntegrationsPanel: Component<ExtensionPanelProps> = (props) => {
     >
       <ExtensionList each={rows()} empty="No service integrations are available">
         {(item) => (
-          <ExtensionRow icon="cube" name={item.name} detail={integrationSubtitle(item)}>
+          <ExtensionRow icon="plug" name={item.name} detail={integrationSubtitle(item)}>
             <Show
               when={item.connected}
               fallback={
-                <Show when={item.connectable} fallback={<span class="extension-destination-status">Not connected</span>}>
+                <Show
+                  when={item.connectable}
+                  fallback={<span class="extension-destination-status">Not connected</span>}
+                >
                   <Button size="normal" variant="neutral" icon="plus" onClick={() => connect(item.id)}>
                     {language.t("common.connect")}
                   </Button>

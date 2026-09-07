@@ -32,6 +32,8 @@ export function fromDefinition(
 ): Generation {
   return {
     id: plugin.id,
+    name: plugin.name,
+    description: plugin.description,
     effect: plugin.effect,
     ...extra,
     ...(plugin.options ? { optionDescriptors: plugin.options } : {}),

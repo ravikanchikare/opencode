@@ -5,6 +5,7 @@ import {
   canReset,
   currentPlugin,
   editorValues,
+  hasPluginDetails,
   isSelectionActive,
   optionLabel,
   selectedValues,
@@ -23,6 +24,27 @@ const plugin = (overrides: Partial<PluginInfo> = {}): PluginInfo => ({
     effective: { domains: ["alpha"] },
   },
   ...overrides,
+})
+
+describe("plugin detail destinations", () => {
+  test("inventory-only plugins stay read-only", () => {
+    expect(hasPluginDetails(plugin())).toBe(false)
+    expect(hasPluginDetails(plugin({ options: undefined }))).toBe(false)
+  })
+
+  test("only identified, configurable plugins have a details destination", () => {
+    const configurable = plugin({
+      options: {
+        descriptors: [{ type: "multi-select", key: "domains", label: "Domains", choices: [] }],
+        inherited: true,
+        scope: "default",
+        effective: {},
+      },
+    })
+    expect(hasPluginDetails(configurable)).toBe(true)
+    expect(hasPluginDetails({ ...configurable, id: undefined })).toBe(false)
+    expect(hasPluginDetails({ ...configurable, state: { status: "failed", error: "Setup failed" } })).toBe(true)
+  })
 })
 
 describe("plugin option labels", () => {
@@ -122,7 +144,7 @@ describe("project extension plugin lookup", () => {
   test("project Extensions editor refetches after setOptions", () => {
     const source = readFileSync(new URL("../workspaces/project-extensions.tsx", import.meta.url), "utf8")
     expect(source).toContain("currentPlugin")
-    expect(source).toContain("onChanged={() => void refetchPlugins()}")
+    expect(source).toContain("onChanged={() => refetchPlugins()}")
     expect(source).toContain("refetchGlobalPlugins")
     expect(source).toContain("refetchProjectPlugins")
   })

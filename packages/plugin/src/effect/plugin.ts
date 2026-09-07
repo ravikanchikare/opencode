@@ -53,14 +53,24 @@ export interface Context {
 
 export interface Plugin<R = Scope.Scope> {
   readonly id: string
+  readonly name?: string
+  readonly description?: string
   readonly options?: ReadonlyArray<OptionDescriptor>
   readonly effect: (context: Context) => Effect.Effect<void, never, R>
+}
+
+/** Read-only authored catalog; activation and tool transforms remain host-owned. */
+export interface OptionTool {
+  readonly name: string
+  readonly description: string
+  readonly input?: Record<string, unknown>
 }
 
 export interface OptionChoice {
   readonly value: string
   readonly label: string
   readonly description?: string
+  readonly tools?: ReadonlyArray<OptionTool>
 }
 
 export interface OptionDescriptor {
