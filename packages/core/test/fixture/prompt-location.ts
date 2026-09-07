@@ -8,7 +8,9 @@ import { Skill } from "@opencode/core/skill"
 import type { Location } from "@opencode/schema/location"
 import { makeGlobalNode } from "@opencode/util/effect/app-node"
 import { LayerNode } from "@opencode/util/effect/layer-node"
+import { ExtensionEnablement } from "@opencode/core/extension-enablement"
 import { Effect, Layer, LayerMap } from "effect"
+import { extensionEnablementNode } from "./extension-enablement"
 
 // Plain-prompt unit fixtures use virtual directories.
 export const promptLocationNode = makeGlobalNode({
@@ -23,6 +25,7 @@ export const promptLocationNode = makeGlobalNode({
             replacements: [
               Bus.node.replace(Layer.succeed(Bus.Service, bus)),
               Plugin.node.replace(Layer.mock(Plugin.Service, { awaitActivation: Effect.void })),
+              ExtensionEnablement.node.replace(extensionEnablementNode()),
             ],
           }) as Layer.Layer<LocationServices>,
       )
