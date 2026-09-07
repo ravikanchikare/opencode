@@ -6,7 +6,7 @@ import { expectAppVisible } from "../utils/waits"
 
 const directory = "C:/OpenCode/NewProject"
 
-test("creates a session in a new project and selects its model", async ({ page }) => {
+test("prefers the configured default over recent models in a new project and allows changing it", async ({ page }) => {
   // An empty draft must remain usable when the file viewer is unavailable.
   await page.route(/(?:\/_assets\/file-(?!icon-)[^/]+\.js|\/session-ui\/src\/components\/file\.tsx)(?:\?|$)/, (route) =>
     route.abort(),
@@ -97,9 +97,6 @@ test("creates a session in a new project and selects its model", async ({ page }
   await expectAppVisible(page.locator('[data-component="composer"]'))
 
   const modelControl = page.locator('[data-action="composer-model"]')
-  await expect(modelControl).toContainText("Go Model 1")
-  await modelControl.click()
-  await page.locator('[data-option-key="opencode:free-model"]').click()
   await expect(modelControl).toContainText("Free Model")
 
   await modelControl.click()
@@ -108,6 +105,9 @@ test("creates a session in a new project and selects its model", async ({ page }
   await goModel.click()
 
   await expect(modelControl).toContainText("Go Model 1")
+  await modelControl.click()
+  await page.locator('[data-option-key="opencode:free-model"]').click()
+  await expect(modelControl).toContainText("Free Model")
 })
 
 test("restores each existing session's model and variant when switching tabs", async ({ page }) => {
