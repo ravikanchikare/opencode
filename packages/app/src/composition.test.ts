@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { configureAppComposition, getAppComposition, showNewSessionProviderTip, type AppComposition } from "@/composition"
+import {
+  configureAppComposition,
+  getAppComposition,
+  showModelProviderPromotions,
+  showNewSessionProviderTip,
+  type AppComposition,
+} from "@/composition"
 import { resolveSupportLink } from "@/brand"
 import { defaultSettings, resolveSettingsDefaults } from "@/settings/model"
 import { groupSettingsTabs, STOCK_TAB_GROUPS } from "@/settings/tabs"
@@ -100,10 +106,17 @@ describe("stock components' translation keys resolve", () => {
   for (const locale of ["en", "he"]) {
     test(`every key a stock extension view uses exists in ${locale}`, () => {
       const dictionary = dictionaryOf(locale)
-      const missing = referenced
-        .filter((item) => !dictionary.has(item.key))
-        .map((item) => `${item.key} (${item.file})`)
+      const missing = referenced.filter((item) => !dictionary.has(item.key)).map((item) => `${item.key} (${item.file})`)
       expect(missing).toEqual([])
     })
   }
+})
+
+describe("model selector provider promotions", () => {
+  test("preserves stock promotions and permits a distribution to opt out", () => {
+    expect(showModelProviderPromotions({})).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: {} })).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: { showProviderPromotions: true } })).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: { showProviderPromotions: false } })).toBe(false)
+  })
 })
