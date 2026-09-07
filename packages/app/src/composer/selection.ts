@@ -46,6 +46,7 @@ export function createComposerModelSelection(input: {
   agent: () => { model?: ModelKey; variant?: string } | undefined
 }) {
   const sdk = useWorkspaceLocation()
+  const data = useData()
   const models = useModels()
   const prompt = useComposerState()
   const providers = useProviders(() => sdk().directory)
@@ -56,13 +57,17 @@ export function createComposerModelSelection(input: {
     return !!provider?.models[model.modelID] && connected().has(model.providerID)
   }
   const recent = () => models.recent.list().find(valid)
+  const configuredDefault = () => {
+    const model = data.location.model.default.list({ directory: sdk().directory })
+    if (model) return { providerID: model.providerID, modelID: model.modelID }
+  }
   const fallback = () =>
     providers.connected().flatMap((provider) => {
       const modelID = Object.values(provider.models)[0]?.id
       return modelID ? [{ providerID: provider.id, modelID }] : []
     })[0]
   const current = () => {
-    const key = [prompt.model.current(), input.agent()?.model, recent(), fallback()].find(
+    const key = [prompt.model.current(), input.agent()?.model, configuredDefault(), recent(), fallback()].find(
       (item): item is ModelKey => !!item && valid(item),
     )
     return key ? models.find(key) : undefined
