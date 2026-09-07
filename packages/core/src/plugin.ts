@@ -293,6 +293,8 @@ function slotInfo(slot: Slot): Plugin.Info {
   const effective = slot.plugin.optionValues ?? {}
   return {
     id: Plugin.ID.make(slot.plugin.id),
+    name: slot.plugin.name,
+    description: slot.plugin.description,
     source: slot.plugin.source ?? { type: "builtin" },
     state: failure === undefined ? { status: "active" } : { status: "failed", ...failure },
     features: { server: true, ...slot.plugin.features },

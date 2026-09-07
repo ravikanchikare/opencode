@@ -46,4 +46,9 @@ export function currentPlugin(plugins: readonly PluginInfo[], id: string | undef
   return plugins.find((plugin) => String(plugin.id) === id)
 }
 
+/** Inventory-only entries do not advertise a configuration destination. */
+export function hasPluginDetails(plugin: PluginInfo) {
+  return !!plugin.id && !!plugin.options?.descriptors.length
+}
+
 export { scopeOf }
