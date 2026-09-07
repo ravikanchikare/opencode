@@ -62,11 +62,15 @@ const Module = Schema.Struct({
   default: Schema.Union([
     Schema.Struct({
       id: Schema.String,
+      name: Schema.String.pipe(Schema.optional),
+      description: Schema.String.pipe(Schema.optional),
       options: Schema.Unknown.pipe(Schema.optional),
       effect: Schema.declare<Plugin["effect"]>((input): input is Plugin["effect"] => typeof input === "function"),
     }),
     Schema.Struct({
       id: Schema.String,
+      name: Schema.String.pipe(Schema.optional),
+      description: Schema.String.pipe(Schema.optional),
       options: Schema.Unknown.pipe(Schema.optional),
       setup: Schema.declare<Parameters<typeof PluginPromise.fromPromise>[0]["setup"]>(
         (input): input is Parameters<typeof PluginPromise.fromPromise>[0]["setup"] => typeof input === "function",
@@ -133,6 +137,8 @@ const load = Effect.fn("PluginModule.load")(function* (
         })
   return {
     id: plugin.id,
+    name: value.name,
+    description: value.description,
     features: {
       ...(entrypoints.tui ? { tui: true as const } : {}),
       ...(entrypoints.rpc ? { rpc: true as const } : {}),
