@@ -185,6 +185,10 @@ import type {
   CommandListOutput,
   SkillListInput,
   SkillListOutput,
+  SkillInventoryInput,
+  SkillInventoryOutput,
+  SkillSetEnabledInput,
+  SkillSetEnabledOutput,
   RpcCallInput,
   RpcCallOutput,
   EventSubscribeOutput,
@@ -1630,6 +1634,31 @@ export function make(options: ClientOptions) {
             successStatus: 200,
             declaredStatuses: [400, 401],
             empty: false,
+          },
+          requestOptions,
+        ),
+      inventory: (input?: SkillInventoryInput, requestOptions?: RequestOptions) =>
+        request<SkillInventoryOutput>(
+          {
+            method: "GET",
+            path: `/api/skill/inventory`,
+            query: { location: input?.["location"] },
+            successStatus: 200,
+            declaredStatuses: [400, 401],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      setEnabled: (input: SkillSetEnabledInput, requestOptions?: RequestOptions) =>
+        request<SkillSetEnabledOutput>(
+          {
+            method: "PUT",
+            path: `/api/skill/${encodeURIComponent(input.skill)}/enabled`,
+            query: { location: input["location"] },
+            body: input["payload"],
+            successStatus: 204,
+            declaredStatuses: [400, 401, 404],
+            empty: true,
           },
           requestOptions,
         ),
