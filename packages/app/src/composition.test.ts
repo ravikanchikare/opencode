@@ -4,6 +4,7 @@ import { join } from "node:path"
 import {
   configureAppComposition,
   getAppComposition,
+  showModelProviderPromotions,
   showNewSessionProviderTip,
   type AppComposition,
 } from "@/composition"
@@ -114,4 +115,13 @@ describe("stock components' translation keys resolve", () => {
       expect(missing).toEqual([])
     })
   }
+})
+
+describe("model selector provider promotions", () => {
+  test("preserves stock promotions and permits a distribution to opt out", () => {
+    expect(showModelProviderPromotions({})).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: {} })).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: { showProviderPromotions: true } })).toBe(true)
+    expect(showModelProviderPromotions({ modelSelector: { showProviderPromotions: false } })).toBe(false)
+  })
 })

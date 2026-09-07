@@ -67,6 +67,7 @@ export type AppComposition = {
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
   settingsProviders?: Component<SettingsProvidersSurfaceProps>
   homeUtilityNav?: Component<HomeUtilityNavSurfaceProps>
+  modelSelector?: { showProviderPromotions?: boolean }
   newSession?: AppNewSessionComposition
   settingsTabs?: {
     hide?: readonly string[]
@@ -94,4 +95,9 @@ export function getAppComposition() {
  */
 export function showNewSessionProviderTip(value: AppComposition = composition) {
   return value.newSession?.showProviderTip !== false
+}
+
+/** Distributions can use the regular model picker even without a paid provider. */
+export function showModelProviderPromotions(value: AppComposition = composition) {
+  return value.modelSelector?.showProviderPromotions !== false
 }
