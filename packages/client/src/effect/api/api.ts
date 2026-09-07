@@ -1601,8 +1601,26 @@ export type SkillListInput = {
 export type SkillListOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Skill.Info> }
 export type SkillListOperation<E = never> = (input?: SkillListInput) => Effect.Effect<SkillListOutput, E>
 
+export type SkillInventoryInput = {
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+}
+export type SkillInventoryOutput = { readonly location: Location.Info; readonly data: ReadonlyArray<Skill.Inventory> }
+export type SkillInventoryOperation<E = never> = (input?: SkillInventoryInput) => Effect.Effect<SkillInventoryOutput, E>
+
+export type SkillSetEnabledInput = {
+  readonly skill: Skill.ID
+  readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+export type SkillSetEnabledOutput = void
+export type SkillSetEnabledOperation<E = never> = (
+  input: SkillSetEnabledInput,
+) => Effect.Effect<SkillSetEnabledOutput, E>
+
 export interface SkillApi<E = never> {
   readonly list: SkillListOperation<E>
+  readonly inventory: SkillInventoryOperation<E>
+  readonly setEnabled: SkillSetEnabledOperation<E>
 }
 
 export type RpcCallInput = {
