@@ -75,7 +75,9 @@ const runtime = Layer.effect(
       runFork(Effect.logInfo("before-quit", { shutdownReady }))
       if (shutdownReady) return
       event.preventDefault()
-      runFork(prepareToRestart.pipe(Effect.ensuring(Effect.sync(() => app.quit()))))
+      // Cleanup can finish synchronously. Let this cancelled before-quit event
+      // return before retrying, or Electron clears the nested quit's state.
+      runFork(prepareToRestart.pipe(Effect.ensuring(Effect.sync(() => setImmediate(() => app.quit())))))
     }
     const willQuit = () => {
       setAppQuitting()
