@@ -1,3 +1,4 @@
+import { showModelProviderPromotions } from "@/composition"
 import { Show, createMemo } from "solid-js"
 import { Button } from "@opencode-ai/ui/button"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
@@ -88,7 +89,7 @@ function ComposerModelControl(props: {
         }
       >
         <Show
-          when={props.paid}
+          when={props.paid || !showModelProviderPromotions()}
           fallback={
             <Button
               data-action="composer-model"
