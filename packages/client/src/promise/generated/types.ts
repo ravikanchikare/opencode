@@ -326,6 +326,19 @@ export type SkillInfo = {
   content: string
 }
 
+export type SkillInventory = {
+  id: string
+  name: string
+  description?: string
+  slash?: boolean
+  autoinvoke?: boolean
+  location: string
+  content: string
+  enabled: boolean
+  inherited: boolean
+  defaultEnabled: boolean
+}
+
 export type RpcOutput = { output?: any }
 
 export type PermissionReply = "once" | "always" | "reject"
@@ -5924,6 +5937,27 @@ export type SkillListOutput = {
   location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
   data: Array<SkillInfo>
 }
+
+export type SkillInventoryInput = {
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+}
+
+export type SkillInventoryOutput = {
+  location: { directory: string; workspaceID?: string; project: { id: string; directory: string; canonical: string } }
+  data: Array<SkillInventory>
+}
+
+export type SkillSetEnabledInput = {
+  readonly skill: { readonly skill: string }["skill"]
+  readonly location?: {
+    readonly location?: { readonly directory?: string | undefined; readonly workspace?: string | undefined } | undefined
+  }["location"]
+  readonly payload: { readonly enabled: boolean } | { readonly inherit: true }
+}
+
+export type SkillSetEnabledOutput = void
 
 export type RpcCallInput = {
   readonly rpcID: { readonly rpcID: string; readonly method: string }["rpcID"]
