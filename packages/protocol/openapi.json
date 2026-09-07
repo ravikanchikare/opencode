@@ -17285,6 +17285,12 @@
           "id": {
             "type": "string"
           },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
           "source": {
             "$ref": "#/components/schemas/Plugin.Source"
           },
@@ -17312,6 +17318,25 @@
           },
           "description": {
             "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "input": {
+                  "type": "object"
+                }
+              },
+              "required": ["name", "description"],
+              "additionalProperties": false
+            }
           }
         },
         "required": ["value", "label"],

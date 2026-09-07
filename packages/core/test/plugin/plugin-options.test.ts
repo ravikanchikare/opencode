@@ -26,13 +26,17 @@ setDefaultTimeout(15_000)
 
 const packaged = `export default {
   id: "acme.packaged",
+  name: "Acme API",
+  description: "Acme tools by domain.",
   options: [{
     type: "multi-select",
     key: "domains",
     label: "Domains",
     description: "Selectable domains",
     choices: [
-      { value: "alpha", label: "Alpha" },
+      { value: "alpha", label: "Alpha", tools: [{
+        name: "alpha.list", description: "List alpha records", input: { type: "object" }
+      }] },
       { value: "beta", label: "Beta" },
     ],
     default: ["alpha", "beta"],
@@ -78,10 +82,11 @@ const harness = (file: string) => {
     }),
   ).pipe(Layer.provide(Watcher.testLayer))
 
-  return AppNodeBuilder.build(
-    LayerNode.group([Database.node, Bus.node, SdkPlugins.node, LocationServiceMap.node]),
-    [Global.node.replace(tempGlobalLayer), offlineModels, LocationServiceMap.node.replace(instances)],
-  ).pipe(Layer.provideMerge(Watcher.testLayer))
+  return AppNodeBuilder.build(LayerNode.group([Database.node, Bus.node, SdkPlugins.node, LocationServiceMap.node]), [
+    Global.node.replace(tempGlobalLayer),
+    offlineModels,
+    LocationServiceMap.node.replace(instances),
+  ]).pipe(Layer.provideMerge(Watcher.testLayer))
 }
 
 const workspace = (plugins: readonly unknown[] | undefined) => {
@@ -115,10 +120,7 @@ describe("exact-ID plugin options", () => {
             (yield* commands.get("packaged-beta")) ? "beta" : undefined,
           ].filter((item): item is string => item !== undefined)
           assert({ domains, inventory: yield* registry.list() })
-        }).pipe(
-          Effect.scoped,
-          Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))),
-        )
+        }).pipe(Effect.scoped, Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))))
       }),
     )
   }
@@ -126,6 +128,8 @@ describe("exact-ID plugin options", () => {
   run("loads packaged defaults when no ID override is present", undefined, ({ domains, inventory }) => {
     const matches = inventory.filter((plugin) => plugin.id === "acme.packaged")
     expect(matches).toHaveLength(1)
+    expect(matches[0]?.name).toBe("Acme API")
+    expect(matches[0]?.description).toBe("Acme tools by domain.")
     expect(matches[0]?.options?.descriptors[0]?.key).toBe("domains")
     expect(domains).toEqual(["alpha", "beta"])
   })
@@ -135,6 +139,9 @@ describe("exact-ID plugin options", () => {
     [{ package: "acme.packaged", options: { domains: ["beta"] } }],
     ({ domains, inventory }) => {
       expect(inventory.filter((plugin) => plugin.id === "acme.packaged")).toHaveLength(1)
+      expect(
+        inventory.find((plugin) => plugin.id === "acme.packaged")?.options?.descriptors[0]?.choices[0]?.tools,
+      ).toEqual([{ name: "alpha.list", description: "List alpha records", input: { type: "object" } }])
       expect(domains).toEqual(["beta"])
     },
   )
@@ -220,10 +227,7 @@ describe("exact-ID plugin option reloads", () => {
             "options reload pending",
           )
           assert({ before, after: yield* domainsOf(commands), inventory: yield* registry.list() })
-        }).pipe(
-          Effect.scoped,
-          Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))),
-        )
+        }).pipe(Effect.scoped, Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))))
       }),
     )
   }
@@ -262,10 +266,7 @@ describe("PluginOptionConfig on the instance graph", () => {
         const current = (yield* plugins.list()).find((plugin) => plugin.id === "acme.packaged")
         if (!current) throw new Error("missing packaged plugin")
         return yield* options.view(current, "location")
-      }).pipe(
-        Effect.scoped,
-        Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))),
-      )
+      }).pipe(Effect.scoped, Effect.provide(locations.get(Location.Ref.make({ directory: AbsolutePath.make(root) }))))
       expect(viewed.options?.inherited).toBe(true)
       expect(viewed.options?.descriptors[0]?.key).toBe("domains")
     }),
