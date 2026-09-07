@@ -1,4 +1,5 @@
 import { defineConfig } from "electron-vite"
+import { notificationIcon } from "./scripts/notification-icon"
 import { pickerPlugin } from "./scripts/picker"
 
 const channel = (() => {
@@ -109,6 +110,9 @@ const require = __cjs_mod__.createRequire(import.meta.url);
       "import.meta.env.VITE_OPENCODE_DESKTOP_DEEP_LINK_SCHEME": define(process.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME),
       "import.meta.env.VITE_OPENCODE_DESKTOP_SUPPORT_URL": define(process.env.OPENCODE_DESKTOP_SUPPORT_URL),
       "import.meta.env.VITE_OPENCODE_DESKTOP_HIDE_MENU": define(process.env.OPENCODE_DESKTOP_HIDE_MENU),
+      "import.meta.env.OPENCODE_NOTIFICATION_ICON": JSON.stringify(
+        notificationIcon(process.env.OPENCODE_DESKTOP_ICON_DIR, channel),
+      ),
     },
     plugins: [pickerPlugin(), appPlugin, sentry],
     publicDir: "../../../app/public",
