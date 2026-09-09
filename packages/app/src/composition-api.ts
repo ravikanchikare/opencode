@@ -1,8 +1,10 @@
 export {
   configureAppComposition,
+  isPluginVisible,
   showNewSessionProviderTip,
   type AppComposition,
   type AppNewSessionComposition,
+  type AppPluginPresentation,
   type AppSettingsDefaults,
   type HomeUtilityNavSurfaceProps,
   type OnboardingSurfaceProps,

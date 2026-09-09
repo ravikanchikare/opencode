@@ -143,7 +143,10 @@ describe("project extension plugin lookup", () => {
 
   test("project Extensions editor refetches after setOptions", () => {
     const source = readFileSync(new URL("../workspaces/project-extensions.tsx", import.meta.url), "utf8")
+    expect(source).toContain("pluginInventoryRows")
+    expect(source).toContain('class="plugin-options-open"')
     expect(source).toContain("currentPlugin")
+    expect(source).toContain("PluginOptionsEditor")
     expect(source).toContain("onChanged={() => refetchPlugins()}")
     expect(source).toContain("refetchGlobalPlugins")
     expect(source).toContain("refetchProjectPlugins")

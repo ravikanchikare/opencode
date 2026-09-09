@@ -10,6 +10,7 @@ import type { PluginInfo } from "@opencode/client"
 import { useServerSDK } from "@/runtime/server/client"
 import { useLanguage } from "@/runtime/i18n/language"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
+import { isPluginMetadataVisible } from "@/composition"
 import { showToast } from "@/shell/notifications/toast"
 import { SettingsList } from "@/settings/list"
 import { canReset, editorValues, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
@@ -267,41 +268,43 @@ export const PluginOptionsEditor: Component<{
       >
         <p class="plugin-details-description">{language.t("settings.plugins.catalog")}</p>
       </Show>
-      <Collapsible variant="ghost" class="plugin-details-metadata">
-        <Collapsible.Trigger>
-          <Collapsible.Arrow />
-          {language.t("settings.plugins.details")}
-        </Collapsible.Trigger>
-        <Collapsible.Content>
-          <dl>
-            <Show when={pluginId()}>
-              <dt>{language.t("settings.plugins.id")}</dt>
-              <dd>
-                <code>{pluginId()}</code>
-              </dd>
-            </Show>
-            <dt>{language.t("settings.plugins.source")}</dt>
-            <dd>{source()}</dd>
-            <Show when={props.plugin.source.type === "package" && props.plugin.source.version}>
-              {(version) => (
-                <>
-                  <dt>{language.t("settings.plugins.version")}</dt>
-                  <dd>{version()}</dd>
-                </>
-              )}
-            </Show>
-            <Show when={Object.values(props.plugin.features).some(Boolean)}>
-              <dt>{language.t("settings.plugins.capabilities")}</dt>
-              <dd class="plugin-details-actions">
-                <For each={(["server", "tui", "rpc"] as const).filter((key) => props.plugin.features[key])}>
-                  {(key) => <span>{language.t(`settings.plugins.capability.${key}`)}</span>}
-                </For>
-              </dd>
-            </Show>
-          </dl>
-          <p class="plugin-details-description">{language.t("settings.plugins.activation")}</p>
-        </Collapsible.Content>
-      </Collapsible>
+      <Show when={isPluginMetadataVisible(props.plugin.id)}>
+        <Collapsible variant="ghost" class="plugin-details-metadata">
+          <Collapsible.Trigger>
+            <Collapsible.Arrow />
+            {language.t("settings.plugins.details")}
+          </Collapsible.Trigger>
+          <Collapsible.Content>
+            <dl>
+              <Show when={pluginId()}>
+                <dt>{language.t("settings.plugins.id")}</dt>
+                <dd>
+                  <code>{pluginId()}</code>
+                </dd>
+              </Show>
+              <dt>{language.t("settings.plugins.source")}</dt>
+              <dd>{source()}</dd>
+              <Show when={props.plugin.source.type === "package" && props.plugin.source.version}>
+                {(version) => (
+                  <>
+                    <dt>{language.t("settings.plugins.version")}</dt>
+                    <dd>{version()}</dd>
+                  </>
+                )}
+              </Show>
+              <Show when={Object.values(props.plugin.features).some(Boolean)}>
+                <dt>{language.t("settings.plugins.capabilities")}</dt>
+                <dd class="plugin-details-actions">
+                  <For each={(["server", "tui", "rpc"] as const).filter((key) => props.plugin.features[key])}>
+                    {(key) => <span>{language.t(`settings.plugins.capability.${key}`)}</span>}
+                  </For>
+                </dd>
+              </Show>
+            </dl>
+            <p class="plugin-details-description">{language.t("settings.plugins.activation")}</p>
+          </Collapsible.Content>
+        </Collapsible>
+      </Show>
     </div>
   )
 }
