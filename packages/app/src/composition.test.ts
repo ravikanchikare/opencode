@@ -4,6 +4,7 @@ import { join } from "node:path"
 import {
   configureAppComposition,
   getAppComposition,
+  isPluginVisible,
   showModelProviderPromotions,
   showNewSessionProviderTip,
   type AppComposition,
@@ -46,6 +47,7 @@ describe("an empty composition is upstream", () => {
     expect(composition.settingsDefaults).toBeUndefined()
     expect(composition.settingsTabs).toBeUndefined()
     expect(composition.pluginOptionLabels).toBeUndefined()
+    expect(composition.pluginPresentation).toBeUndefined()
   })
 
   test("keeps stock settings defaults", () => {
@@ -65,6 +67,22 @@ describe("an empty composition is upstream", () => {
 
   test("keeps the stock settings tab grouping", () => {
     expect(groupSettingsTabs([], new Set())).toEqual(STOCK_TAB_GROUPS.map((group) => [...group]))
+  })
+})
+
+describe("plugin inventory presentation", () => {
+  test("keeps identified, third-party, and diagnostic plugin rows visible by default", () => {
+    expect(isPluginVisible("third-party.plugin", {})).toBe(true)
+    expect(isPluginVisible(undefined, {})).toBe(true)
+  })
+
+  test("hides only explicitly listed, identified plugin IDs", () => {
+    const composition: AppComposition = {
+      pluginPresentation: { hiddenPluginIDs: ["factory.packaged"] },
+    }
+    expect(isPluginVisible("factory.packaged", composition)).toBe(false)
+    expect(isPluginVisible("third-party.plugin", composition)).toBe(true)
+    expect(isPluginVisible(undefined, composition)).toBe(true)
   })
 })
 
