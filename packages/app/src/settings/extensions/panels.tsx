@@ -34,7 +34,9 @@ import { useMcpServers, usePlugins } from "./data"
 import { PluginOptionsEditor } from "./plugin-options-editor"
 import { currentPlugin, hasPluginDetails } from "./plugin-options"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
-import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import { currentSkill, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import { SkillDetails } from "./skill-details"
+import { SkillAvailabilityControls } from "./skill-availability-controls"
 import {
   integrationSubtitle,
   serviceIntegrations,
@@ -130,15 +132,12 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
       }
     >
       {(plugin) => (
-        <div class="settings-tab-body extension-destination">
-          <div class="plugin-details-toolbar">
-            <span />
-            <InlineServerSelect />
-          </div>
+        <div class="settings-tab-body extension-destination settings-detail-page">
           <PluginOptionsEditor
             plugin={plugin()}
             directory={props.directory}
             onBack={() => setSelected()}
+            headerActions={<InlineServerSelect />}
             onChanged={() => plugins.refetch()}
           />
         </div>
@@ -156,6 +155,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
 export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
   const serverSDK = useServerSDK()
   const [pending, setPending] = createSignal<string>()
+  const [selected, setSelected] = createSignal<string>()
   const scope = createMemo(() => scopeOf(props.directory))
 
   const [inventory, { refetch }] = createResource(
@@ -167,6 +167,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
     },
     { initialValue: [] as SkillRow[] },
   )
+  const current = createMemo(() => currentSkill(inventory(), selected()))
 
   const set = async (item: SkillRow, enabled: boolean | undefined) => {
     if (pending()) return
@@ -190,44 +191,47 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
   }
 
   return (
-    <ExtensionDestination
-      title="Skills"
-      description={
-        scope() === "default"
-          ? "Skills OpenCode may use. Switching one off here is the default for every project; a project can override it."
-          : "Skills OpenCode may use in this project. A change here overrides the default for this project only."
+    <Show
+      when={current()}
+      fallback={
+        <ExtensionDestination
+          title="Skills"
+          description={
+            scope() === "default"
+              ? "Skills OpenCode may use. Switching one off here is the default for every project; a project can override it."
+              : "Skills OpenCode may use in this project. A change here overrides the default for this project only."
+          }
+        >
+          <ExtensionList each={inventory.latest} empty="No skills are available">
+            {(item) => (
+              <ExtensionRow
+                icon="post-skill"
+                name={item.name}
+                detail={detailOf(item, scope())}
+                onOpen={() => setSelected(item.id)}
+              >
+                <SkillAvailabilityControls
+                  skill={item}
+                  scope={scope()}
+                  pending={pending() !== undefined}
+                  onChange={(enabled) => void set(item, enabled)}
+                />
+              </ExtensionRow>
+            )}
+          </ExtensionList>
+        </ExtensionDestination>
       }
     >
-      <ExtensionList each={inventory.latest} empty="No skills are available">
-        {(item) => (
-          <ExtensionRow icon="post-skill" name={item.name} detail={detailOf(item, scope())}>
-            <div class="extension-destination-controls">
-              <Show when={canReset(item, scope())}>
-                <button
-                  type="button"
-                  class="extension-destination-reset"
-                  disabled={pending() !== undefined}
-                  onClick={() => void set(item, undefined)}
-                >
-                  Use default
-                </button>
-              </Show>
-              <Switch
-                checked={item.enabled}
-                disabled={pending() !== undefined}
-                hideLabel
-                onChange={(enabled) => {
-                  if (enabled === item.enabled) return
-                  void set(item, enabled)
-                }}
-              >
-                {item.name}
-              </Switch>
-            </div>
-          </ExtensionRow>
-        )}
-      </ExtensionList>
-    </ExtensionDestination>
+      {(skill) => (
+        <SkillDetails
+          skill={skill()}
+          scope={scope()}
+          pending={pending() !== undefined}
+          onEnabledChange={(enabled) => void set(skill(), enabled)}
+          onBack={() => setSelected()}
+        />
+      )}
+    </Show>
   )
 }
 

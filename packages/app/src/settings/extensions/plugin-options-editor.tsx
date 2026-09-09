@@ -1,4 +1,4 @@
-import { For, Show, createMemo, type Component } from "solid-js"
+import { For, Show, createMemo, type Component, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Key } from "@solid-primitives/keyed"
 import { Button } from "@opencode/ui/button"
@@ -21,6 +21,7 @@ export const PluginOptionsEditor: Component<{
   plugin: PluginInfo
   directory: string | undefined
   onBack?: () => void
+  headerActions?: JSX.Element
   onChanged?: () => unknown | Promise<unknown>
 }> = (props) => {
   const serverSDK = useServerSDK()
@@ -64,11 +65,16 @@ export const PluginOptionsEditor: Component<{
 
   return (
     <div class="plugin-options">
-      <Show when={props.onBack}>
-        <Button size="small" variant="ghost" class="plugin-details-back" onClick={() => props.onBack?.()}>
-          <Icon name="arrow-left" size="small" />
-          {language.t("settings.plugins.back")}
-        </Button>
+      <Show when={props.onBack || props.headerActions}>
+        <div class="plugin-details-toolbar">
+          <Show when={props.onBack}>
+            <Button size="small" variant="ghost" class="plugin-details-back" onClick={() => props.onBack?.()}>
+              <Icon name="arrow-left" size="small" />
+              {language.t("settings.plugins.back")}
+            </Button>
+          </Show>
+          {props.headerActions}
+        </div>
       </Show>
       <header class="plugin-details-heading">
         <div class="plugin-details-identity">
