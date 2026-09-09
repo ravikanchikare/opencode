@@ -1,6 +1,16 @@
 import { describe, expect, test } from "bun:test"
 
-import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import {
+  autoInvokeEnabled,
+  availabilityKey,
+  canReset,
+  currentSkill,
+  detailOf,
+  ordered,
+  payloadFor,
+  scopeOf,
+  type SkillRow,
+} from "./skill-availability"
 
 const row = (overrides: Partial<SkillRow> = {}): SkillRow => ({
   id: "review",
@@ -8,7 +18,17 @@ const row = (overrides: Partial<SkillRow> = {}): SkillRow => ({
   enabled: true,
   inherited: true,
   defaultEnabled: true,
+  location: "/skills/review/SKILL.md",
+  content: "# Review\nFollow the checklist.",
   ...overrides,
+})
+
+test("auto-invoke display matches the host's default and respects explicit opt-outs", () => {
+  expect(autoInvokeEnabled({ description: "Review changes" })).toBe(true)
+  expect(autoInvokeEnabled({ description: "Review changes", autoinvoke: true })).toBe(true)
+  expect(autoInvokeEnabled({ description: "Review changes", autoinvoke: false })).toBe(false)
+  expect(autoInvokeEnabled({ autoinvoke: true })).toBe(false)
+  expect(autoInvokeEnabled({})).toBe(false)
 })
 
 describe("scopeOf", () => {
@@ -77,5 +97,37 @@ describe("ordered", () => {
     ]
     expect(ordered(rows).map((item) => item.id)).toEqual(["c", "a", "b"])
     expect(rows.map((item) => item.id)).toEqual(["b", "a", "c"])
+  })
+})
+
+describe("skill details navigation", () => {
+  const skills = [
+    row({ id: "enabled", name: "Enabled skill", enabled: true }),
+    row({ id: "disabled", name: "Disabled skill", enabled: false, slash: true, autoinvoke: false }),
+  ]
+
+  test("selects the current inventory row, including a disabled skill, and returns to the list on back", () => {
+    let selected: string | undefined = "disabled"
+    expect(currentSkill(skills, selected)).toMatchObject({
+      id: "disabled",
+      enabled: false,
+      location: "/skills/review/SKILL.md",
+      content: "# Review\nFollow the checklist.",
+    })
+    selected = undefined
+    expect(currentSkill(skills, selected)).toBeUndefined()
+  })
+
+  test("presents resolved global defaults and project availability context", () => {
+    expect(availabilityKey(skills[1], "default")).toBe("settings.skills.availability.default.disabled")
+    expect(availabilityKey(row({ enabled: true, inherited: true }), "location")).toBe(
+      "settings.skills.availability.inherited.enabled",
+    )
+    expect(availabilityKey(row({ enabled: false, inherited: false, defaultEnabled: true }), "location")).toBe(
+      "settings.skills.availability.override.disabled.defaultEnabled",
+    )
+    expect(availabilityKey(row({ enabled: true, inherited: false, defaultEnabled: false }), "location")).toBe(
+      "settings.skills.availability.override.enabled.defaultDisabled",
+    )
   })
 })

@@ -10,6 +10,7 @@
  */
 
 import { For, Show, type Component, type JSX } from "solid-js"
+import { Dynamic } from "solid-js/web"
 import { Icon, type IconProps } from "@opencode/ui/icon"
 import "./extensions.css"
 
@@ -29,18 +30,26 @@ export const ExtensionRow: Component<{
   name: string
   detail?: string
   mono?: boolean
+  onOpen?: () => void
   children?: JSX.Element
 }> = (props) => (
   <div class="extension-destination-row">
-    <Icon name={props.icon} class="extension-destination-icon" />
-    <span class="extension-destination-main">
-      <span class="extension-destination-name" classList={{ mono: props.mono }}>
-        {props.name}
+    <Dynamic
+      component={props.onOpen ? "button" : "div"}
+      type={props.onOpen ? "button" : undefined}
+      class="extension-destination-label"
+      onClick={props.onOpen}
+    >
+      <Icon name={props.icon} class="extension-destination-icon" />
+      <span class="extension-destination-main">
+        <span class="extension-destination-name" classList={{ mono: props.mono }}>
+          {props.name}
+        </span>
+        <Show when={props.detail}>
+          <span class="extension-destination-description">{props.detail}</span>
+        </Show>
       </span>
-      <Show when={props.detail}>
-        <span class="extension-destination-description">{props.detail}</span>
-      </Show>
-    </span>
+    </Dynamic>
     {props.children}
   </div>
 )

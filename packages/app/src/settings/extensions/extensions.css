@@ -42,6 +42,29 @@
   border-bottom: none;
 }
 
+.extension-destination-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: start;
+  color: inherit;
+}
+
+button.extension-destination-label {
+  cursor: pointer;
+}
+
+button.extension-destination-label:focus-visible {
+  outline: 2px solid var(--v2-border-border-focus);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .extension-destination-icon {
   color: var(--v2-icon-icon-muted);
   flex-shrink: 0;
@@ -96,6 +119,53 @@
   min-width: 0;
 }
 
+.skill-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.skill-details-metadata {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 12px;
+  line-height: var(--line-height-base);
+}
+
+.skill-details-metadata dt {
+  color: var(--v2-text-text-muted);
+}
+
+.skill-details-metadata dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--v2-text-text-base);
+}
+
+.skill-details-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-details-content pre {
+  margin: 0;
+  padding: 12px;
+  border: 0.5px solid var(--v2-border-border-base);
+  border-radius: 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: var(--line-height-base);
+  color: var(--v2-text-text-base);
+  background: var(--v2-background-bg-base);
+}
+
 .plugin-options-field {
   display: flex;
   flex-direction: column;
@@ -133,6 +203,10 @@
 
 .plugin-details-back {
   align-self: flex-start;
+}
+
+.settings-detail-page .plugin-details-back {
+  height: 28px;
 }
 
 .plugin-details-heading {
