@@ -21,6 +21,7 @@ import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
 import { pluginDisplayName, pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
 import { PluginOptionsEditor } from "@/settings/extensions/plugin-options-editor"
+import { pluginInventoryRows } from "@/settings/extensions/data"
 import { currentPlugin, hasPluginDetails } from "@/settings/extensions/plugin-options"
 import type { PluginInfo } from "@opencode/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
@@ -261,14 +262,10 @@ export const ProjectSettingsExtensions: Component<{
     },
     { initialValue: [] as PluginInfo[] },
   )
-  const globalPlugins = createMemo(() =>
-    (globalPluginList.latest ?? []).filter((plugin) => plugin.source.type !== "builtin"),
-  )
+  const globalPlugins = createMemo(() => pluginInventoryRows(globalPluginList.latest ?? []))
   const projectPlugins = createMemo(() => {
     const shared = new Set(pluginLabels(globalPlugins()))
-    return (projectPluginList.latest ?? []).filter(
-      (plugin) => plugin.source.type !== "builtin" && !shared.has(pluginLabel(plugin)),
-    )
+    return pluginInventoryRows(projectPluginList.latest ?? []).filter((plugin) => !shared.has(pluginLabel(plugin)))
   })
   const [selectedPlugin, setSelectedPlugin] = createSignal<string>()
   const current = createMemo(() =>
