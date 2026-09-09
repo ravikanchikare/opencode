@@ -1,6 +1,29 @@
 import { DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
 
 export const dict = {
+  "settings.skills.back": "Skills",
+  "settings.skills.viewDetails": "View details for {{name}}",
+  "settings.skills.id": "Skill ID",
+  "settings.skills.source": "Source location",
+  "settings.skills.slash": "Slash command",
+  "settings.skills.autoinvoke": "Auto-invoke",
+  "settings.skills.enabled": "Enabled",
+  "settings.skills.disabled": "Disabled",
+  "settings.skills.reset": "Use default",
+  "settings.skills.availability": "Availability",
+  "settings.skills.availability.default.enabled": "Enabled by default in every project",
+  "settings.skills.availability.default.disabled": "Disabled by default in every project",
+  "settings.skills.availability.inherited.enabled": "Enabled by the default for this project",
+  "settings.skills.availability.inherited.disabled": "Disabled by the default for this project",
+  "settings.skills.availability.override.enabled.defaultEnabled":
+    "Enabled for this project; overrides an enabled default",
+  "settings.skills.availability.override.enabled.defaultDisabled":
+    "Enabled for this project; overrides a disabled default",
+  "settings.skills.availability.override.disabled.defaultEnabled":
+    "Disabled for this project; overrides an enabled default",
+  "settings.skills.availability.override.disabled.defaultDisabled":
+    "Disabled for this project; overrides a disabled default",
+  "settings.skills.instructions": "Instructions",
   "settings.plugins.back": "Plugins",
   "settings.plugins.active": "Active",
   "settings.plugins.failed": "Failed",
