@@ -6,6 +6,7 @@
 }
 
 .settings-screen {
+  --settings-content-top-inset: 48px;
   display: flex;
   flex: 1;
   width: calc(100% - 16px);
@@ -59,11 +60,15 @@
 }
 
 .settings-screen .settings-tab-header {
-  padding: 48px 0 0;
+  padding: var(--settings-content-top-inset) 0 0;
 }
 
 .settings-screen .settings-tab-body {
   padding-inline: 0;
+}
+
+.settings-screen .settings-detail-page {
+  padding-block-start: var(--settings-content-top-inset);
 }
 
 .settings-nav {
@@ -577,6 +582,10 @@
 }
 
 @container settings-screen (max-width: 799px) {
+  .settings-screen > .settings {
+    --settings-content-top-inset: 12px;
+  }
+
   .settings-screen > .settings[data-component="tabs-v2"] {
     flex-direction: column;
   }
@@ -618,8 +627,9 @@
     padding-inline: var(--settings-mobile-inner-inset, 16px);
   }
 
-  .settings-screen .settings-tab-header {
-    padding-top: 12px;
+  .settings-screen .settings-tab-title,
+  .settings-screen .settings-section-title {
+    line-height: var(--line-height-base);
   }
 
   .settings-screen
