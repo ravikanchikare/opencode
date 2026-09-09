@@ -6,6 +6,7 @@
 }
 
 .settings-screen {
+  --settings-content-top-inset: 48px;
   display: flex;
   flex: 1;
   width: calc(100% - 16px);
@@ -40,7 +41,7 @@
   > [data-slot="tabs-v2-list"] {
   width: 328px;
   min-width: 328px;
-  padding-block: 48px;
+  padding-block: var(--settings-content-top-inset);
   padding-inline-start: 24px;
   padding-inline-end: 104px;
   border-inline-end: none;
@@ -56,12 +57,16 @@
 }
 
 .settings-screen .settings-tab-header {
-  padding: 48px 0 32px;
+  padding: var(--settings-content-top-inset) 0 32px;
   background: linear-gradient(to bottom, var(--v2-background-bg-base) calc(100% - 24px), transparent);
 }
 
 .settings-screen .settings-tab-body {
   padding-inline: 0;
+}
+
+.settings-screen .settings-detail-page {
+  padding-block-start: var(--settings-content-top-inset);
 }
 
 .settings-nav {
@@ -447,6 +452,10 @@
 }
 
 @container settings-screen (max-width: 799px) {
+  .settings-screen > .settings {
+    --settings-content-top-inset: 12px;
+  }
+
   .settings-screen > .settings[data-component="tabs-v2"] {
     flex-direction: column;
   }
@@ -486,10 +495,6 @@
   .settings-screen .settings-tab-header,
   .settings-screen .settings-tab-body {
     padding-inline: var(--settings-mobile-inner-inset, 16px);
-  }
-
-  .settings-screen .settings-tab-header {
-    padding-top: 12px;
   }
 
   .settings-screen .settings-tab-title,
