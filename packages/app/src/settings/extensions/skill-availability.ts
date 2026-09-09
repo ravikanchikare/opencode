@@ -13,15 +13,13 @@
  * a global Settings window necessarily edits the global default.
  */
 
+import type { SkillInventory } from "@opencode/client/promise"
+
 /** What a request without a `directory` edits, versus one with it. */
 export type Scope = "default" | "location"
 
-export interface SkillRow {
+export interface SkillRow extends SkillInventory {
   readonly id: string
-  readonly name: string
-  readonly enabled: boolean
-  readonly inherited: boolean
-  readonly defaultEnabled: boolean
 }
 
 export function scopeOf(directory: string | undefined): Scope {
@@ -66,4 +64,31 @@ export function payloadFor(
 /** Rows as Settings shows them: by name, then id so the order is total. */
 export function ordered<T extends { readonly id: string; readonly name: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id))
+}
+
+/** Resolve the selected row from the latest inventory rather than retaining a stale object. */
+export function currentSkill(skills: readonly SkillRow[], id: string | undefined) {
+  if (!id) return undefined
+  return skills.find((skill) => skill.id === id)
+}
+
+/** The resolved state from the inventory, expressed in the current Settings scope. */
+export function availabilityKey(skill: SkillRow, scope: Scope) {
+  if (scope === "default") {
+    return skill.enabled
+      ? "settings.skills.availability.default.enabled"
+      : "settings.skills.availability.default.disabled"
+  }
+  if (skill.inherited) {
+    return skill.enabled
+      ? "settings.skills.availability.inherited.enabled"
+      : "settings.skills.availability.inherited.disabled"
+  }
+  return skill.enabled
+    ? skill.defaultEnabled
+      ? "settings.skills.availability.override.enabled.defaultEnabled"
+      : "settings.skills.availability.override.enabled.defaultDisabled"
+    : skill.defaultEnabled
+      ? "settings.skills.availability.override.disabled.defaultEnabled"
+      : "settings.skills.availability.override.disabled.defaultDisabled"
 }

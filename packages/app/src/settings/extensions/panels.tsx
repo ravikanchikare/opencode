@@ -20,6 +20,7 @@ import { createMemo, createResource, createSignal, Show, type Component } from "
 import { Switch } from "@opencode/ui/switch"
 import { Button } from "@opencode/ui/button"
 import { Icon } from "@opencode/ui/icon"
+import { IconButton } from "@opencode/ui/icon-button"
 import { useIntegrations } from "@/providers/catalog/integrations"
 import { useProviders } from "@/providers/catalog/providers"
 import { useMcpToggle } from "@/providers/connect/mcp"
@@ -34,7 +35,8 @@ import { useMcpServers, usePlugins } from "./data"
 import { PluginOptionsEditor } from "./plugin-options-editor"
 import { currentPlugin, hasPluginDetails } from "./plugin-options"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
-import { canReset, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import { canReset, currentSkill, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import { SkillDetails } from "./skill-details"
 import {
   integrationSubtitle,
   serviceIntegrations,
@@ -154,8 +156,10 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
  * `./skill-availability` so they can be tested without a DOM.
  */
 export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
+  const language = useLanguage()
   const serverSDK = useServerSDK()
   const [pending, setPending] = createSignal<string>()
+  const [selected, setSelected] = createSignal<string>()
   const scope = createMemo(() => scopeOf(props.directory))
 
   const [inventory, { refetch }] = createResource(
@@ -167,6 +171,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
     },
     { initialValue: [] as SkillRow[] },
   )
+  const current = createMemo(() => currentSkill(inventory(), selected()))
 
   const set = async (item: SkillRow, enabled: boolean | undefined) => {
     if (pending()) return
@@ -190,44 +195,59 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
   }
 
   return (
-    <ExtensionDestination
-      title="Skills"
-      description={
-        scope() === "default"
-          ? "Skills OpenCode may use. Switching one off here is the default for every project; a project can override it."
-          : "Skills OpenCode may use in this project. A change here overrides the default for this project only."
+    <Show
+      when={current()}
+      fallback={
+        <ExtensionDestination
+          title="Skills"
+          description={
+            scope() === "default"
+              ? "Skills OpenCode may use. Switching one off here is the default for every project; a project can override it."
+              : "Skills OpenCode may use in this project. A change here overrides the default for this project only."
+          }
+        >
+          <ExtensionList each={inventory.latest} empty="No skills are available">
+            {(item) => (
+              <ExtensionRow icon="post-skill" name={item.name} detail={detailOf(item, scope())}>
+                <div class="extension-destination-controls">
+                  <Show when={canReset(item, scope())}>
+                    <button
+                      type="button"
+                      class="extension-destination-reset"
+                      disabled={pending() !== undefined}
+                      onClick={() => void set(item, undefined)}
+                    >
+                      Use default
+                    </button>
+                  </Show>
+                  <Switch
+                    checked={item.enabled}
+                    disabled={pending() !== undefined}
+                    hideLabel
+                    onChange={(enabled) => {
+                      if (enabled === item.enabled) return
+                      void set(item, enabled)
+                    }}
+                  >
+                    {item.name}
+                  </Switch>
+                  <IconButton
+                    size="small"
+                    variant="ghost-muted"
+                    aria-label={language.t("settings.skills.viewDetails", { name: item.name })}
+                    title={language.t("settings.skills.viewDetails", { name: item.name })}
+                    icon={<Icon name="eye" size="small" />}
+                    onClick={() => setSelected(item.id)}
+                  />
+                </div>
+              </ExtensionRow>
+            )}
+          </ExtensionList>
+        </ExtensionDestination>
       }
     >
-      <ExtensionList each={inventory.latest} empty="No skills are available">
-        {(item) => (
-          <ExtensionRow icon="post-skill" name={item.name} detail={detailOf(item, scope())}>
-            <div class="extension-destination-controls">
-              <Show when={canReset(item, scope())}>
-                <button
-                  type="button"
-                  class="extension-destination-reset"
-                  disabled={pending() !== undefined}
-                  onClick={() => void set(item, undefined)}
-                >
-                  Use default
-                </button>
-              </Show>
-              <Switch
-                checked={item.enabled}
-                disabled={pending() !== undefined}
-                hideLabel
-                onChange={(enabled) => {
-                  if (enabled === item.enabled) return
-                  void set(item, enabled)
-                }}
-              >
-                {item.name}
-              </Switch>
-            </div>
-          </ExtensionRow>
-        )}
-      </ExtensionList>
-    </ExtensionDestination>
+      {(skill) => <SkillDetails skill={skill()} scope={scope()} onBack={() => setSelected()} />}
+    </Show>
   )
 }
 
