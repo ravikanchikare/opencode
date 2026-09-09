@@ -15,12 +15,18 @@
 
 import { createMemo, createResource, type Accessor } from "solid-js"
 import type { PluginInfo } from "@opencode/client"
+import { isPluginVisible } from "@/composition"
 import { pluginLabels } from "@/providers/catalog/plugin"
 import { useServerSDK } from "@/runtime/server/client"
 
 export type ExtensionScope = Accessor<string | undefined>
 
 const locationOf = (directory: string | undefined) => (directory ? { directory } : undefined)
+
+/** The Settings-only inventory policy shared by main and project Settings. */
+export function pluginInventoryRows(plugins: readonly PluginInfo[]) {
+  return plugins.filter((plugin) => plugin.source.type !== "builtin" && isPluginVisible(plugin.id))
+}
 
 /**
  * Resource key: `false` suspends while disconnected, and the directory
@@ -72,9 +78,7 @@ export function usePlugins(directory: ExtensionScope) {
   )
 
   const names = createMemo(() => pluginLabels(plugins.latest ?? []))
-  const rows = createMemo(() =>
-    (plugins.latest ?? []).filter((plugin) => plugin.source.type !== "builtin"),
-  )
+  const rows = createMemo(() => pluginInventoryRows(plugins.latest ?? []))
 
   /** Failure text by label, so a row can explain why a plugin is not loaded. */
   const failures = createMemo(
