@@ -60,8 +60,16 @@ export type AppNewSessionComposition = {
   showProviderTip?: boolean
 }
 
+/** Settings-only policy for plugin inventory rows and technical metadata. */
+export type AppPluginPresentation = {
+  hiddenPluginIDs?: readonly string[]
+  /** Hide the technical metadata accordion, not the plugin's configuration controls. */
+  hiddenMetadataPluginIDs?: readonly string[]
+}
+
 export type AppComposition = {
   pluginOptionLabels?: Readonly<Record<string, Readonly<Record<string, string>>>>
+  pluginPresentation?: AppPluginPresentation
   settingsDefaults?: AppSettingsDefaults
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
@@ -85,6 +93,19 @@ export function configureAppComposition(value: AppComposition) {
 
 export function getAppComposition() {
   return composition
+}
+
+/**
+ * Settings inventories can omit identified plugins without changing the host's
+ * plugin lifecycle, provenance, or API responses. Unidentified entries remain
+ * visible so failed plugin rows retain their diagnostic value.
+ */
+export function isPluginVisible(pluginID: string | undefined, value: AppComposition = composition) {
+  return pluginID === undefined || !value.pluginPresentation?.hiddenPluginIDs?.includes(pluginID)
+}
+
+export function isPluginMetadataVisible(pluginID: string | undefined, value: AppComposition = composition) {
+  return pluginID === undefined || !value.pluginPresentation?.hiddenMetadataPluginIDs?.includes(pluginID)
 }
 
 /**
