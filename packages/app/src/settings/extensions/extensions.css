@@ -269,6 +269,10 @@ button.extension-destination-label:focus-visible {
   gap: 8px;
 }
 
+.plugin-details-title-row {
+  min-height: 28px;
+}
+
 .plugin-details-description,
 .plugin-details-status {
   margin: 0;
@@ -312,6 +316,12 @@ button.extension-destination-label:focus-visible {
   margin-bottom: 4px;
 }
 
+.plugin-flat-tool > .plugin-details-description,
+.plugin-flat-tool > [data-slot="collapsible-root"],
+.plugin-flat-tool > [data-slot="collapsible-trigger"] {
+  padding-inline-end: 48px;
+}
+
 .plugin-control-columns {
   display: grid;
   grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 64px);
@@ -322,13 +332,11 @@ button.extension-destination-label:focus-visible {
   color: var(--v2-text-text-muted);
 }
 
-.plugin-options-field > .plugin-control-columns {
-  padding-inline: calc(var(--plugin-list-inset) + var(--plugin-row-inset));
-}
-
 .plugin-options-field > [data-component="settings-list"] {
   padding-inline: var(--plugin-list-inset);
   background: var(--v2-background-bg-base);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 0.5px var(--v2-border-border-base);
 }
 
 .plugin-control-columns > span,
@@ -341,8 +349,29 @@ button.extension-destination-label:focus-visible {
   color: var(--v2-text-text-muted);
 }
 
-.plugin-options-field > [data-component="text-input-v2"] {
+.plugin-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.plugin-search-row.grouped {
+  grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 64px);
+  box-sizing: border-box;
   width: 100%;
+  padding-inline: var(--plugin-row-inset);
+}
+
+.plugin-search-row > [data-component="text-input-v2"] {
+  width: 100%;
+}
+
+.plugin-search-row > span {
+  text-align: center;
+  color: var(--v2-text-text-muted);
+  font-size: 12px;
+  line-height: var(--line-height-base);
 }
 
 .plugin-domain-row > [data-component="switch"] {
@@ -398,7 +427,8 @@ button.extension-destination-label:focus-visible {
 }
 
 @media (max-width: 600px) {
-  .plugin-control-columns {
+  .plugin-control-columns,
+  .plugin-search-row.grouped {
     grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 44px);
     gap: 4px;
   }

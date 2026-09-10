@@ -13,7 +13,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   }
   const events: OpenCodeEvent[] = []
   const location = { directory, project: { id: project.id, directory, canonical: directory } }
-  const state = { effective: ["alpha:read", "beta:read", "inspect"], pending: [] as string[] }
+  const state = { effective: ["alpha:read", "beta:read"], pending: [] as string[] }
   const choices = [
     {
       value: "alpha:read",
@@ -28,15 +28,16 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
       tools: [{ name: "alpha.update", description: "Update Alpha.", input: { type: "object", required: ["id"] } }],
     },
     {
+      value: "alpha:delete",
+      label: "Delete",
+      group: { id: "alpha", label: "Alpha" },
+      tools: [{ name: "alpha.delete", description: "Delete Alpha.", input: { type: "object", required: ["id"] } }],
+    },
+    {
       value: "beta:read",
       label: "Read",
       group: { id: "beta", label: "Beta" },
       tools: [{ name: "beta.get", description: "Read Beta.", input: { type: "object" } }],
-    },
-    {
-      value: "inspect",
-      label: "inspect",
-      tools: [{ name: "inspect", description: "Inspect the local state.", input: { type: "object" } }],
     },
   ]
   const plugin = (): PluginInfo => ({
@@ -53,12 +54,37 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
           key: "tools",
           label: "Tools",
           choices,
-          default: ["alpha:read", "beta:read", "inspect"],
+          default: ["alpha:read", "beta:read"],
         },
       ],
       scope: "location",
       inherited: true,
       effective: { tools: state.effective },
+    },
+  })
+  const flat = (): PluginInfo => ({
+    ...plugin(),
+    id: "example.flat",
+    name: "Example Flat Tools",
+    options: {
+      descriptors: [
+        {
+          type: "multi-select",
+          key: "tools",
+          label: "Tools",
+          choices: [
+            {
+              value: "inspect",
+              label: "inspect",
+              tools: [{ name: "inspect", description: "Inspect the local state.", input: { type: "object" } }],
+            },
+          ],
+          default: ["inspect"],
+        },
+      ],
+      scope: "location",
+      inherited: true,
+      effective: { tools: ["inspect"] },
     },
   })
   await mockOpenCodeServer(page, {
@@ -87,7 +113,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
     }
     if (url.pathname.endsWith("/await-activation")) return route.fulfill({ status: 204 })
     return route.fulfill({
-      json: { location, data: url.searchParams.get("location[directory]") === directory ? [plugin()] : [] },
+      json: { location, data: url.searchParams.get("location[directory]") === directory ? [plugin(), flat()] : [] },
     })
   })
   await page.goto("/")
@@ -98,16 +124,45 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   const dialog = page.getByRole("dialog")
   await dialog.getByRole("tab", { name: "Extensions", exact: true }).click()
   await dialog.getByRole("tab", { name: "Plugins", exact: true }).click()
-  await dialog.getByRole("button", { name: /Example Tools/ }).click()
-  await expect(dialog.getByRole("heading", { name: "Example Tools", exact: true })).toBeVisible()
-  await expect(dialog.getByText("example.tools", { exact: true })).toBeVisible()
-  await expect(dialog.getByText("/private/plugin.ts", { exact: true })).toHaveCount(0)
-  await expect(dialog.getByText("Active", { exact: true })).toHaveCount(0)
-  await expect(dialog.getByText("1 operation", { exact: true })).toHaveCount(0)
+  await dialog.getByRole("button", { name: /Example Flat Tools/ }).click()
+  await expect(dialog.getByRole("heading", { name: "Example Flat Tools", exact: true })).toBeVisible()
+  const flatSearch = dialog.getByRole("searchbox")
+  const flatCard = dialog.locator('[data-component="settings-list"]')
+  const flatToggle = dialog.getByRole("switch", { name: "inspect", exact: true })
   await expect(dialog.getByText("Inspect the local state.", { exact: true })).toHaveCount(1)
+  await expect
+    .poll(() =>
+      flatSearch.evaluate((element) => {
+        const row = element.closest(".plugin-search-row")!.getBoundingClientRect()
+        const field = element.closest('[data-component="text-input-v2"]')!.getBoundingClientRect()
+        return Math.abs(row.width - field.width)
+      }),
+    )
+    .toBeLessThanOrEqual(1)
+  await expect
+    .poll(() =>
+      flatCard.getByText("Inspect the local state.", { exact: true }).evaluate((description) => {
+        const text = description.getBoundingClientRect()
+        const padding = Number.parseFloat(getComputedStyle(description).paddingRight)
+        const control = description
+          .closest(".plugin-flat-tool")!
+          .querySelector('[data-component="switch"]')!
+          .getBoundingClientRect()
+        return control.left - (text.right - padding)
+      }),
+    )
+    .toBeGreaterThanOrEqual(24)
   await dialog.getByRole("button", { name: "Input schema for inspect", exact: true }).click()
   await expect(dialog.locator("pre").filter({ hasText: '"type": "object"' })).toBeVisible()
   await expect(dialog.getByText("Inspect the local state.", { exact: true })).toHaveCount(1)
+  await dialog.getByRole("button", { name: "Plugins", exact: true }).click()
+  await dialog.getByRole("button", { name: /^Example Tools/ }).click()
+  await expect(dialog.getByRole("heading", { name: "Example Tools", exact: true })).toBeVisible()
+  await expect(dialog.getByText("example.tools", { exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole("heading", { name: "Tools", exact: true })).toHaveCount(0)
+  await expect(dialog.getByText("/private/plugin.ts", { exact: true })).toHaveCount(0)
+  await expect(dialog.getByText("Active", { exact: true })).toHaveCount(0)
+  await expect(dialog.getByText("1 operation", { exact: true })).toHaveCount(0)
   await dialog.getByRole("button", { name: "Alpha", exact: true }).click()
   await expect(dialog.getByText("Update Alpha.", { exact: true })).toBeVisible()
   const write = dialog.getByRole("switch", { name: "Alpha: Write", exact: true })
@@ -123,10 +178,24 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   await expect(dialog.getByRole("switch", { name: "Beta: Read", exact: true })).toBeChecked()
   await expect(dialog.getByRole("switch", { name: "Beta: Write", exact: true })).toHaveCount(0)
   await expect(dialog.getByRole("button", { name: "Alpha", exact: true })).toHaveAttribute("aria-expanded", "true")
+  await expect(dialog.getByText("Read", { exact: true })).toBeVisible()
+  await expect(dialog.getByText("Write", { exact: true })).toBeVisible()
+  await expect(dialog.getByText("Delete", { exact: true })).toBeVisible()
+  await expect
+    .poll(() =>
+      dialog.evaluate((element) => {
+        const title = element.querySelector(".plugin-details-title-row .settings-tab-title")!.getBoundingClientRect()
+        const action = [...element.querySelectorAll(".plugin-details-title-row button")]
+          .find((button) => button.textContent?.trim() === "Enable all")!
+          .getBoundingClientRect()
+        return Math.abs(title.y + title.height / 2 - action.y - action.height / 2)
+      }),
+    )
+    .toBeLessThanOrEqual(1)
   for (const width of [1280, 720, 390]) {
     await page.setViewportSize({ width, height: 844 })
     const card = dialog.locator('[data-component="settings-list"]')
-    await expect(card.locator(":scope > .plugin-domain")).toHaveCount(3)
+    await expect(card.locator(":scope > .plugin-domain")).toHaveCount(2)
     await expect
       .poll(() =>
         card.evaluate((element) => {
@@ -146,9 +215,8 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
     await expect
       .poll(() =>
         dialog.evaluate((element) => {
-          const headings = [
-            ...element.querySelectorAll(".plugin-options-field > .plugin-control-columns > span"),
-          ].slice(1)
+          const search = element.querySelector(".plugin-search-row")!.getBoundingClientRect()
+          const headings = [...element.querySelectorAll(".plugin-search-row > span")]
           const cells = [
             ...element
               .querySelector(".plugin-domain .plugin-control-columns")!
@@ -158,7 +226,10 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
             ...headings.map((heading, index) => {
               const a = heading.getBoundingClientRect()
               const b = cells[index]!.getBoundingClientRect()
-              return Math.abs(a.x + a.width / 2 - b.x - b.width / 2)
+              return Math.max(
+                Math.abs(a.x + a.width / 2 - b.x - b.width / 2),
+                Math.abs(a.y + a.height / 2 - search.y - search.height / 2),
+              )
             }),
           )
         }),

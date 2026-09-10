@@ -29,6 +29,7 @@ export const PluginOptionsEditor: Component<{
   const scope = () => scopeOf(props.directory)
   const pluginId = () => String(props.plugin.id ?? "")
   const location = () => (props.directory ? { directory: props.directory } : undefined)
+  const descriptors = () => props.plugin.options?.descriptors ?? []
 
   // File-watcher activation can finish after the save response and its first refresh.
   onCleanup(
@@ -68,6 +69,34 @@ export const PluginOptionsEditor: Component<{
     }
   }
 
+  const saveAll = async (mode: "all" | "none" | "default") => {
+    if (!pluginId() || store.pending) return
+    const focus = document.activeElement
+    setStore("pending", "*")
+    try {
+      for (const descriptor of descriptors()) {
+        const value =
+          mode === "default" ? undefined : mode === "all" ? descriptor.choices.map((choice) => choice.value) : []
+        await serverSDK.api.plugin.setOptions({
+          plugin: pluginId(),
+          location: location(),
+          payload:
+            value === undefined ? { key: descriptor.key, inherit: true as const } : { key: descriptor.key, value },
+        })
+      }
+      await props.onChanged?.()
+    } catch (error) {
+      showToast({
+        variant: "error",
+        title: language.t("settings.plugins.saveFailed"),
+        description: error instanceof Error ? error.message : String(error),
+      })
+    } finally {
+      setStore("pending", "")
+      if (focus instanceof HTMLElement && focus.isConnected && document.activeElement === document.body) focus.focus()
+    }
+  }
+
   return (
     <div class="plugin-options">
       <Show when={props.onBack || props.headerActions}>
@@ -81,13 +110,39 @@ export const PluginOptionsEditor: Component<{
           {props.headerActions}
         </div>
       </Show>
-      <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
-      <dl class="plugin-details-metadata">
-        <dt>{language.t("settings.plugins.id")}</dt>
-        <dd>
-          <code>{pluginId()}</code>
-        </dd>
-      </dl>
+      <div class="plugin-details-toolbar plugin-details-title-row">
+        <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
+        <Show when={descriptors().length}>
+          <div class="plugin-details-actions">
+            <Button
+              size="small"
+              variant="ghost"
+              disabled={!!store.pending || !pluginId()}
+              onClick={() => void saveAll("all")}
+            >
+              {language.t("settings.plugins.selectAll")}
+            </Button>
+            <Button
+              size="small"
+              variant="ghost"
+              disabled={!!store.pending || !pluginId()}
+              onClick={() => void saveAll("none")}
+            >
+              {language.t("settings.plugins.clearAll")}
+            </Button>
+            <Show when={canReset(props.plugin.options?.inherited ?? true, scope())}>
+              <Button
+                size="small"
+                variant="ghost"
+                disabled={!!store.pending || !pluginId()}
+                onClick={() => void saveAll("default")}
+              >
+                {language.t("settings.plugins.reset")}
+              </Button>
+            </Show>
+          </div>
+        </Show>
+      </div>
       <Show when={props.plugin.state.status === "failed" ? props.plugin.state.error : undefined}>
         {(error) => (
           <p role="alert" class="plugin-details-error">
@@ -98,7 +153,7 @@ export const PluginOptionsEditor: Component<{
       <Show when={!props.plugin.options?.descriptors.length}>
         <p class="plugin-details-description">{language.t("settings.plugins.noOptions")}</p>
       </Show>
-      <Key each={props.plugin.options?.descriptors ?? []} by="key">
+      <Key each={descriptors()} by="key">
         {(descriptor) => {
           const selected = createMemo(
             () => new Set(editorValues(props.plugin, descriptor().key, descriptor().default ?? [])),
@@ -125,50 +180,21 @@ export const PluginOptionsEditor: Component<{
               class="plugin-options-field"
               aria-label={optionLabel(pluginId(), descriptor().key, descriptor().label)}
             >
-              <div class="plugin-details-toolbar">
-                <h3 class="settings-section-title">{optionLabel(pluginId(), descriptor().key, descriptor().label)}</h3>
-                <div class="plugin-details-actions">
-                  <Button
-                    size="small"
-                    variant="ghost"
-                    disabled={!!store.pending || !pluginId()}
-                    onClick={() =>
-                      void save(
-                        descriptor().key,
-                        descriptor().choices.map((choice) => choice.value),
-                      )
-                    }
-                  >
-                    {language.t("settings.plugins.selectAll")}
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="ghost"
-                    disabled={!!store.pending || !pluginId()}
-                    onClick={() => void save(descriptor().key, [])}
-                  >
-                    {language.t("settings.plugins.clearAll")}
-                  </Button>
-                  <Show when={canReset(props.plugin.options?.inherited ?? true, scope())}>
-                    <Button
-                      size="small"
-                      variant="ghost"
-                      disabled={!!store.pending || !pluginId()}
-                      onClick={() => void save(descriptor().key, undefined)}
-                    >
-                      {language.t("settings.plugins.reset")}
-                    </Button>
-                  </Show>
-                </div>
+              <div
+                class="plugin-search-row"
+                classList={{ grouped: grouped().columns.length > 0 }}
+                style={{ "--plugin-columns": grouped().columns.length }}
+              >
+                <TextInput
+                  type="search"
+                  appearance="base"
+                  value={store.query}
+                  onInput={(event) => setStore("query", event.currentTarget.value)}
+                  placeholder={language.t("settings.plugins.search")}
+                  aria-label={language.t("settings.plugins.search")}
+                />
+                <For each={grouped().columns}>{(column) => <span>{column}</span>}</For>
               </div>
-              <TextInput
-                type="search"
-                appearance="base"
-                value={store.query}
-                onInput={(event) => setStore("query", event.currentTarget.value)}
-                placeholder={language.t("settings.plugins.search")}
-                aria-label={language.t("settings.plugins.search")}
-              />
               <Show when={store.pending === descriptor().key || !isSelectionActive(props.plugin, descriptor().key)}>
                 <div role="status" aria-live="polite" class="plugin-details-description">
                   {language.t(
@@ -180,12 +206,6 @@ export const PluginOptionsEditor: Component<{
                 when={rows().length}
                 fallback={<p class="plugin-details-description">{language.t("settings.plugins.empty")}</p>}
               >
-                <Show when={grouped().columns.length}>
-                  <div class="plugin-control-columns" style={{ "--plugin-columns": grouped().columns.length }}>
-                    <span />
-                    <For each={grouped().columns}>{(column) => <span>{column}</span>}</For>
-                  </div>
-                </Show>
                 <SettingsList>
                   <Key each={grouped().rows} by="id">
                     {(group) => {
