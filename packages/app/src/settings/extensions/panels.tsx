@@ -20,6 +20,7 @@ import { createMemo, createResource, createSignal, Show, type Component } from "
 import { Switch } from "@opencode/ui/switch"
 import { Button } from "@opencode/ui/button"
 import { Icon } from "@opencode/ui/icon"
+import { Spinner } from "@opencode/ui/spinner"
 import { useIntegrations } from "@/providers/catalog/integrations"
 import { useProviders } from "@/providers/catalog/providers"
 import { useMcpToggle } from "@/providers/connect/mcp"
@@ -90,6 +91,7 @@ export const McpPanel: Component<ExtensionPanelProps> = (props) => {
  * where its control belongs.
  */
 export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
+  const language = useLanguage()
   const plugins = usePlugins(() => props.directory)
   const [selected, setSelected] = createSignal<string>()
   const current = createMemo(() => currentPlugin(plugins.rows(), selected()))
@@ -102,34 +104,50 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
           title="Plugins"
           description="Plugins loaded for this location, and any that failed to start."
         >
-          <ExtensionList each={plugins.rows()} empty="No plugins are installed">
-            {(plugin) => (
-              <Show
-                when={hasPluginDetails(plugin)}
-                fallback={
-                  <ExtensionRow
-                    icon="puzzle-piece"
-                    name={pluginDisplayName(plugin)}
-                    mono={!plugin.name}
-                    description={plugin.description}
-                    detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
-                  />
-                }
-              >
-                <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id))}>
-                  <ExtensionRow
-                    icon="puzzle-piece"
-                    name={pluginDisplayName(plugin)}
-                    mono={!plugin.name}
-                    description={plugin.description}
-                    detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
-                  >
-                    <Icon name="chevron-right" size="small" class="extension-destination-icon" />
-                  </ExtensionRow>
-                </button>
-              </Show>
-            )}
-          </ExtensionList>
+          <Show when={plugins.loading()}>
+            <div class="extension-loading" role="status" aria-busy="true">
+              <Spinner class="extension-loading-spinner" />
+              {language.t("common.loading")}
+            </div>
+          </Show>
+          <Show when={plugins.error() && !plugins.loading()}>
+            <div class="extension-loading" role="alert">
+              {language.t("settings.plugins.loadFailed")}
+              <Button size="small" variant="ghost" onClick={() => void plugins.refetch()}>
+                {language.t("settings.plugins.retry")}
+              </Button>
+            </div>
+          </Show>
+          <Show when={(!plugins.loading() && !plugins.error()) || plugins.rows().length > 0}>
+            <ExtensionList each={plugins.rows()} empty={language.t("settings.plugins.none")}>
+              {(plugin) => (
+                <Show
+                  when={hasPluginDetails(plugin)}
+                  fallback={
+                    <ExtensionRow
+                      icon="puzzle-piece"
+                      name={pluginDisplayName(plugin)}
+                      mono={!plugin.name}
+                      description={plugin.description}
+                      detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                    />
+                  }
+                >
+                  <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id))}>
+                    <ExtensionRow
+                      icon="puzzle-piece"
+                      name={pluginDisplayName(plugin)}
+                      mono={!plugin.name}
+                      description={plugin.description}
+                      detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+                    >
+                      <Icon name="chevron-right" size="small" class="extension-destination-icon" />
+                    </ExtensionRow>
+                  </button>
+                </Show>
+              )}
+            </ExtensionList>
+          </Show>
         </ExtensionDestination>
       }
     >
