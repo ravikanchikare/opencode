@@ -64,14 +64,14 @@ export const McpPanel: Component<ExtensionPanelProps> = (props) => {
     >
       <ExtensionList each={servers.rows()} empty="No MCP servers are configured">
         {(item) => (
-          <ExtensionRow icon="mcp" name={item.name}>
+          <ExtensionRow icon="mcp" name={item.name} description={item.description}>
             <Switch
               checked={item.enabled}
-              disabled={toggle.isPending && toggle.variables === item.name}
+              disabled={toggle.isPending && toggle.variables === item.id}
               hideLabel
               onChange={(checked) => {
                 if (item.enabled === checked || toggle.isPending) return
-                toggle.mutate(item.name)
+                toggle.mutate(item.id)
               }}
             >
               {item.name}
@@ -112,6 +112,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
                     icon="puzzle-piece"
                     name={pluginDisplayName(plugin)}
                     mono={!plugin.name}
+                    description={plugin.description}
                     detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
                   />
                 }
@@ -121,6 +122,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
                     icon="puzzle-piece"
                     name={pluginDisplayName(plugin)}
                     mono={!plugin.name}
+                    description={plugin.description}
                     detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
                   >
                     <Icon name="chevron-right" size="small" class="extension-destination-icon" />
@@ -200,6 +202,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
               <ExtensionRow
                 icon="post-skill"
                 name={item.name}
+                description={item.description}
                 detail={detailOf(item, scope())}
                 onOpen={() => setSelected(item.id)}
               >

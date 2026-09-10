@@ -154,7 +154,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   min-height: 48px;
   border-bottom: 0.5px solid var(--v2-border-border-base);
 }
@@ -166,7 +166,7 @@
 .project-settings-extension-row-main {
   display: flex;
   flex: 1;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-width: 0;
 }
@@ -182,6 +182,7 @@
   color: var(--v2-text-text-base);
   font-size: 13px;
   font-weight: 530;
+  line-height: var(--line-height-compact);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

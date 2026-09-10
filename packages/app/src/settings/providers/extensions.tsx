@@ -1,24 +1,17 @@
 import { Component, For, createEffect, createMemo, createResource } from "solid-js"
-import { Icon } from "@opencode/ui/icon"
 import { Switch } from "@opencode/ui/switch"
 import { Tabs } from "@opencode/ui/tabs"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useData } from "@/runtime/server/current"
 import { useServerSDK } from "@/runtime/server/client"
 import { useMcpToggle } from "@/providers/connect/mcp"
-import { pluginLabels } from "@/providers/catalog/plugin"
+import { pluginDisplayName } from "@/providers/catalog/plugin"
+import { mcpInventoryRows, pluginInventoryRows, type McpRow } from "@/settings/extensions/data"
+import { skillInventoryRows } from "@/settings/extensions/presentation"
+import { ExtensionRow } from "@/settings/extensions/shell"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { InlineServerSelect } from "@/settings/server-select"
 import "@/settings/settings.css"
-
-interface McpRowItem {
-  name: string
-  enabled: boolean
-}
-
-interface PluginRowItem {
-  name: string
-}
 
 export const SettingsExtensions: Component = () => {
   const language = useLanguage()
@@ -30,16 +23,18 @@ export const SettingsExtensions: Component = () => {
     { initialValue: [] },
   )
   const toggleMcp = useMcpToggle(() => undefined, refetchMcp)
-  const mcps = createMemo<McpRowItem[]>(() => {
-    return (mcpList.latest ?? []).map((server) => ({
-      name: server.name,
-      enabled: server.status.status === "connected",
-    }))
-  })
+  const mcps = createMemo(() =>
+    mcpInventoryRows(
+      (mcpList.latest ?? []).map((server) => ({
+        name: server.name,
+        enabled: server.status.status === "connected",
+      })),
+    ),
+  )
 
-  const handleMcpToggle = (item: McpRowItem, checked: boolean) => {
+  const handleMcpToggle = (item: McpRow, checked: boolean) => {
     if (item.enabled === checked || toggleMcp.isPending) return
-    toggleMcp.mutate(item.name)
+    toggleMcp.mutate(item.id)
   }
 
   const [pluginList] = createResource(
@@ -47,13 +42,13 @@ export const SettingsExtensions: Component = () => {
     () => serverSdk.api.plugin.list().then((result) => result.data),
     { initialValue: [] },
   )
-  const plugins = createMemo<PluginRowItem[]>(() => pluginLabels(pluginList.latest ?? []).map((name) => ({ name })))
+  const plugins = createMemo(() => pluginInventoryRows(pluginList.latest ?? []))
 
   createEffect(() => {
     if (serverSdk.connection.status() !== "connected") return
     void data.location.skill.sync().catch(() => undefined)
   })
-  const skills = () => data.location.skill.list() ?? []
+  const skills = () => skillInventoryRows(data.location.skill.list() ?? [])
 
   return (
     <>
@@ -86,15 +81,11 @@ export const SettingsExtensions: Component = () => {
               <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
                 <For each={mcps()}>
                   {(item) => (
-                    <div class="py-4 flex items-center justify-between border-b-[0.5px] border-[var(--v2-border-border-base)] last:border-b-0">
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <Icon name="mcp" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="text-13-medium text-v2-text-text-base truncate">{item.name}</span>
-                      </div>
+                    <ExtensionRow icon="mcp" name={item.name} description={item.description}>
                       <Switch checked={item.enabled} onChange={(checked) => handleMcpToggle(item, checked)} hideLabel>
                         {item.name}
                       </Switch>
-                    </div>
+                    </ExtensionRow>
                   )}
                 </For>
               </div>
@@ -112,12 +103,12 @@ export const SettingsExtensions: Component = () => {
               <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
                 <For each={plugins()}>
                   {(plugin) => (
-                    <div class="py-4 flex items-center justify-between border-b-[0.5px] border-[var(--v2-border-border-base)] last:border-b-0">
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <Icon name="cube" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="text-13-medium text-v2-text-text-base truncate font-mono">{plugin.name}</span>
-                      </div>
-                    </div>
+                    <ExtensionRow
+                      icon="cube"
+                      name={pluginDisplayName(plugin)}
+                      description={plugin.description}
+                      mono={!plugin.name}
+                    />
                   )}
                 </For>
               </div>
@@ -139,14 +130,7 @@ export const SettingsExtensions: Component = () => {
               </div>
               <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
                 <For each={skills()}>
-                  {(skill) => (
-                    <div class="py-4 flex items-center justify-between border-b-[0.5px] border-[var(--v2-border-border-base)] last:border-b-0">
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <Icon name="post-skill" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="text-13-medium text-v2-text-text-base truncate">{skill.name}</span>
-                      </div>
-                    </div>
-                  )}
+                  {(skill) => <ExtensionRow icon="post-skill" name={skill.name} description={skill.description} />}
                 </For>
               </div>
             </div>
