@@ -14,6 +14,7 @@ import { skillInventoryRows } from "@/settings/extensions/presentation"
 import { currentPlugin, hasPluginDetails } from "@/settings/extensions/plugin-options"
 import type { PluginInfo } from "@opencode/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
+import { ExtensionRow } from "@/settings/extensions/shell"
 import "@/settings/extensions/extensions.css"
 
 type SkillItem = {
@@ -26,27 +27,7 @@ type SkillItem = {
 const skillKey = (item: SkillItem) => `${item.id}\n${item.location}`
 
 const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
-  <div class="project-settings-extension-card">{props.children}</div>
-)
-
-const ExtensionRow: Component<{
-  icon: "mcp" | "puzzle-piece" | "post-skill"
-  name: string
-  description?: string
-  children?: JSX.Element
-}> = (props) => (
-  <div class="project-settings-extension-row">
-    <div class="project-settings-extension-row-main">
-      <Icon name={props.icon} class="project-settings-extension-row-icon" />
-      <span class="extension-destination-main">
-        <span class="project-settings-extension-row-name">{props.name}</span>
-        <Show when={props.description}>
-          <span class="extension-destination-description">{props.description}</span>
-        </Show>
-      </span>
-    </div>
-    {props.children}
-  </div>
+  <div class="extension-destination-list">{props.children}</div>
 )
 
 const SharedSection: Component<{
