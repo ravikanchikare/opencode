@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Populate a new Delta-managed worktree with local-only developer files from
+# Populate a new worktree with local-only developer files from
 # the primary checkout. These files are deliberately Git-ignored and this
 # script never overwrites worktree-local copies.
 #
