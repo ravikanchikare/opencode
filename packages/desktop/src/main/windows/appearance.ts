@@ -6,7 +6,7 @@ import type { Path } from "effect"
 import { type TitlebarTheme } from "../../shared/ipc-contract"
 import { WindowFullscreenChanged, WindowPinchZoomChanged, WindowZoomChanged } from "../../shared/ipc-rpc/events"
 import { emitIpcEvent } from "../ipc-events"
-import { ICON_DIR } from "../constants"
+import { ICON_DIR, PRODUCT_NAME } from "../constants"
 import type { DesktopPaths } from "../paths"
 import { BACKGROUND_COLOR_KEY, PINCH_ZOOM_ENABLED_KEY } from "../storage/keys"
 import { getStore } from "../storage/store"
@@ -28,7 +28,7 @@ let backgroundColor: string | undefined
 export function windowAppearance(path: Path.Path, paths: DesktopPaths.Resolved) {
   const mode = tone()
   return {
-    title: "OpenCode",
+    title: PRODUCT_NAME,
     icon: iconPath(path, paths),
     backgroundColor: getBackgroundColor() ?? oc2Background[mode],
     ...(process.platform === "darwin"
