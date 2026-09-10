@@ -424,7 +424,7 @@ function MessageTimelineView(
       : projects.find((item) => containsDirectory(item.worktree, sessionDirectory()))
   })
   const workspaceSession = createMemo(() => isWorkspaceDirectory(project(), sessionDirectory()))
-  const showProjectIcon = () => import.meta.env.VITE_OPENCODE_CHANNEL !== "prod" && settings.general.showProjectIcon()
+  const showProjectIcon = () => settings.general.showProjectIcon()
   const avatarProject = createMemo(() => {
     const session = props.session.data.info()
     if (!session) return
