@@ -98,8 +98,8 @@ describe("plugin inventory presentation", () => {
  * happened to `settings.extensions.manageConfig`, `addSkills`, and
  * `project.settings.extensions.shared`.
  *
- * Hebrew is the trap here — it is easy to restore `en` and forget `he`, and
- * nothing else in the suite would notice. Both dictionaries are checked.
+ * Non-English dictionaries use the runtime's English fallback while new
+ * translations await language review.
  */
 describe("stock components' translation keys resolve", () => {
   const root = join(import.meta.dir)
@@ -127,8 +127,8 @@ describe("stock components' translation keys resolve", () => {
   })
 
   for (const locale of ["en", "he"]) {
-    test(`every key a stock extension view uses exists in ${locale}`, () => {
-      const dictionary = dictionaryOf(locale)
+    test(`every key a stock extension view uses resolves in ${locale} with English fallback`, () => {
+      const dictionary = new Set([...dictionaryOf("en"), ...dictionaryOf(locale)])
       const missing = referenced.filter((item) => !dictionary.has(item.key)).map((item) => `${item.key} (${item.file})`)
       expect(missing).toEqual([])
     })

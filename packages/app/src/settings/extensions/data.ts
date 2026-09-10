@@ -19,6 +19,7 @@ import { getAppComposition, isPluginVisible } from "@/composition"
 import { pluginLabels } from "@/providers/catalog/plugin"
 import { useServerSDK } from "@/runtime/server/client"
 import { presentInventory } from "./presentation"
+import { createPluginInventory } from "./plugin-inventory"
 
 export type ExtensionScope = Accessor<string | undefined>
 
@@ -78,32 +79,36 @@ export function useMcpServers(directory: ExtensionScope) {
 export function usePlugins(directory: ExtensionScope) {
   const serverSDK = useServerSDK()
 
-  const [plugins, { refetch }] = createResource(
-    () => scopeKey(serverSDK.connection.status() === "connected", directory()),
-    async (key: string) => {
-      const location = locationOf(key === "@server" ? undefined : key)
+  const plugins = createPluginInventory({
+    scope: () =>
+      serverSDK.connection.status() === "connected" ? `${serverSDK.url}\0${directory() ?? "@server"}` : false,
+    load: async (key) => {
+      const directory = key.slice(key.indexOf("\0") + 1)
+      const location = locationOf(directory === "@server" ? undefined : directory)
+      const api = serverSDK.api
       // A plugin snapshot never blocks on activation, so wait for it explicitly
       // or an early read returns a list that is still filling in.
-      await serverSDK.api.plugin.awaitActivation({ location })
-      return serverSDK.api.plugin.list({ location }).then((result) => result.data)
+      await api.plugin.awaitActivation({ location })
+      return api.plugin.list({ location }).then((result) => result.data)
     },
-    { initialValue: [] as PluginInfo[] },
-  )
+  })
 
-  const names = createMemo(() => pluginLabels(plugins.latest ?? []))
-  const rows = createMemo(() => pluginInventoryRows(plugins.latest ?? []))
+  const names = createMemo(() => pluginLabels(plugins.rows()))
+  const rows = createMemo(() => pluginInventoryRows(plugins.rows()))
 
   /** Failure text by label, so a row can explain why a plugin is not loaded. */
   const failures = createMemo(
     () =>
       new Map(
-        (plugins.latest ?? []).flatMap((plugin) =>
-          plugin.state.status === "failed" ? [[pluginLabel(plugin), String(plugin.state.error)] as const] : [],
-        ),
+        plugins
+          .rows()
+          .flatMap((plugin) =>
+            plugin.state.status === "failed" ? [[pluginLabel(plugin), String(plugin.state.error)] as const] : [],
+          ),
       ),
   )
 
-  return { names, rows, failures, refetch }
+  return { names, rows, failures, refetch: plugins.refetch, loading: plugins.loading, error: plugins.error }
 }
 
 /**
