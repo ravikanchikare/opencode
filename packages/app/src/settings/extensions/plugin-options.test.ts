@@ -87,6 +87,20 @@ describe("plugin option selected values", () => {
 })
 
 describe("plugin option application", () => {
+  test("an absent field uses its default even when another field has an override", () => {
+    const defaults = plugin({
+      options: {
+        descriptors: [],
+        requested: { other: ["value"] },
+        effective: { other: ["value"] },
+        inherited: false,
+        scope: "default",
+      },
+    })
+    expect(isSelectionActive(defaults, "tools")).toBe(true)
+    expect(editorValues(defaults, "tools", ["read"])).toEqual(["read"])
+  })
+
   test("a failed plugin is not treated as applied even when a value was saved", () => {
     const failed = plugin({
       state: { status: "failed", error: "unavailable domain: fail" },
