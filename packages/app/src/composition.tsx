@@ -60,8 +60,15 @@ export type AppNewSessionComposition = {
   showProviderTip?: boolean
 }
 
+/** Entries are displayed in configured order; unconfigured inventory rows follow. */
+export type AppInventoryPresentation = {
+  entries?: readonly { id: string; name?: string; description?: string }[]
+  /** Hide rows in Settings only; runtime inventories and commands remain unchanged. */
+  hiddenIDs?: readonly string[]
+}
+
 /** Settings-only policy for plugin inventory rows and technical metadata. */
-export type AppPluginPresentation = {
+export type AppPluginPresentation = AppInventoryPresentation & {
   hiddenPluginIDs?: readonly string[]
   /** Hide the technical metadata accordion, not the plugin's configuration controls. */
   hiddenMetadataPluginIDs?: readonly string[]
@@ -70,6 +77,8 @@ export type AppPluginPresentation = {
 export type AppComposition = {
   pluginOptionLabels?: Readonly<Record<string, Readonly<Record<string, string>>>>
   pluginPresentation?: AppPluginPresentation
+  skillPresentation?: AppInventoryPresentation
+  mcpPresentation?: AppInventoryPresentation
   settingsDefaults?: AppSettingsDefaults
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
@@ -101,7 +110,11 @@ export function getAppComposition() {
  * visible so failed plugin rows retain their diagnostic value.
  */
 export function isPluginVisible(pluginID: string | undefined, value: AppComposition = composition) {
-  return pluginID === undefined || !value.pluginPresentation?.hiddenPluginIDs?.includes(pluginID)
+  return (
+    pluginID === undefined ||
+    (!value.pluginPresentation?.hiddenPluginIDs?.includes(pluginID) &&
+      !value.pluginPresentation?.hiddenIDs?.includes(pluginID))
+  )
 }
 
 export function isPluginMetadataVisible(pluginID: string | undefined, value: AppComposition = composition) {
