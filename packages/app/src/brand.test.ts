@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test"
-import { brandText, resolveSupportLink } from "./brand"
+import { dict } from "./runtime/i18n/en"
+import {
+  brandText,
+  resolveSupportLink,
+  DEFAULT_PRODUCT_NAME,
+  IDENTITY_KEYS,
+  LITERAL_KEYS,
+} from "./brand"
 
 describe("brandText", () => {
   test("keeps stock copy when no product override is active", () => {
@@ -68,5 +75,35 @@ describe("resolveSupportLink", () => {
     expect(brandText("error.page.report.prefix", "Please report this error to the OpenCode team", "Factory")).toBe(
       "Please report this error to the Factory team",
     )
+  })
+})
+
+
+/**
+ * The classification must stay exhaustive.
+ *
+ * An unclassified key is invisible: a branded build simply keeps saying
+ * "OpenCode" in that one string, and nobody finds out until a user sees two
+ * product names in the same window. Upstream adds and rewords copy constantly,
+ * so this is checked against the catalog rather than maintained by memory.
+ */
+describe("product-name classification", () => {
+  const catalog = Object.entries(dict).filter(([, value]) => value.includes(DEFAULT_PRODUCT_NAME))
+
+  test("classifies every catalog string that names the product", () => {
+    const unclassified = catalog
+      .map(([key]) => key)
+      .filter((key) => !IDENTITY_KEYS.has(key) && !LITERAL_KEYS.has(key))
+    expect(unclassified).toEqual([])
+  })
+
+  test("classifies no key that the catalog does not have", () => {
+    const known = new Set(catalog.map(([key]) => key))
+    const stale = [...IDENTITY_KEYS, ...LITERAL_KEYS].filter((key) => !known.has(key))
+    expect(stale).toEqual([])
+  })
+
+  test("classifies no key as both", () => {
+    expect([...IDENTITY_KEYS].filter((key) => LITERAL_KEYS.has(key))).toEqual([])
   })
 })
