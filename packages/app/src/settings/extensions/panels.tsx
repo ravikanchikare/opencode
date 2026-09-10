@@ -33,9 +33,10 @@ import { useMcpServers, usePlugins } from "./data"
 import { PluginOptionsEditor } from "./plugin-options-editor"
 import { currentPlugin, hasPluginDetails } from "./plugin-options"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
-import { currentSkill, detailOf, ordered, payloadFor, scopeOf, type SkillRow } from "./skill-availability"
+import { currentSkill, detailOf, payloadFor, scopeOf } from "./skill-availability"
 import { SkillDetails } from "./skill-details"
 import { SkillAvailabilityControls } from "./skill-availability-controls"
+import { createSkillInventory } from "./skill-inventory"
 import {
   integrationSubtitle,
   serviceIntegrations,
@@ -151,42 +152,34 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
  * `./skill-availability` so they can be tested without a DOM.
  */
 export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
+  const language = useLanguage()
   const serverSDK = useServerSDK()
-  const [pending, setPending] = createSignal<string>()
   const [selected, setSelected] = createSignal<string>()
   const scope = createMemo(() => scopeOf(props.directory))
 
-  const [inventory, { refetch }] = createResource(
-    () => (serverSDK.connection.status() === "connected" ? (props.directory ?? "@server") : false),
-    async (connected) => {
-      if (!connected) return [] as SkillRow[]
-      const result = await serverSDK.api.skill.inventory({ location: locationOf(props.directory) })
-      return ordered(result.data) as SkillRow[]
-    },
-    { initialValue: [] as SkillRow[] },
-  )
-  const current = createMemo(() => currentSkill(inventory(), selected()))
-
-  const set = async (item: SkillRow, enabled: boolean | undefined) => {
-    if (pending()) return
-    setPending(item.id)
-    try {
-      await serverSDK.api.skill.setEnabled({
-        skill: item.id,
-        location: locationOf(props.directory),
-        payload: payloadFor(enabled, scope()),
+  const inventory = createSkillInventory({
+    scope: () => (serverSDK.connection.status() === "connected" ? (props.directory ?? "@server") : false),
+    load: async (key) => {
+      const result = await serverSDK.api.skill.inventory({
+        location: key === "@server" ? undefined : { directory: key },
       })
-      await refetch()
-    } catch (error) {
+      return result.data
+    },
+    save: (key, item, enabled) =>
+      serverSDK.api.skill.setEnabled({
+        skill: item.id,
+        location: key === "@server" ? undefined : { directory: key },
+        payload: payloadFor(enabled, key === "@server" ? "default" : "location"),
+      }),
+    onError: (error, phase) => {
       showToast({
         variant: "error",
-        title: "Skill request failed",
+        title: language.t(`settings.skills.error.${phase}`),
         description: error instanceof Error ? error.message : String(error),
       })
-    } finally {
-      setPending()
-    }
-  }
+    },
+  })
+  const current = createMemo(() => currentSkill(inventory.rows(), selected()))
 
   return (
     <Show
@@ -200,7 +193,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
               : "Skills OpenCode may use in this project. A change here overrides the default for this project only."
           }
         >
-          <ExtensionList each={inventory.latest} empty="No skills are available">
+          <ExtensionList each={inventory.rows()} empty="No skills are available">
             {(item) => (
               <ExtensionRow
                 icon="post-skill"
@@ -211,8 +204,8 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
                 <SkillAvailabilityControls
                   skill={item}
                   scope={scope()}
-                  pending={pending() !== undefined}
-                  onChange={(enabled) => void set(item, enabled)}
+                  pending={inventory.pending() !== undefined}
+                  onChange={(enabled) => void inventory.set(item, enabled)}
                 />
               </ExtensionRow>
             )}
@@ -224,8 +217,8 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
         <SkillDetails
           skill={skill()}
           scope={scope()}
-          pending={pending() !== undefined}
-          onEnabledChange={(enabled) => void set(skill(), enabled)}
+          pending={inventory.pending() !== undefined}
+          onEnabledChange={(enabled) => void inventory.set(skill(), enabled)}
           onBack={() => setSelected()}
         />
       )}
