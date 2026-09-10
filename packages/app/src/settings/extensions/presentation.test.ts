@@ -49,7 +49,7 @@ test("plugin filtering and presentation keep native state and options intact", (
   }
   configureAppComposition({
     pluginPresentation: {
-      hiddenPluginIDs: ["hidden"],
+      hiddenIDs: ["hidden"],
       entries: [{ id: "api", name: "API", description: "Configured description" }],
     },
   })

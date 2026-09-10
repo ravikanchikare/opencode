@@ -42,7 +42,6 @@ describe("an empty composition is upstream", () => {
     configureAppComposition({})
     const composition = getAppComposition()
     expect(composition.settingsProviders).toBeUndefined()
-    expect(composition.homeUtilityNav).toBeUndefined()
     expect(composition.onboarding).toBeUndefined()
     expect(composition.providerConnectionBanner).toBeUndefined()
     expect(composition.settingsDefaults).toBeUndefined()
@@ -83,7 +82,7 @@ describe("plugin inventory presentation", () => {
 
   test("hides only explicitly listed, identified plugin IDs", () => {
     const composition: AppComposition = {
-      pluginPresentation: { hiddenPluginIDs: ["factory.packaged"] },
+      pluginPresentation: { hiddenIDs: ["factory.packaged"] },
     }
     expect(isPluginVisible("factory.packaged", composition)).toBe(false)
     expect(isPluginVisible("third-party.plugin", composition)).toBe(true)

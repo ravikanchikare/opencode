@@ -21,7 +21,7 @@ describe("Settings plugin inventory", () => {
   })
 
   test("omits listed IDs while retaining third-party and unidentified diagnostic rows", () => {
-    configureAppComposition({ pluginPresentation: { hiddenPluginIDs: ["factory.packaged"] } })
+    configureAppComposition({ pluginPresentation: { hiddenIDs: ["factory.packaged"] } })
     expect(
       pluginInventoryRows([plugin("factory.packaged"), plugin("third-party.plugin"), plugin(undefined)]).map(
         (item) => item.id,
