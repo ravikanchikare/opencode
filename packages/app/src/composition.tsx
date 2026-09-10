@@ -8,13 +8,6 @@ export type SettingsPanelProps = {
   onBack?: () => void
 }
 
-export type HomeUtilityNavSurfaceProps = {
-  class?: string
-  onOpenSettings: () => void
-  onOpenHelp: () => void
-  language: ReturnType<typeof useLanguage>
-}
-
 export type OnboardingSurfaceProps = {
   complete: (options?: { openProject?: boolean }) => Promise<void>
 }
@@ -67,21 +60,15 @@ export type AppInventoryPresentation = {
   hiddenIDs?: readonly string[]
 }
 
-/** Settings-only policy for plugin inventory rows. */
-export type AppPluginPresentation = AppInventoryPresentation & {
-  hiddenPluginIDs?: readonly string[]
-}
-
 export type AppComposition = {
   pluginOptionLabels?: Readonly<Record<string, Readonly<Record<string, string>>>>
-  pluginPresentation?: AppPluginPresentation
+  pluginPresentation?: AppInventoryPresentation
   skillPresentation?: AppInventoryPresentation
   mcpPresentation?: AppInventoryPresentation
   settingsDefaults?: AppSettingsDefaults
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
   settingsProviders?: Component<SettingsProvidersSurfaceProps>
-  homeUtilityNav?: Component<HomeUtilityNavSurfaceProps>
   modelSelector?: { showProviderPromotions?: boolean }
   newSession?: AppNewSessionComposition
   settingsTabs?: {
@@ -108,11 +95,7 @@ export function getAppComposition() {
  * visible so failed plugin rows retain their diagnostic value.
  */
 export function isPluginVisible(pluginID: string | undefined, value: AppComposition = composition) {
-  return (
-    pluginID === undefined ||
-    (!value.pluginPresentation?.hiddenPluginIDs?.includes(pluginID) &&
-      !value.pluginPresentation?.hiddenIDs?.includes(pluginID))
-  )
+  return pluginID === undefined || !value.pluginPresentation?.hiddenIDs?.includes(pluginID)
 }
 
 /**
