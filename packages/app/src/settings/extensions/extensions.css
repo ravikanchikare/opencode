@@ -335,8 +335,9 @@ button.extension-destination-label:focus-visible {
 .plugin-options-field > [data-component="settings-list"] {
   padding-inline: var(--plugin-list-inset);
   background: var(--v2-background-bg-base);
+  border: 1px solid var(--v2-border-border-base);
   overflow: hidden;
-  box-shadow: inset 0 0 0 0.5px var(--v2-border-border-base);
+  box-shadow: var(--v2-elevation-raised);
 }
 
 .plugin-control-columns > span,
@@ -360,7 +361,7 @@ button.extension-destination-label:focus-visible {
   grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 64px);
   box-sizing: border-box;
   width: 100%;
-  padding-inline: var(--plugin-row-inset);
+  padding-inline-end: var(--plugin-row-inset);
 }
 
 .plugin-search-row > [data-component="text-input-v2"] {

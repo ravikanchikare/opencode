@@ -192,10 +192,14 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
       }),
     )
     .toBeLessThanOrEqual(1)
-  for (const width of [1280, 720, 390]) {
+  // Project Settings keeps its navigation rail; 720px is the smallest width
+  // where this four-column detail layout is presented.
+  for (const width of [1280, 720]) {
     await page.setViewportSize({ width, height: 844 })
     const card = dialog.locator('[data-component="settings-list"]')
     await expect(card.locator(":scope > .plugin-domain")).toHaveCount(2)
+    await expect(card).toHaveCSS("border-left-width", "1px")
+    await expect(card).toHaveCSS("border-left-style", "solid")
     await expect
       .poll(() =>
         card.evaluate((element) => {
@@ -211,6 +215,15 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
       .toBeLessThanOrEqual(1)
     await expect
       .poll(() => dialog.evaluate((element) => element.scrollWidth - element.clientWidth))
+      .toBeLessThanOrEqual(1)
+    await expect
+      .poll(() =>
+        dialog.evaluate((element) => {
+          const search = element.querySelector(".plugin-search-row")!.getBoundingClientRect()
+          const field = element.querySelector(".plugin-options-field")!.getBoundingClientRect()
+          return Math.abs(search.left - field.left)
+        }),
+      )
       .toBeLessThanOrEqual(1)
     await expect
       .poll(() =>
