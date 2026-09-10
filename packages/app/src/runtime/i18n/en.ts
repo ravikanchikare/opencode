@@ -58,7 +58,8 @@ export const dict = {
   "settings.plugins.override": "Changes apply to this project. Overrides the default.",
   "settings.plugins.catalog":
     "Operations declared by this plugin. Availability depends on the active selection and host tool configuration; permissions still apply.",
-  "settings.plugins.input": "Input schema",
+  "settings.plugins.input": "Input Schema",
+  "settings.plugins.refreshFailed": "Failed to refresh plugins",
   "settings.plugins.inputFor": "Input schema for {{name}}",
   ...DESKTOP_NATIVE_ENGLISH,
   "ssh.label": "SSH",

@@ -24,6 +24,7 @@ export type PluginOptionChoice = {
   value: string
   label: string
   description?: string
+  group?: { id: string; label: string; description?: string }
   tools?: Array<{ name: string; description: string; input?: { [x: string]: JsonValue } }>
 }
 
