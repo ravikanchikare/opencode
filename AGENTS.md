@@ -14,40 +14,31 @@ and distribution workflow below when incorporating upstream updates.
 - Default new branches and worktrees to `v2`, or `origin/v2` when the local `v2` ref is unavailable, and default pull requests to target `v2`. Use another base or target branch when the requester explicitly instructs it.
 - Local `main` ref may not exist; use `v2` or `origin/v2` for diffs.
 
-## Distribution integration
+## Downstream distributions
 
-- `origin` is `ravikanchikare/opencode`; its default branch is `v2`, so new
-  Delta-managed OpenCode worktrees start from the fork's V2 integration line.
-- `upstream` is `anomalyco/opencode`. Fetch its V2 line explicitly before
-  comparing or updating the fork stack.
-- One task uses one branch and one Git worktree. Do not edit another agent's
-  worktree or commit directly to `v2`.
-- Rebase feature branches onto `v2`. To sync the fork, tag the current `v2` tip,
-  rebase the fork-only commit stack onto `upstream/v2`, and publish the rewritten
-  `v2` with `--force-with-lease`. Push the archive tag so existing distribution
-  pins remain reachable.
-- A host change required by the Workbench distribution is integrated in this
-  order: fork branch → `v2` → pushed fork SHA → starter `opencode.pin.json` →
-  starter `main`.
-- The starter pin is the release contract. Do not ask a starter build to follow
-  a moving branch or package a dirty fork checkout.
-- The starter repository's `docs/workflow.md` is the end-to-end development and
-  release procedure. In a Delta thread with both projects, the starter agent
-  selects this worktree explicitly with `bun run dev -- --fork <path>`; never
-  assume the two managed checkout paths are siblings.
-- Fork worktrees need no distribution release credentials.
+This fork exists to carry generic, reusable extension seams that a downstream
+distribution composes. Keep distribution-specific implementation downstream.
+For example, a packaged build may name an updater provider in
+`updater-provider.json`; this fork loads that module and forwards its `config`
+untouched, while the distribution owns the provider's implementation, native
+code, packaging payloads, feeds, keys, signing, and release automation. This
+fork names no updater technology and infers no updater from branding.
 
-### Daily fork-stack maintenance
+A distribution pins an exact revision of this fork. Publish before a consumer
+pins, and treat a published revision as immutable: preserve the old tip with an
+archive tag before rebasing and force-updating a shared branch, so existing
+pins stay fetchable.
+
+## Fork-stack maintenance
 
 Treat the fork stack as a small, reviewable set of extension seams, not a
 permanent record of every experiment. Before starting work and before
 publication:
 
 1. Fetch the upstream V2 line, compare the complete fork-only range with it,
-   and rebase the feature stack onto the latest `upstream/v2`. When syncing
-   the shared fork `v2`, follow the archive-tag and publication procedure above.
-2. Give upstream behavior precedence. For each fork commit, identify upstream
-   capabilities that now provide the same behavior, make the fork change
+   and rebase the stack onto the latest `upstream/v2`.
+2. Give upstream behavior precedence. For each commit, identify upstream
+   capabilities that now provide the same behavior, make the change
    unnecessary, or offer a better seam. Remove those changes and call the
    candidates out for review rather than preserving them by default.
 3. Keep each remaining commit focused on one logical seam and independently
@@ -59,22 +50,9 @@ publication:
 5. Validate the rebased range with affected package tests and typechecks,
    check the diff from `upstream/v2` to `HEAD` for whitespace errors, and review
    the final linear log before proposing publication.
-6. After publishing a rebased fork revision, update the starter's
-   `opencode.pin.json` to the published, immutable fork SHA. Use the starter's
-   `bun run opencode:bump <sha>` workflow when available and commit the new pin.
-   Validate it on a starter feature branch, then fast-forward local `main` to
-   that commit and push `origin/main`; never push a remote ref before the
-   corresponding local commit has been reviewed and validated. Run the
-   starter's fork sync and validation before treating the fork → starter
-   integration as complete.
 
-Keep distribution-specific implementation in the enterprise starter whenever
-possible. The OpenCode fork should retain only generic, reusable seams; for
-example, a packaged build may name an updater provider in
-`updater-provider.json` and the fork loads it and forwards its `config`
-untouched, while the distribution owns that provider's implementation, native
-code, packaging payloads, feeds, keys, signing, and release automation. The
-fork names no updater technology and infers no updater from branding.
+A change that only a downstream distribution needs, and that no other consumer
+of this fork could use, belongs downstream rather than here.
 
 ## Live V2 TUI Testing
 
