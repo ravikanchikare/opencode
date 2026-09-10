@@ -24,3 +24,17 @@ test("server selection shares the plugin back row instead of creating an empty r
     /class="plugin-details-toolbar"[\s\S]*class="plugin-details-back"[\s\S]*\{props.headerActions\}/,
   )
 })
+
+test("native inventory rows display descriptions in addition to availability or failure details", () => {
+  expect(read("./shell.tsx")).toContain("{props.description}")
+  expect(read("./panels.tsx")).toContain("description={plugin.description}")
+  expect(read("./panels.tsx")).toContain("description={item.description}")
+  expect(read("../workspaces/project-extensions.tsx")).toContain("description={item.description}")
+})
+
+test("inventory icons align with the title and text keeps a fixed gap from controls", () => {
+  const css = read("./extensions.css")
+  expect(css).toMatch(/\.extension-destination-label\s*\{[^}]*align-items: flex-start/)
+  expect(css).toMatch(/\.extension-destination-row\s*\{[^}]*gap: 16px/)
+  expect(css).toMatch(/\.extension-destination-description\s*\{[^}]*overflow-wrap: anywhere/)
+})
