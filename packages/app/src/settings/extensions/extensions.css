@@ -337,7 +337,7 @@ button.extension-destination-label:focus-visible {
   background: var(--v2-background-bg-base);
   border: 1px solid var(--v2-border-border-base);
   overflow: hidden;
-  box-shadow: var(--v2-elevation-raised);
+  box-shadow: none;
 }
 
 .plugin-control-columns > span,

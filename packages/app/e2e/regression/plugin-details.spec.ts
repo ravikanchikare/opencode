@@ -126,6 +126,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   await dialog.getByRole("tab", { name: "Plugins", exact: true }).click()
   await dialog.getByRole("button", { name: /Example Flat Tools/ }).click()
   await expect(dialog.getByRole("heading", { name: "Example Flat Tools", exact: true })).toBeVisible()
+  await expect(dialog.getByText("This description belongs in the inventory.", { exact: true })).toBeVisible()
   const flatSearch = dialog.getByRole("searchbox")
   const flatCard = dialog.locator('[data-component="settings-list"]')
   const flatToggle = dialog.getByRole("switch", { name: "inspect", exact: true })
@@ -200,6 +201,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
     await expect(card.locator(":scope > .plugin-domain")).toHaveCount(2)
     await expect(card).toHaveCSS("border-left-width", "1px")
     await expect(card).toHaveCSS("border-left-style", "solid")
+    await expect(card).toHaveCSS("box-shadow", "none")
     await expect
       .poll(() =>
         card.evaluate((element) => {

@@ -110,39 +110,44 @@ export const PluginOptionsEditor: Component<{
           {props.headerActions}
         </div>
       </Show>
-      <div class="plugin-details-toolbar plugin-details-title-row">
-        <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
-        <Show when={descriptors().length}>
-          <div class="plugin-details-actions">
-            <Button
-              size="small"
-              variant="ghost"
-              disabled={!!store.pending || !pluginId()}
-              onClick={() => void saveAll("all")}
-            >
-              {language.t("settings.plugins.selectAll")}
-            </Button>
-            <Button
-              size="small"
-              variant="ghost"
-              disabled={!!store.pending || !pluginId()}
-              onClick={() => void saveAll("none")}
-            >
-              {language.t("settings.plugins.clearAll")}
-            </Button>
-            <Show when={canReset(props.plugin.options?.inherited ?? true, scope())}>
+      <header class="plugin-details-heading">
+        <div class="plugin-details-toolbar plugin-details-title-row">
+          <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
+          <Show when={descriptors().length}>
+            <div class="plugin-details-actions">
               <Button
                 size="small"
                 variant="ghost"
                 disabled={!!store.pending || !pluginId()}
-                onClick={() => void saveAll("default")}
+                onClick={() => void saveAll("all")}
               >
-                {language.t("settings.plugins.reset")}
+                {language.t("settings.plugins.selectAll")}
               </Button>
-            </Show>
-          </div>
+              <Button
+                size="small"
+                variant="ghost"
+                disabled={!!store.pending || !pluginId()}
+                onClick={() => void saveAll("none")}
+              >
+                {language.t("settings.plugins.clearAll")}
+              </Button>
+              <Show when={canReset(props.plugin.options?.inherited ?? true, scope())}>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  disabled={!!store.pending || !pluginId()}
+                  onClick={() => void saveAll("default")}
+                >
+                  {language.t("settings.plugins.reset")}
+                </Button>
+              </Show>
+            </div>
+          </Show>
+        </div>
+        <Show when={props.plugin.description}>
+          <p class="plugin-details-description">{props.plugin.description}</p>
         </Show>
-      </div>
+      </header>
       <Show when={props.plugin.state.status === "failed" ? props.plugin.state.error : undefined}>
         {(error) => (
           <p role="alert" class="plugin-details-error">
