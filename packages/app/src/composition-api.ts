@@ -3,6 +3,7 @@ export {
   isPluginVisible,
   showNewSessionProviderTip,
   type AppComposition,
+  type AppInventoryPresentation,
   type AppNewSessionComposition,
   type AppPluginPresentation,
   type AppSettingsDefaults,

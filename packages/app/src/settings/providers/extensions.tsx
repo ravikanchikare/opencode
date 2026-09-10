@@ -1,25 +1,18 @@
 import { Component, For, createEffect, createMemo, createResource } from "solid-js"
-import { Icon } from "@opencode/ui/icon"
 import { Switch } from "@opencode/ui/switch"
 import { Tabs } from "@opencode/ui/tabs"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useData } from "@/runtime/server/current"
 import { useServerSDK } from "@/runtime/server/client"
 import { useMcpToggle } from "@/providers/connect/mcp"
-import { pluginLabels } from "@/providers/catalog/plugin"
+import { pluginDisplayName } from "@/providers/catalog/plugin"
+import { mcpInventoryRows, pluginInventoryRows, type McpRow } from "@/settings/extensions/data"
+import { skillInventoryRows } from "@/settings/extensions/presentation"
+import { ExtensionRow } from "@/settings/extensions/shell"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { SettingsList } from "@/settings/list"
 import type { SettingsView } from "@/settings/surface"
 import "@/settings/settings.css"
-
-interface McpRowItem {
-  name: string
-  enabled: boolean
-}
-
-interface PluginRowItem {
-  name: string
-}
 
 export const SettingsExtensions: Component<{
   subtab?: SettingsView["subtab"]
@@ -34,16 +27,18 @@ export const SettingsExtensions: Component<{
     { initialValue: [] },
   )
   const toggleMcp = useMcpToggle(() => undefined, refetchMcp)
-  const mcps = createMemo<McpRowItem[]>(() => {
-    return (mcpList.latest ?? []).map((server) => ({
-      name: server.name,
-      enabled: server.status.status === "connected",
-    }))
-  })
+  const mcps = createMemo(() =>
+    mcpInventoryRows(
+      (mcpList.latest ?? []).map((server) => ({
+        name: server.name,
+        enabled: server.status.status === "connected",
+      })),
+    ),
+  )
 
-  const handleMcpToggle = (item: McpRowItem, checked: boolean) => {
+  const handleMcpToggle = (item: McpRow, checked: boolean) => {
     if (item.enabled === checked || toggleMcp.isPending) return
-    toggleMcp.mutate(item.name)
+    toggleMcp.mutate(item.id)
   }
 
   const [pluginList] = createResource(
@@ -51,13 +46,13 @@ export const SettingsExtensions: Component<{
     () => serverSdk.api.plugin.list().then((result) => result.data),
     { initialValue: [] },
   )
-  const plugins = createMemo<PluginRowItem[]>(() => pluginLabels(pluginList.latest ?? []).map((name) => ({ name })))
+  const plugins = createMemo(() => pluginInventoryRows(pluginList.latest ?? []))
 
   createEffect(() => {
     if (serverSdk.connection.status() !== "connected") return
     void data.location.skill.sync().catch(() => undefined)
   })
-  const skills = () => data.location.skill.list() ?? []
+  const skills = () => skillInventoryRows(data.location.skill.list() ?? [])
 
   return (
     <>
@@ -98,15 +93,11 @@ export const SettingsExtensions: Component<{
               <SettingsList variant="catalog">
                 <For each={mcps()}>
                   {(item) => (
-                    <div class="settings-extension-row">
-                      <div class="settings-extension-lead">
-                        <Icon name="mcp" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="settings-extension-name truncate">{item.name}</span>
-                      </div>
+                    <ExtensionRow icon="mcp" name={item.name} description={item.description}>
                       <Switch checked={item.enabled} onChange={(checked) => handleMcpToggle(item, checked)} hideLabel>
                         {item.name}
                       </Switch>
-                    </div>
+                    </ExtensionRow>
                   )}
                 </For>
               </SettingsList>
@@ -126,12 +117,12 @@ export const SettingsExtensions: Component<{
               <SettingsList variant="catalog">
                 <For each={plugins()}>
                   {(plugin) => (
-                    <div class="settings-extension-row">
-                      <div class="settings-extension-lead">
-                        <Icon name="cube" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="settings-extension-name truncate">{plugin.name}</span>
-                      </div>
-                    </div>
+                    <ExtensionRow
+                      icon="cube"
+                      name={pluginDisplayName(plugin)}
+                      description={plugin.description}
+                      mono={!plugin.name}
+                    />
                   )}
                 </For>
               </SettingsList>
@@ -150,14 +141,7 @@ export const SettingsExtensions: Component<{
               </div>
               <SettingsList variant="catalog">
                 <For each={skills()}>
-                  {(skill) => (
-                    <div class="settings-extension-row">
-                      <div class="settings-extension-lead">
-                        <Icon name="post-skill" class="text-v2-icon-icon-muted shrink-0" />
-                        <span class="settings-extension-name truncate">{skill.name}</span>
-                      </div>
-                    </div>
-                  )}
+                  {(skill) => <ExtensionRow icon="post-skill" name={skill.name} description={skill.description} />}
                 </For>
               </SettingsList>
             </div>
