@@ -60,8 +60,13 @@ export type AppNewSessionComposition = {
   showProviderTip?: boolean
 }
 
+/** Entries are displayed in configured order; unconfigured inventory rows follow. */
+export type AppInventoryPresentation = {
+  entries?: readonly { id: string; name?: string; description?: string }[]
+}
+
 /** Settings-only policy for plugin inventory rows and technical metadata. */
-export type AppPluginPresentation = {
+export type AppPluginPresentation = AppInventoryPresentation & {
   hiddenPluginIDs?: readonly string[]
   /** Hide the technical metadata accordion, not the plugin's configuration controls. */
   hiddenMetadataPluginIDs?: readonly string[]
@@ -70,6 +75,7 @@ export type AppPluginPresentation = {
 export type AppComposition = {
   pluginOptionLabels?: Readonly<Record<string, Readonly<Record<string, string>>>>
   pluginPresentation?: AppPluginPresentation
+  skillPresentation?: AppInventoryPresentation
   settingsDefaults?: AppSettingsDefaults
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
