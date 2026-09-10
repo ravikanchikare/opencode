@@ -8,6 +8,9 @@ export const CHANNEL: Channel = raw === "local" || raw === "dev" || raw === "bet
 export const VERSION = app.isPackaged ? app.getVersion() : (process.env.OPENCODE_VERSION ?? app.getVersion())
 
 export const APP_NAME = import.meta.env.OPENCODE_DESKTOP_NAME?.trim()
+
+/** The product name shown to a user. Stock builds are "OpenCode". */
+export const PRODUCT_NAME = APP_NAME || "OpenCode"
 export const APP_ID = import.meta.env.OPENCODE_DESKTOP_APP_ID?.trim()
 export const DEEP_LINK_SCHEME = import.meta.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME?.trim() || "opencode"
 export const MANUAL_UPDATE_URL = import.meta.env.OPENCODE_DESKTOP_MANUAL_UPDATE_URL?.trim()
