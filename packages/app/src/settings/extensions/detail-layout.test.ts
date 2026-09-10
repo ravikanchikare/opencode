@@ -33,6 +33,9 @@ test("native inventory rows display descriptions in addition to availability or 
 test("inventory icons align with the title and text keeps a fixed gap from controls", () => {
   const css = read("./extensions.css")
   expect(css).toMatch(/\.extension-destination-label\s*\{[^}]*align-items: flex-start/)
-  expect(css).toMatch(/\.extension-destination-row\s*\{[^}]*gap: 16px/)
+  expect(css).toMatch(/\.extension-destination-row\s*\{[^}]*gap: 24px/)
+  expect(css).toMatch(
+    /\.skill-details-heading\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\) max-content;[^}]*gap: 24px/,
+  )
   expect(css).toMatch(/\.extension-destination-description\s*\{[^}]*overflow-wrap: anywhere/)
 })

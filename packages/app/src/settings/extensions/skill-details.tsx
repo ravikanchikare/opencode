@@ -20,19 +20,19 @@ export const SkillDetails: Component<{
           <Icon name="arrow-left" size="small" />
           {language.t("settings.skills.back")}
         </Button>
-        <header class="plugin-details-heading">
-          <div class="plugin-details-identity">
+        <header class="skill-details-heading">
+          <div class="plugin-details-heading">
             <h2 class="settings-tab-title">{props.skill.name}</h2>
-            <SkillAvailabilityControls
-              skill={props.skill}
-              scope={props.scope}
-              pending={props.pending}
-              onChange={props.onEnabledChange}
-            />
+            <Show when={props.skill.description}>
+              <p class="plugin-details-description">{props.skill.description}</p>
+            </Show>
           </div>
-          <Show when={props.skill.description}>
-            <p class="plugin-details-description">{props.skill.description}</p>
-          </Show>
+          <SkillAvailabilityControls
+            skill={props.skill}
+            scope={props.scope}
+            pending={props.pending}
+            onChange={props.onEnabledChange}
+          />
         </header>
         <dl class="skill-details-metadata">
           <dt>{language.t("settings.skills.id")}</dt>

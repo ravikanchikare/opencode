@@ -45,6 +45,11 @@ export const OptionChoice = Schema.Struct({
   value: Schema.String,
   label: Schema.String,
   description: Schema.String.pipe(optional),
+  group: Schema.Struct({
+    id: Schema.String,
+    label: Schema.String,
+    description: Schema.String.pipe(optional),
+  }).pipe(optional),
   tools: Schema.Array(OptionTool).pipe(optional),
 }).annotate({ identifier: "Plugin.OptionChoice" })
 export type OptionChoice = typeof OptionChoice.Type
