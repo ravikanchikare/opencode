@@ -17,6 +17,7 @@
 .extension-destination-description {
   font-size: 11px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
   color: var(--v2-text-text-muted);
 }
 
@@ -33,7 +34,7 @@
 .extension-destination-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   padding-block: 16px;
   border-bottom: 0.5px solid var(--v2-border-border-base);
 }
@@ -44,7 +45,7 @@
 
 .extension-destination-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   flex: 1;
   min-width: 0;
@@ -80,6 +81,7 @@ button.extension-destination-label:focus-visible {
 
 .extension-destination-name {
   font-size: 13px;
+  line-height: var(--line-height-compact);
   font-weight: 500;
   color: var(--v2-text-text-base);
   overflow: hidden;

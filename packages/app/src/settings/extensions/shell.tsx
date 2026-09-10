@@ -30,6 +30,7 @@ export const ExtensionHeader: Component<{ title: string; description: string }> 
 export const ExtensionRow: Component<{
   icon: IconProps["name"]
   name: string
+  description?: string
   detail?: string
   mono?: boolean
   onOpen?: () => void
@@ -47,6 +48,9 @@ export const ExtensionRow: Component<{
         <span class="extension-destination-name" classList={{ mono: props.mono }}>
           {props.name}
         </span>
+        <Show when={props.description}>
+          <span class="extension-destination-description">{props.description}</span>
+        </Show>
         <Show when={props.detail}>
           <span class="extension-destination-description">{props.detail}</span>
         </Show>
