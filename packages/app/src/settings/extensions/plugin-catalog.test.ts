@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { filterPluginChoices } from "./plugin-catalog"
+import { filterPluginChoices, groupPluginChoices } from "./plugin-catalog"
 
 const choices = [
   {
@@ -13,6 +13,38 @@ const choices = [
   { value: "tables", label: "Tables", tools: [{ name: "tables.get", description: "Read a table" }] },
   { value: "legacy", label: "Legacy choice", description: "Without a catalog" },
 ]
+
+test("grouped choices preserve row and column order and search without changing controls", () => {
+  const grouped = [
+    {
+      value: "b:read",
+      label: "Read",
+      group: { id: "b", label: "Beta" },
+      tools: [{ name: "b.get", description: "Read Beta" }],
+    },
+    {
+      value: "b:write",
+      label: "Write",
+      group: { id: "b", label: "Beta" },
+      tools: [{ name: "b.update", description: "Update Beta" }],
+    },
+    {
+      value: "a:read",
+      label: "Read",
+      group: { id: "a", label: "Alpha" },
+      tools: [{ name: "a.get", description: "Read Alpha" }],
+    },
+  ]
+  expect(groupPluginChoices(grouped, "").columns).toEqual(["Read", "Write"])
+  expect(groupPluginChoices(grouped, "").rows.map((row) => row.id)).toEqual(["b", "a"])
+  expect(groupPluginChoices(grouped, "Beta").matched.size).toBe(2)
+  const search = groupPluginChoices(grouped, "b.update")
+  expect(search.rows.map((row) => row.id)).toEqual(["b"])
+  expect(search.rows[0]?.choices.map((choice) => choice.value)).toEqual(["b:read", "b:write"])
+  expect([...search.matched.keys()]).toEqual(["b:write"])
+  expect(groupPluginChoices(grouped, "missing").rows).toEqual([])
+  expect(groupPluginChoices(grouped, "").rows[1]?.choices.some((choice) => choice.label === "Write")).toBe(false)
+})
 
 describe("plugin catalog search", () => {
   test("blank queries preserve all choices including older plugins without metadata", () => {

@@ -31,7 +31,7 @@ export function isSelectionActive(plugin: PluginInfo, key: string) {
   if (plugin.options?.inherited) return true
   const requested = requestedValues(plugin, key)
   const effective = selectedValues(plugin, key)
-  if (requested === undefined) return effective !== undefined
+  if (requested === undefined) return true
   return JSON.stringify(requested) === JSON.stringify(effective)
 }
 

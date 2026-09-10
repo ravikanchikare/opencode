@@ -34,7 +34,7 @@ const packaged = `export default {
     label: "Domains",
     description: "Selectable domains",
     choices: [
-      { value: "alpha", label: "Alpha", tools: [{
+      { value: "alpha", label: "Alpha", group: { id: "catalog", label: "Catalog" }, tools: [{
         name: "alpha.list", description: "List alpha records", input: { type: "object" }
       }] },
       { value: "beta", label: "Beta" },
@@ -131,6 +131,7 @@ describe("exact-ID plugin options", () => {
     expect(matches[0]?.name).toBe("Acme API")
     expect(matches[0]?.description).toBe("Acme tools by domain.")
     expect(matches[0]?.options?.descriptors[0]?.key).toBe("domains")
+    expect(matches[0]?.options?.descriptors[0]?.choices[0]?.group).toEqual({ id: "catalog", label: "Catalog" })
     expect(domains).toEqual(["alpha", "beta"])
   })
 
