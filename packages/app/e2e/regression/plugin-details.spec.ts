@@ -125,6 +125,21 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   await expect(dialog.getByRole("button", { name: "Alpha", exact: true })).toHaveAttribute("aria-expanded", "true")
   for (const width of [1280, 720, 390]) {
     await page.setViewportSize({ width, height: 844 })
+    const card = dialog.locator('[data-component="settings-list"]')
+    await expect(card.locator(":scope > .plugin-domain")).toHaveCount(3)
+    await expect
+      .poll(() =>
+        card.evaluate((element) => {
+          const bounds = element.getBoundingClientRect()
+          return Math.max(
+            ...[...element.querySelectorAll(":scope > .plugin-domain")].flatMap((row) => {
+              const box = row.getBoundingClientRect()
+              return [Math.abs(box.left - bounds.left), Math.abs(box.right - bounds.right)]
+            }),
+          )
+        }),
+      )
+      .toBeLessThanOrEqual(1)
     await expect
       .poll(() => dialog.evaluate((element) => element.scrollWidth - element.clientWidth))
       .toBeLessThanOrEqual(1)

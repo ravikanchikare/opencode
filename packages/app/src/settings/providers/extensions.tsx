@@ -78,7 +78,7 @@ export const SettingsExtensions: Component = () => {
                 </span>
                 <span class="text-13-regular text-v2-text-faint">{language.t("settings.extensions.manageConfig")}</span>
               </div>
-              <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
+              <div class="extension-destination-list">
                 <For each={mcps()}>
                   {(item) => (
                     <ExtensionRow icon="mcp" name={item.name} description={item.description}>
@@ -100,7 +100,7 @@ export const SettingsExtensions: Component = () => {
                 </span>
                 <span class="text-13-regular text-v2-text-faint">{language.t("settings.extensions.manageConfig")}</span>
               </div>
-              <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
+              <div class="extension-destination-list">
                 <For each={plugins()}>
                   {(plugin) => (
                     <ExtensionRow
@@ -128,7 +128,7 @@ export const SettingsExtensions: Component = () => {
                   {language.t("settings.extensions.addSkills")}
                 </ExternalLink>
               </div>
-              <div class="bg-[var(--v2-background-bg-base)] border-[0.5px] border-[var(--v2-border-border-base)] rounded-[8px] pl-4 pr-3 overflow-hidden">
+              <div class="extension-destination-list">
                 <For each={skills()}>
                   {(skill) => <ExtensionRow icon="post-skill" name={skill.name} description={skill.description} />}
                 </For>
