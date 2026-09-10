@@ -1,10 +1,7 @@
 /**
- * Rows for an extension destination — a full Settings tab showing one domain.
- *
- * These four destinations sit next to each other in the Settings rail whenever
- * a composition presents them that way, and a row that changes shape between
- * them reads as four different products. The combined Extensions tab keeps its
- * own markup; nothing here applies to it.
+ * Shared cards and rows for extension destinations, combined Extensions, and
+ * project settings. Compositions may reuse these semantic classes for their
+ * own inventory surfaces without copying the layout.
  */
 
 .extension-destination-heading {
@@ -15,8 +12,8 @@
 }
 
 .extension-destination-description {
-  font-size: 11px;
-  line-height: 1.45;
+  font-size: 12px;
+  line-height: var(--line-height-base);
   overflow-wrap: anywhere;
   color: var(--v2-text-text-muted);
 }
@@ -27,7 +24,7 @@
   background: var(--v2-background-bg-base);
   border: 0.5px solid var(--v2-border-border-base);
   border-radius: 8px;
-  padding-inline: 16px 12px;
+  padding: 0;
   overflow: hidden;
 }
 
@@ -35,7 +32,7 @@
   display: flex;
   align-items: flex-start;
   gap: 24px;
-  padding-block: 16px;
+  padding: 14px 16px;
   border-bottom: 0.5px solid var(--v2-border-border-base);
 }
 
@@ -46,7 +43,7 @@
 .extension-destination-label {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 16px;
   flex: 1;
   min-width: 0;
   padding: 0;
@@ -69,24 +66,25 @@ button.extension-destination-label:focus-visible {
 .extension-destination-icon {
   color: var(--v2-icon-icon-muted);
   flex-shrink: 0;
+  margin-block-start: 2px;
 }
 
 .extension-destination-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
 
 .extension-destination-name {
-  font-size: 13px;
-  line-height: var(--line-height-compact);
+  font-size: 14px;
+  line-height: var(--line-height-base);
   font-weight: 500;
   color: var(--v2-text-text-base);
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .extension-destination-name.mono {
@@ -98,6 +96,27 @@ button.extension-destination-label:focus-visible {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  min-height: var(--line-height-base);
+}
+
+.extension-destination-row > [data-component="switch"] {
+  flex-shrink: 0;
+  margin-block-start: 2px;
+}
+
+.extension-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  color: var(--v2-text-text-muted);
+  font-size: 12px;
+  line-height: var(--line-height-base);
+}
+
+.extension-loading-spinner {
+  width: 16px;
+  height: 16px;
 }
 
 .plugin-options-open {
@@ -158,7 +177,7 @@ button.extension-destination-label:focus-visible {
 
 .skill-details-content pre {
   margin: 0;
-  padding: 12px;
+  padding: 14px 16px;
   border: 0.5px solid var(--v2-border-border-base);
   border-radius: 8px;
   overflow: auto;
@@ -172,8 +191,8 @@ button.extension-destination-label:focus-visible {
 }
 
 .plugin-options-field {
-  --plugin-list-inset: 20px;
-  --plugin-row-inset: 12px;
+  --plugin-list-inset: 0px;
+  --plugin-row-inset: 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -250,6 +269,10 @@ button.extension-destination-label:focus-visible {
   gap: 8px;
 }
 
+.plugin-details-title-row {
+  min-height: 28px;
+}
+
 .plugin-details-description,
 .plugin-details-status {
   margin: 0;
@@ -285,7 +308,18 @@ button.extension-destination-label:focus-visible {
 }
 
 .plugin-flat-tool {
-  padding-block: 12px;
+  padding-block: 14px;
+}
+
+.plugin-flat-tool .plugin-domain-row {
+  min-height: var(--line-height-base);
+  margin-bottom: 4px;
+}
+
+.plugin-flat-tool > .plugin-details-description,
+.plugin-flat-tool > [data-slot="collapsible-root"],
+.plugin-flat-tool > [data-slot="collapsible-trigger"] {
+  padding-inline-end: 48px;
 }
 
 .plugin-control-columns {
@@ -298,12 +332,12 @@ button.extension-destination-label:focus-visible {
   color: var(--v2-text-text-muted);
 }
 
-.plugin-options-field > .plugin-control-columns {
-  padding-inline: calc(var(--plugin-list-inset) + var(--plugin-row-inset));
-}
-
 .plugin-options-field > [data-component="settings-list"] {
   padding-inline: var(--plugin-list-inset);
+  background: var(--v2-background-bg-base);
+  border: 1px solid var(--v2-border-border-base);
+  overflow: hidden;
+  box-shadow: none;
 }
 
 .plugin-control-columns > span,
@@ -316,8 +350,29 @@ button.extension-destination-label:focus-visible {
   color: var(--v2-text-text-muted);
 }
 
-.plugin-options-field > [data-component="text-input-v2"] {
+.plugin-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.plugin-search-row.grouped {
+  grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 64px);
+  box-sizing: border-box;
   width: 100%;
+  padding-inline-end: var(--plugin-row-inset);
+}
+
+.plugin-search-row > [data-component="text-input-v2"] {
+  width: 100%;
+}
+
+.plugin-search-row > span {
+  text-align: center;
+  color: var(--v2-text-text-muted);
+  font-size: 12px;
+  line-height: var(--line-height-base);
 }
 
 .plugin-domain-row > [data-component="switch"] {
@@ -373,7 +428,8 @@ button.extension-destination-label:focus-visible {
 }
 
 @media (max-width: 600px) {
-  .plugin-control-columns {
+  .plugin-control-columns,
+  .plugin-search-row.grouped {
     grid-template-columns: minmax(0, 1fr) repeat(var(--plugin-columns), 44px);
     gap: 4px;
   }
