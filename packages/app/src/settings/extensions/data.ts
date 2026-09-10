@@ -15,9 +15,10 @@
 
 import { createMemo, createResource, type Accessor } from "solid-js"
 import type { PluginInfo } from "@opencode/client"
-import { isPluginVisible } from "@/composition"
+import { getAppComposition, isPluginVisible } from "@/composition"
 import { pluginLabels } from "@/providers/catalog/plugin"
 import { useServerSDK } from "@/runtime/server/client"
+import { presentInventory } from "./presentation"
 
 export type ExtensionScope = Accessor<string | undefined>
 
@@ -25,20 +26,32 @@ const locationOf = (directory: string | undefined) => (directory ? { directory }
 
 /** The Settings-only inventory policy shared by main and project Settings. */
 export function pluginInventoryRows(plugins: readonly PluginInfo[]) {
-  return plugins.filter((plugin) => plugin.source.type !== "builtin" && isPluginVisible(plugin.id))
+  return presentInventory(
+    plugins.filter((plugin) => plugin.source.type !== "builtin" && isPluginVisible(plugin.id)),
+    getAppComposition().pluginPresentation,
+  )
 }
 
 /**
  * Resource key: `false` suspends while disconnected, and the directory
  * (or `"@server"`) makes a scope change refetch rather than serve a stale list.
  */
-const scopeKey = (connected: boolean, directory: string | undefined) =>
-  connected ? (directory ?? "@server") : false
+const scopeKey = (connected: boolean, directory: string | undefined) => (connected ? (directory ?? "@server") : false)
 
 /** Connected state and toggle target for one MCP server, at one scope. */
 export interface McpRow {
+  readonly id: string
   readonly name: string
+  readonly description?: string
   readonly enabled: boolean
+}
+
+/** Keep MCP transport identity separate from its Settings label. */
+export function mcpInventoryRows(servers: readonly { name: string; enabled: boolean }[]) {
+  return presentInventory<McpRow>(
+    servers.map((server) => ({ ...server, id: server.name })).toSorted((a, b) => a.name.localeCompare(b.name)),
+    getAppComposition().mcpPresentation,
+  )
 }
 
 export function useMcpServers(directory: ExtensionScope) {
@@ -54,9 +67,9 @@ export function useMcpServers(directory: ExtensionScope) {
   )
 
   const rows = createMemo<McpRow[]>(() =>
-    (servers.latest ?? [])
-      .map((server) => ({ name: server.name, enabled: server.status.status === "connected" }))
-      .toSorted((a, b) => a.name.localeCompare(b.name)),
+    mcpInventoryRows(
+      (servers.latest ?? []).map((server) => ({ name: server.name, enabled: server.status.status === "connected" })),
+    ),
   )
 
   return { rows, refetch }

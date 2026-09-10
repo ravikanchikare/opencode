@@ -9,18 +9,21 @@ import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
 import { pluginDisplayName, pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
 import { PluginOptionsEditor } from "@/settings/extensions/plugin-options-editor"
-import { pluginInventoryRows } from "@/settings/extensions/data"
+import { mcpInventoryRows, pluginInventoryRows } from "@/settings/extensions/data"
+import { skillInventoryRows } from "@/settings/extensions/presentation"
 import { currentPlugin, hasPluginDetails } from "@/settings/extensions/plugin-options"
 import type { PluginInfo } from "@opencode/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import "@/settings/extensions/extensions.css"
 
 type SkillItem = {
+  id: string
   name: string
   location: string
+  description?: string
 }
 
-const skillKey = (item: SkillItem) => `${item.name}\n${item.location}`
+const skillKey = (item: SkillItem) => `${item.id}\n${item.location}`
 
 const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
   <div class="project-settings-extension-card">{props.children}</div>
@@ -29,12 +32,18 @@ const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
 const ExtensionRow: Component<{
   icon: "mcp" | "puzzle-piece" | "post-skill"
   name: string
+  description?: string
   children?: JSX.Element
 }> = (props) => (
   <div class="project-settings-extension-row">
     <div class="project-settings-extension-row-main">
       <Icon name={props.icon} class="project-settings-extension-row-icon" />
-      <span class="project-settings-extension-row-name">{props.name}</span>
+      <span class="extension-destination-main">
+        <span class="project-settings-extension-row-name">{props.name}</span>
+        <Show when={props.description}>
+          <span class="extension-destination-description">{props.description}</span>
+        </Show>
+      </span>
     </div>
     {props.children}
   </div>
@@ -123,32 +132,35 @@ export const ProjectSettingsExtensions: Component = () => {
   })
   const [selectedPlugin, setSelectedPlugin] = createSignal<string>()
   const current = createMemo(() =>
-    currentPlugin([...(projectPluginList.latest ?? []), ...(globalPluginList.latest ?? [])], selectedPlugin()),
+    currentPlugin(
+      pluginInventoryRows([...(projectPluginList.latest ?? []), ...(globalPluginList.latest ?? [])]),
+      selectedPlugin(),
+    ),
   )
   const refetchPlugins = () => Promise.all([refetchGlobalPlugins(), refetchProjectPlugins()])
 
-  const serverSkills = createMemo(() => data.location.skill.list() ?? [])
+  const serverSkills = createMemo(() => skillInventoryRows(data.location.skill.list() ?? []))
   const projectSkills = createMemo(() => {
     const shared = new Set(serverSkills().map(skillKey))
-    return (data.location.skill.list({ directory: directorySDK().directory }) ?? []).filter(
+    return skillInventoryRows(data.location.skill.list({ directory: directorySDK().directory }) ?? []).filter(
       (item) => !shared.has(skillKey(item)),
     )
   })
 
   const mcpRows = (items: string[]) => (
-    <For each={items}>
-      {(name) => (
-        <ExtensionRow icon="mcp" name={name}>
+    <For each={mcpInventoryRows(items.map((name) => ({ name, enabled: mcpEnabled(name) })))}>
+      {(item) => (
+        <ExtensionRow icon="mcp" name={item.name} description={item.description}>
           <Switch
-            checked={mcpEnabled(name)}
-            disabled={toggleMcp.isPending && toggleMcp.variables === name}
+            checked={item.enabled}
+            disabled={toggleMcp.isPending && toggleMcp.variables === item.id}
             hideLabel
             onChange={() => {
               if (toggleMcp.isPending) return
-              toggleMcp.mutate(name)
+              toggleMcp.mutate(item.id)
             }}
           >
-            {name}
+            {item.name}
           </Switch>
         </ExtensionRow>
       )}
@@ -160,10 +172,12 @@ export const ProjectSettingsExtensions: Component = () => {
       {(plugin) => (
         <Show
           when={hasPluginDetails(plugin)}
-          fallback={<ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} />}
+          fallback={
+            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} description={plugin.description} />
+          }
         >
           <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id))}>
-            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)}>
+            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} description={plugin.description}>
               <Icon name="chevron-right" size="small" />
             </ExtensionRow>
           </button>
@@ -173,7 +187,9 @@ export const ProjectSettingsExtensions: Component = () => {
   )
 
   const skillRows = (items: SkillItem[]) => (
-    <For each={items}>{(item) => <ExtensionRow icon="post-skill" name={item.name} />}</For>
+    <For each={items}>
+      {(item) => <ExtensionRow icon="post-skill" name={item.name} description={item.description} />}
+    </For>
   )
 
   return (
