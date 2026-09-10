@@ -263,8 +263,7 @@ export function SessionIdentityHeader(props: { sessionID: string; session?: Sess
       ) ?? server.ctx.sync.data.project.find((item) => isProjectDirectory(item, value))
     )
   })
-  const showProjectIcon = () =>
-    import.meta.env.VITE_OPENCODE_CHANNEL !== "prod" && settings.general.showProjectIcon() && !!directory()
+  const showProjectIcon = () => settings.general.showProjectIcon() && !!directory()
   const workspaceSession = createMemo(() => !!pending() || isWorkspaceDirectory(project(), directory() ?? ""))
   const navigateParent = () => {
     const id = parentID()
