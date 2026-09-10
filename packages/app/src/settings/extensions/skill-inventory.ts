@@ -1,5 +1,6 @@
 import { createResource, createSignal } from "solid-js"
-import { ordered, type SkillRow } from "./skill-availability"
+import type { SkillRow } from "./skill-availability"
+import { skillInventoryRows } from "./presentation"
 
 type Inventory = { scope: string | false; rows: SkillRow[] }
 
@@ -15,7 +16,7 @@ export function createSkillInventory(input: {
     input.scope,
     (scope, info) =>
       input.load(scope).then(
-        (rows) => ({ scope, rows: ordered(rows) }),
+        (rows) => ({ scope, rows: skillInventoryRows(rows) }),
         (error) => {
           input.onError(error, info.refetching === "saved" ? "refresh" : "load")
           return { scope, rows: info.value?.scope === scope ? info.value.rows : [] }
