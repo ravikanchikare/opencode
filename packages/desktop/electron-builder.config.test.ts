@@ -391,7 +391,7 @@ test("rejects setting both update seams at once", async () => {
 
 test("uses an absolute distribution icon directory", async () => {
   const previous = process.env.OPENCODE_DESKTOP_ICON_DIR
-  process.env.OPENCODE_DESKTOP_ICON_DIR = "/assets/aai-workbench/icons"
+  process.env.OPENCODE_DESKTOP_ICON_DIR = "/assets/example-distribution/icons"
 
   const module = await import("./electron-builder.config.ts?icons=absolute")
   const config = module.default as Configuration
@@ -399,10 +399,10 @@ test("uses an absolute distribution icon directory", async () => {
   if (previous === undefined) delete process.env.OPENCODE_DESKTOP_ICON_DIR
   else process.env.OPENCODE_DESKTOP_ICON_DIR = previous
 
-  expect(config.mac?.icon).toBe("/assets/aai-workbench/icons/icon.icns")
-  expect(config.win?.icon).toBe("/assets/aai-workbench/icons/icon.ico")
-  expect(config.nsis?.installerIcon).toBe("/assets/aai-workbench/icons/icon.ico")
-  expect(config.nsis?.installerHeaderIcon).toBe("/assets/aai-workbench/icons/icon.ico")
-  expect(config.linux?.icon).toBe("/assets/aai-workbench/icons")
-  expect(config.extraResources).toContainEqual({ from: "/assets/aai-workbench/icons", to: "opencode-distribution-icons" })
+  expect(config.mac?.icon).toBe("/assets/example-distribution/icons/icon.icns")
+  expect(config.win?.icon).toBe("/assets/example-distribution/icons/icon.ico")
+  expect(config.nsis?.installerIcon).toBe("/assets/example-distribution/icons/icon.ico")
+  expect(config.nsis?.installerHeaderIcon).toBe("/assets/example-distribution/icons/icon.ico")
+  expect(config.linux?.icon).toBe("/assets/example-distribution/icons")
+  expect(config.extraResources).toContainEqual({ from: "/assets/example-distribution/icons", to: "opencode-distribution-icons" })
 })
