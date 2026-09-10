@@ -67,11 +67,9 @@ export type AppInventoryPresentation = {
   hiddenIDs?: readonly string[]
 }
 
-/** Settings-only policy for plugin inventory rows and technical metadata. */
+/** Settings-only policy for plugin inventory rows. */
 export type AppPluginPresentation = AppInventoryPresentation & {
   hiddenPluginIDs?: readonly string[]
-  /** Hide the technical metadata accordion, not the plugin's configuration controls. */
-  hiddenMetadataPluginIDs?: readonly string[]
 }
 
 export type AppComposition = {
@@ -115,10 +113,6 @@ export function isPluginVisible(pluginID: string | undefined, value: AppComposit
     (!value.pluginPresentation?.hiddenPluginIDs?.includes(pluginID) &&
       !value.pluginPresentation?.hiddenIDs?.includes(pluginID))
   )
-}
-
-export function isPluginMetadataVisible(pluginID: string | undefined, value: AppComposition = composition) {
-  return pluginID === undefined || !value.pluginPresentation?.hiddenMetadataPluginIDs?.includes(pluginID)
 }
 
 /**
