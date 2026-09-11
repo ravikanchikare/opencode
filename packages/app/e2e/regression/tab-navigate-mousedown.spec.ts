@@ -160,7 +160,7 @@ test("vertical tabs show project details, resize, and navigate", async ({ page }
     ({ server, sessionA, sessionB }) => {
       localStorage.setItem(
         "settings.v3",
-        JSON.stringify({ appearance: { tabLayout: "vertical", showProjectName: true }, general: { showStatus: true } }),
+        JSON.stringify({ experiments: { tabLayout: "vertical", showProjectName: true }, general: { showStatus: true } }),
       )
       localStorage.setItem(
         "opencode.window.browser.dat:tabs",
@@ -234,7 +234,7 @@ for (const count of [0, 26]) {
         localStorage.setItem(
           "settings.v3",
           JSON.stringify({
-            appearance: { tabLayout: "vertical" },
+            experiments: { tabLayout: "vertical" },
             keybinds: { "home.toggle": "alt+home", "tab.new": "ctrl+shift+n" },
           }),
         )
@@ -299,7 +299,7 @@ for (const direction of ["ltr", "rtl"]) {
       ({ server, sessionA, sessionB, directory }) => {
         localStorage.setItem(
           "settings.v3",
-          JSON.stringify({ appearance: { tabLayout: "vertical" }, general: { showStatus: true } }),
+          JSON.stringify({ experiments: { tabLayout: "vertical" }, general: { showStatus: true } }),
         )
         localStorage.setItem(
           "opencode.window.browser.dat:tabs",
@@ -375,7 +375,7 @@ for (const profile of [
         localStorage.setItem(
           "settings.v3",
           JSON.stringify({
-            appearance: { tabLayout: "vertical" },
+            experiments: { tabLayout: "vertical" },
             keybinds: { "home.toggle": "ctrl+alt+h", "tab.new": "ctrl+shift+n" },
           }),
         )
@@ -531,7 +531,7 @@ test("vertical tab preference uses the drawer on mobile", async ({ page }) => {
   await mockServer(page)
   await page.addInitScript(
     ({ server, sessionA }) => {
-      localStorage.setItem("settings.v3", JSON.stringify({ appearance: { tabLayout: "vertical" } }))
+      localStorage.setItem("settings.v3", JSON.stringify({ experiments: { tabLayout: "vertical" } }))
       localStorage.setItem(
         "opencode.window.browser.dat:tabs",
         JSON.stringify([{ type: "session", server, sessionId: sessionA }]),

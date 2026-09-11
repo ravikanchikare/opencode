@@ -41,7 +41,7 @@ export type SettingsTabEntry = SettingsTabNavigation &
 
 export type AppSettingsDefaults = {
   general?: Partial<Settings["general"]>
-  appearance?: Partial<Settings["appearance"]>
+  experiments?: Partial<Settings["experiments"]>
   keybinds?: Settings["keybinds"]
   permissions?: Partial<Settings["permissions"]>
   workspaces?: Partial<Settings["workspaces"]>
