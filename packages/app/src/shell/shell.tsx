@@ -23,7 +23,7 @@ export default function Layout(props: ParentProps & { overlay?: Component }) {
     tabsWidth: 260,
     tabsMount: undefined as HTMLElement | undefined,
   })
-  const verticalTabs = () => preferences.appearance.tabLayout() === "vertical" && !mobile()
+  const verticalTabs = () => preferences.experiments.tabLayout() === "vertical" && !mobile()
   const bottomTitlebar = () => mobile() && preferences.general.mobileTitlebarPosition() === "bottom"
 
   const update: TitlebarUpdate = {

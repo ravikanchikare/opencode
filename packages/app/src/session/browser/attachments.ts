@@ -43,9 +43,7 @@ export const { use: useBrowserAttachments, provider: BrowserAttachmentsProvider 
     const live = new Map<string, Live>()
     const focus = new Map<string, Set<(tabID: Browser.TabID) => void>>()
     const key = (server: Server, sessionID: string) => `${server.key}\n${sessionID}`
-    const enabled = createMemo(
-      () => !!platform.browserPane && settings.ready() && settings.general.experimentalBrowser(),
-    )
+    const enabled = createMemo(() => !!platform.browserPane && settings.ready())
     const close = (id: string) => {
       live.get(id)?.dispose()
       live.delete(id)
