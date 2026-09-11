@@ -22,14 +22,14 @@ describe("settings timeline detail migration", () => {
   test("migrates saved switches and round trips the current settings", () => {
     const settings = decode({
       general: { shellToolPartsExpanded: true, editToolPartsExpanded: false, showReasoningSummaries: true },
-      appearance: { fontSize: 16 },
+      experiments: { fontSize: 16 },
     })
     expect(settings.general.timelineDetail).toEqual({
       ...timelinePresets[2].value,
       shell: { placement: "separate", details: "expanded" },
       thinking: { placement: "separate", details: "expanded" },
     })
-    expect(settings.appearance.fontSize).toBe(16)
+    expect(settings.experiments.fontSize).toBe(16)
     expect(decode(encode(settings))).toEqual(settings)
   })
 })
@@ -49,7 +49,7 @@ describe("settings schema", () => {
   test("merges distribution defaults without changing stock defaults", () => {
     expect(resolveSettingsDefaults({ general: { followUpBehavior: "queue" } })).toMatchObject({
       general: { followUpBehavior: "queue", autoSave: true },
-      appearance: defaultSettings.appearance,
+      experiments: defaultSettings.experiments,
     })
     expect(defaultSettings.general.followUpBehavior).toBe("steer")
   })
@@ -58,7 +58,7 @@ describe("settings schema", () => {
     const initial = {
       ...defaultSettings,
       general: { ...defaultSettings.general, timelineDetail: timelinePresets[4].value, autoSave: false },
-      appearance: { ...defaultSettings.appearance, fontSize: 20 },
+      experiments: { ...defaultSettings.experiments, fontSize: 20 },
     }
     const restore = Schema.decodeUnknownSync(Persistence.withInitial(settingsPersistence, initial))
     expect(restore({})).toEqual(initial)
@@ -86,10 +86,9 @@ describe("settings schema", () => {
         mobileDiffWrap: true,
         terminalPlacement: "side",
         followUpBehavior: "steer",
-        experimentalBrowser: false,
       },
       sessionSummary: { projectExpanded: true, serverExpanded: true },
-      appearance: {
+      experiments: {
         fontSize: 14,
         mono: "",
         sans: "",
@@ -121,7 +120,7 @@ describe("settings schema", () => {
         reasoningMode: 3,
         followUpBehavior: "invalid",
       },
-      appearance: { fontSize: "large", mono: "Custom Mono", tabLayout: "vertical", showProjectName: true },
+      experiments: { fontSize: "large", mono: "Custom Mono", tabLayout: "vertical", showProjectName: true },
       permissions: { autoApprove: true },
       workspaces: { defaultDestination: "new", lastUsed: { good: "workspace", bad: true } },
       keybinds: { good: "ctrl+k", bad: 3 },
@@ -135,7 +134,7 @@ describe("settings schema", () => {
       timelineDetail: timelinePresets[2].value,
       followUpBehavior: "steer",
     })
-    expect(settings.appearance).toEqual({
+    expect(settings.experiments).toEqual({
       fontSize: 14,
       mono: "Custom Mono",
       sans: "",
@@ -151,10 +150,8 @@ describe("settings schema", () => {
     expect(decode(encode(settings))).toEqual(settings)
   })
 
-  test("browser attachment is opt-in and preserves an explicit choice", () => {
-    expect(decode({}).general.experimentalBrowser).toBe(false)
-    expect(decode({ general: { experimentalBrowser: true } }).general.experimentalBrowser).toBe(true)
-    expect(decode({ general: { experimentalBrowser: false } }).general.experimentalBrowser).toBe(false)
+  test("migrates the appearance preference section to experiments", () => {
+    expect(decode({ appearance: { tabLayout: "vertical" } }).experiments.tabLayout).toBe("vertical")
   })
 
   test.each([undefined, null, false, 7, "invalid", []].map((invalid) => [invalid]))(
@@ -164,7 +161,7 @@ describe("settings schema", () => {
       expect(
         decode({
           general: invalid,
-          appearance: { fontSize: 18 },
+          experiments: { fontSize: 18 },
           keybinds: invalid,
           permissions: invalid,
           workspaces: invalid,
@@ -173,14 +170,14 @@ describe("settings schema", () => {
         }),
       ).toEqual({
         ...defaults,
-        appearance: { ...defaults.appearance, fontSize: 18 },
+        experiments: { ...defaults.experiments, fontSize: 18 },
       })
     },
   )
 
   test("does not silently repair invalid values during encoding", () => {
     expect(() =>
-      Schema.encodeUnknownSync(settingsSchema)({ ...decode({}), appearance: { fontSize: "large" } }),
+      Schema.encodeUnknownSync(settingsSchema)({ ...decode({}), experiments: { fontSize: "large" } }),
     ).toThrow()
   })
 })

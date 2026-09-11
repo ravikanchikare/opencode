@@ -1,8 +1,7 @@
-import { Component, Show } from "solid-js"
+import { Component } from "solid-js"
 import { Select } from "@opencode/ui/select"
 import { Switch } from "@opencode/ui/switch"
 import { useLanguage } from "@/runtime/i18n/language"
-import { usePlatform } from "@/runtime/platform/platform"
 import { SettingsList } from "@/settings/list"
 import { useSettings } from "@/settings/model"
 import { SettingsRow } from "@/settings/row"
@@ -13,7 +12,6 @@ const tabLayoutOptions: ("horizontal" | "vertical")[] = ["horizontal", "vertical
 export const SettingsExperimental: Component = () => {
   const language = useLanguage()
   const settings = useSettings()
-  const platform = usePlatform()
 
   return (
     <>
@@ -38,7 +36,7 @@ export const SettingsExperimental: Component = () => {
               <Select
                 data-action="settings-tab-layout"
                 options={tabLayoutOptions}
-                current={tabLayoutOptions.find((option) => option === settings.appearance.tabLayout())}
+                current={tabLayoutOptions.find((option) => option === settings.experiments.tabLayout())}
                 placement="bottom-end"
                 gutter={6}
                 label={(option) =>
@@ -46,33 +44,17 @@ export const SettingsExperimental: Component = () => {
                     ? language.t("settings.appearance.row.tabs.horizontal")
                     : language.t("settings.appearance.row.tabs.vertical")
                 }
-                onSelect={(option) => option && settings.appearance.setTabLayout(option)}
+                onSelect={(option) => option && settings.experiments.setTabLayout(option)}
               />
             </SettingsRow>
-            <Show when={platform.browserPane}>
-              <SettingsRow
-                title={language.t("settings.general.row.browserPane.title")}
-                description={language.t("settings.general.row.browserPane.description")}
-              >
-                <div data-action="settings-experimental-browser">
-                  <Switch
-                    checked={settings.general.experimentalBrowser()}
-                    onChange={settings.general.setExperimentalBrowser}
-                    hideLabel
-                  >
-                    {language.t("settings.general.row.browserPane.title")}
-                  </Switch>
-                </div>
-              </SettingsRow>
-            </Show>
             <SettingsRow
               title={language.t("settings.appearance.row.projectName.title")}
               description={language.t("settings.appearance.row.projectName.description")}
             >
               <div data-action="settings-show-project-name">
                 <Switch
-                  checked={settings.appearance.showProjectName()}
-                  onChange={settings.appearance.setShowProjectName}
+                  checked={settings.experiments.showProjectName()}
+                  onChange={settings.experiments.setShowProjectName}
                   hideLabel
                 >
                   {language.t("settings.appearance.row.projectName.title")}

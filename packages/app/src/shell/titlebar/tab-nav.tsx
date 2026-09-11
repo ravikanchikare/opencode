@@ -300,7 +300,7 @@ export function TabNavItem(props: {
             event.preventDefault()
           }}
         />
-        <Show when={props.orientation === "vertical" && settings.appearance.showProjectName() && projectName()}>
+        <Show when={props.orientation === "vertical" && settings.experiments.showProjectName() && projectName()}>
           {(name) => (
             <span data-slot="tab-project" dir="auto">
               {name()}

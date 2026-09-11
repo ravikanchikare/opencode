@@ -13,7 +13,7 @@ export type WorkspaceDefaultDestination = Settings["workspaces"]["defaultDestina
 export type WorkspaceLastUsed = Settings["workspaces"]["lastUsed"][string]
 export type TerminalPlacement = Settings["general"]["terminalPlacement"]
 export type FollowUpBehavior = Settings["general"]["followUpBehavior"]
-export type TabLayout = Settings["appearance"]["tabLayout"]
+export type TabLayout = Settings["experiments"]["tabLayout"]
 export type NotificationSettings = Settings["notifications"]
 export type SoundSettings = Settings["sounds"]
 
@@ -95,16 +95,24 @@ const generalSchema = Persistence.struct({
   mobileDiffWrap: Schema.Boolean,
   terminalPlacement: Schema.Literals(["side", "bottom"]),
   followUpBehavior: Schema.Literals(["queue", "steer"]),
-  experimentalBrowser: Schema.Boolean,
 })
 
-const appearanceSchema = Persistence.struct({
+const experimentsSchema = Persistence.struct({
   fontSize: Schema.Number,
   mono: Schema.String,
   sans: Schema.String,
   terminal: Schema.String,
   tabLayout: Schema.Literals(["horizontal", "vertical"]),
   showProjectName: Schema.Boolean,
+})
+
+const storedExperimentsSchema = Persistence.struct({
+  fontSize: Persistence.optional(Schema.Number),
+  mono: Persistence.optional(Schema.String),
+  sans: Persistence.optional(Schema.String),
+  terminal: Persistence.optional(Schema.String),
+  tabLayout: Persistence.optional(Schema.Literals(["horizontal", "vertical"])),
+  showProjectName: Persistence.optional(Schema.Boolean),
 })
 
 const permissionsSchema = Persistence.struct({
@@ -136,7 +144,7 @@ const soundsSchema = Persistence.struct({
 export const settingsSchema = Persistence.struct({
   general: generalSchema,
   sessionSummary: Persistence.struct({ projectExpanded: Schema.Boolean, serverExpanded: Schema.Boolean }),
-  appearance: appearanceSchema,
+  experiments: experimentsSchema,
   keybinds: Persistence.record(Schema.String.pipe(Schema.catchDecoding(() => Effect.succeed(Option.none())))),
   permissions: permissionsSchema,
   workspaces: workspacesSchema,
@@ -213,13 +221,18 @@ export const settingsPersistence = Persistence.migrate(
         editToolPartsExpanded: Persistence.optional(Schema.Boolean),
       }),
     ),
+    appearance: Persistence.optional(storedExperimentsSchema),
+    experiments: Persistence.optional(storedExperimentsSchema),
   }).pipe(
     Schema.decode({
       decode: SchemaGetter.transform((value) => {
         const general = value.general
-        if (!general || general.timelineDetail !== undefined) return value
+        const experiments = value.experiments ?? value.appearance
+        if (!general || general.timelineDetail !== undefined)
+          return experiments === undefined ? value : { ...value, experiments }
         return {
           ...value,
+          ...(experiments === undefined ? {} : { experiments }),
           general: {
             ...general,
             timelineDetail: {
@@ -252,10 +265,9 @@ export const defaultSettings: Settings = {
     mobileDiffWrap: true,
     terminalPlacement: "side",
     followUpBehavior: "steer",
-    experimentalBrowser: false,
   },
   sessionSummary: { projectExpanded: true, serverExpanded: true },
-  appearance: { fontSize: 14, mono: "", sans: "", terminal: "", tabLayout: "horizontal", showProjectName: false },
+  experiments: { fontSize: 14, mono: "", sans: "", terminal: "", tabLayout: "horizontal", showProjectName: false },
   keybinds: {},
   permissions: { autoApprove: false },
   workspaces: { defaultDestination: "last-used", lastUsed: {} },
@@ -277,7 +289,7 @@ export function resolveSettingsDefaults(overrides?: AppSettingsDefaults): Settin
     // Panel expansion the host persists as the user works; not a distribution
     // preference, so it passes through rather than joining AppSettingsDefaults.
     sessionSummary: defaultSettings.sessionSummary,
-    appearance: { ...defaultSettings.appearance, ...overrides.appearance },
+    experiments: { ...defaultSettings.experiments, ...overrides.experiments },
     keybinds: overrides.keybinds ?? defaultSettings.keybinds,
     permissions: { ...defaultSettings.permissions, ...overrides.permissions },
     workspaces: { ...defaultSettings.workspaces, ...overrides.workspaces },
@@ -305,9 +317,9 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
     createEffect(() => {
       if (typeof document === "undefined") return
       const root = document.documentElement
-      const mono = monoFontFamily(store.appearance?.mono)
+      const mono = monoFontFamily(store.experiments?.mono)
       root.style.setProperty("--font-family-mono", mono)
-      root.style.setProperty("--font-family-sans", sansFontFamily(store.appearance?.sans))
+      root.style.setProperty("--font-family-sans", sansFontFamily(store.experiments?.sans))
       // Inline code can first appear during history backfill. Load its selected
       // face with the shell so that font discovery does not resize that mount.
       void document.fonts?.load(`440 13px ${mono}`).catch(() => undefined)
@@ -377,13 +389,6 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         setFollowUpBehavior(value: FollowUpBehavior) {
           setStore("general", "followUpBehavior", value)
         },
-        experimentalBrowser: withFallback(
-          () => store.general?.experimentalBrowser,
-          defaultSettings.general.experimentalBrowser,
-        ),
-        setExperimentalBrowser(value: boolean) {
-          setStore("general", "experimentalBrowser", value)
-        },
       },
       sessionSummary: {
         projectExpanded: withFallback(
@@ -406,33 +411,33 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         search: showSearch,
         customAgents: showCustomAgents,
       },
-      appearance: {
-        fontSize: withFallback(() => store.appearance?.fontSize, defaultSettings.appearance.fontSize),
+      experiments: {
+        fontSize: withFallback(() => store.experiments?.fontSize, defaultSettings.experiments.fontSize),
         setFontSize(value: number) {
-          setStore("appearance", "fontSize", value)
+          setStore("experiments", "fontSize", value)
         },
-        font: withFallback(() => store.appearance?.mono, defaultSettings.appearance.mono),
+        font: withFallback(() => store.experiments?.mono, defaultSettings.experiments.mono),
         setFont(value: string) {
-          setStore("appearance", "mono", value.trim() ? value : "")
+          setStore("experiments", "mono", value.trim() ? value : "")
         },
-        uiFont: withFallback(() => store.appearance?.sans, defaultSettings.appearance.sans),
+        uiFont: withFallback(() => store.experiments?.sans, defaultSettings.experiments.sans),
         setUIFont(value: string) {
-          setStore("appearance", "sans", value.trim() ? value : "")
+          setStore("experiments", "sans", value.trim() ? value : "")
         },
-        terminalFont: withFallback(() => store.appearance?.terminal, defaultSettings.appearance.terminal),
+        terminalFont: withFallback(() => store.experiments?.terminal, defaultSettings.experiments.terminal),
         setTerminalFont(value: string) {
-          setStore("appearance", "terminal", value.trim() ? value : "")
+          setStore("experiments", "terminal", value.trim() ? value : "")
         },
-        tabLayout: withFallback(() => store.appearance?.tabLayout, defaultSettings.appearance.tabLayout),
+        tabLayout: withFallback(() => store.experiments?.tabLayout, defaultSettings.experiments.tabLayout),
         setTabLayout(value: TabLayout) {
-          setStore("appearance", "tabLayout", value)
+          setStore("experiments", "tabLayout", value)
         },
         showProjectName: withFallback(
-          () => store.appearance?.showProjectName,
-          defaultSettings.appearance.showProjectName,
+          () => store.experiments?.showProjectName,
+          defaultSettings.experiments.showProjectName,
         ),
         setShowProjectName(value: boolean) {
-          setStore("appearance", "showProjectName", value)
+          setStore("experiments", "showProjectName", value)
         },
       },
       keybinds: {

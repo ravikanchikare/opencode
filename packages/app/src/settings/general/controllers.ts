@@ -132,23 +132,23 @@ export function createAppearanceSettingsController() {
     },
     fonts: {
       ui: createMemo(() => ({
-        value: sansInput(settings.appearance.uiFont()),
-        family: sansFontFamily(settings.appearance.uiFont()),
+        value: sansInput(settings.experiments.uiFont()),
+        family: sansFontFamily(settings.experiments.uiFont()),
         placeholder: sansDefault,
       })),
       code: createMemo(() => ({
-        value: monoInput(settings.appearance.font()),
-        family: monoFontFamily(settings.appearance.font()),
+        value: monoInput(settings.experiments.font()),
+        family: monoFontFamily(settings.experiments.font()),
         placeholder: monoDefault,
       })),
       terminal: createMemo(() => ({
-        value: terminalInput(settings.appearance.terminalFont()),
-        family: terminalFontFamily(settings.appearance.terminalFont()),
+        value: terminalInput(settings.experiments.terminalFont()),
+        family: terminalFontFamily(settings.experiments.terminalFont()),
         placeholder: terminalDefault,
       })),
-      setUI: (value: string) => settings.appearance.setUIFont(value),
-      setCode: (value: string) => settings.appearance.setFont(value),
-      setTerminal: (value: string) => settings.appearance.setTerminalFont(value),
+      setUI: (value: string) => settings.experiments.setUIFont(value),
+      setCode: (value: string) => settings.experiments.setFont(value),
+      setTerminal: (value: string) => settings.experiments.setTerminalFont(value),
     },
   }
 }
