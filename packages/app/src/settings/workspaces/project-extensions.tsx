@@ -34,11 +34,12 @@ import "@/settings/extensions/extensions.css"
 type SkillItem = {
   id: string
   name: string
-  path: string
   description?: string
+  path?: string
+  location?: string
 }
 
-const skillKey = (item: SkillItem) => `${item.id}\n${item.path}`
+const skillKey = (item: SkillItem) => `${item.id}\n${item.path ?? item.location ?? ""}`
 
 const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
   <SettingsList variant="catalog">{props.children}</SettingsList>

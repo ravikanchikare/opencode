@@ -248,13 +248,13 @@ describe("ConfigSkillPlugin.Plugin", () => {
             { externalHarnesses: false },
             startEntries(
               [
-                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
-                new AgentsDirectory({ type: "agents", path: AbsolutePath.make(agents) }),
                 new Directory({ type: "directory", path: AbsolutePath.make(opencode) }),
                 new Document({ type: "document", info: decode({ skills: ["~/shared"] }) }),
               ],
               directory,
               home,
+              emptyDiscovery,
+              { claude: [AbsolutePath.make(claude)], agents: [AbsolutePath.make(agents)] },
             ),
           )
 
@@ -285,12 +285,11 @@ describe("ConfigSkillPlugin.Plugin", () => {
           yield* withAdmission(
             { externalHarnesses: false },
             startEntries(
-              [
-                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
-                new Document({ type: "document", info: decode({ skills: [shared] }) }),
-              ],
+              [new Document({ type: "document", info: decode({ skills: [shared] }) })],
               directory,
               tmp.path,
+              emptyDiscovery,
+              { claude: [AbsolutePath.make(claude)], agents: [] },
             ),
           )
 
@@ -327,7 +326,6 @@ describe("ConfigSkillPlugin.Plugin", () => {
             { externalHarnesses: false },
             startEntries(
               [
-                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
                 new Document({
                   type: "document",
                   info: decode({ skills: [configured, "https://example.test/skills/"] }),
@@ -336,6 +334,7 @@ describe("ConfigSkillPlugin.Plugin", () => {
               path.join(tmp.path, "project"),
               tmp.path,
               discovery,
+              { claude: [AbsolutePath.make(claude)], agents: [] },
             ),
           )
 
@@ -366,12 +365,11 @@ describe("ConfigSkillPlugin.Plugin", () => {
           const skill = yield* withAdmission(
             { externalHarnesses: false },
             startEntries(
-              [
-                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
-                new Document({ type: "document", info: decode({ skills: [configured] }) }),
-              ],
+              [new Document({ type: "document", info: decode({ skills: [configured] }) })],
               path.join(tmp.path, "project"),
               tmp.path,
+              emptyDiscovery,
+              { claude: [AbsolutePath.make(claude)], agents: [] },
             ),
           )
           expect((yield* skill.list()).map((item) => item.id)).toEqual([Skill.ID.make("local")])
@@ -428,7 +426,6 @@ describe("ConfigSkillPlugin.Plugin", () => {
             { externalHarnesses: false },
             startEntries(
               [
-                new ClaudeDirectory({ type: "claude", path: AbsolutePath.make(claude) }),
                 new Document({
                   type: "document",
                   info: decode({ skills: [configured, "https://example.test/skills/"] }),
@@ -437,6 +434,7 @@ describe("ConfigSkillPlugin.Plugin", () => {
               path.join(tmp.path, "project"),
               tmp.path,
               discovery,
+              { claude: [AbsolutePath.make(claude)], agents: [] },
             ),
           )
 
