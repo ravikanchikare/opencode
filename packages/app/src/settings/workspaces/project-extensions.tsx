@@ -250,19 +250,12 @@ export const ProjectSettingsExtensions: Component<{
 
   const [globalPluginList, { refetch: refetchGlobalPlugins }] = createResource(
     () => serverSDK.connection.status() === "connected",
-    async () => {
-      await serverSDK.api.plugin.awaitActivation()
-      return serverSDK.api.plugin.list().then((result) => result.data)
-    },
+    () => serverSDK.api.plugin.list().then((result) => result.data),
     { initialValue: [] as PluginInfo[] },
   )
   const [projectPluginList, { refetch: refetchProjectPlugins }] = createResource(
     () => (serverSDK.connection.status() === "connected" ? directorySDK().directory : undefined),
-    async (directory) => {
-      const location = { directory }
-      await serverSDK.api.plugin.awaitActivation({ location })
-      return serverSDK.api.plugin.list({ location }).then((result) => result.data)
-    },
+    (directory) => serverSDK.api.plugin.list({ location: { directory } }).then((result) => result.data),
     { initialValue: [] as PluginInfo[] },
   )
   const globalPlugins = createMemo(() => pluginInventoryRows(globalPluginList.latest ?? []))

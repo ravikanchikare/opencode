@@ -85,11 +85,7 @@ export function usePlugins(directory: ExtensionScope) {
     load: async (key) => {
       const directory = key.slice(key.indexOf("\0") + 1)
       const location = locationOf(directory === "@server" ? undefined : directory)
-      const api = serverSDK.api
-      // A plugin snapshot never blocks on activation, so wait for it explicitly
-      // or an early read returns a list that is still filling in.
-      await api.plugin.awaitActivation({ location })
-      return api.plugin.list({ location }).then((result) => result.data)
+      return serverSDK.api.plugin.list({ location }).then((result) => result.data)
     },
   })
 
