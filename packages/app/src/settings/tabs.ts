@@ -18,6 +18,16 @@ const navItem = (entry: SettingsTabEntry): SettingsNavItem => ({
 })
 
 /**
+ * A composed `add` entry is a real root destination — same Kobalte Tabs list
+ * as Preferences and Models. The Settings view used to whitelist only stock
+ * values, so these triggers took focus, never became `value`, and each click
+ * or arrow key still replaced the route.
+ */
+export function isComposedSettingsTab(value: string, composition?: SettingsTabComposition): boolean {
+  return composition?.add?.some((entry) => entry.value === value) ?? false
+}
+
+/**
  * Applies a composition to the nav groups the host just computed.
  *
  * It post-processes rather than rebuilds because the host's items carry state no

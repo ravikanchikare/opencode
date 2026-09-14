@@ -2,9 +2,11 @@ import { useLocation, useNavigate } from "@solidjs/router"
 import { batch, createEffect, on } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createSimpleContext } from "@opencode/ui/context"
-import { useLayout, type LayoutRoute } from "@/shell/state/layout"
+import { getAppComposition } from "@/composition"
 import { useCommand } from "@/shell/commands/command"
+import { useLayout, type LayoutRoute } from "@/shell/state/layout"
 import { useSettingsServers } from "./servers/inventory"
+import { isComposedSettingsTab } from "./tabs"
 
 export type SettingsRootTab =
   | "general"
@@ -68,7 +70,7 @@ const projectTabs: Record<SettingsProjectTab, true> = {
 }
 
 function isRootTab(value: string): value is SettingsRootTab {
-  return value in rootTabs
+  return value in rootTabs || isComposedSettingsTab(value, getAppComposition().settingsTabs)
 }
 
 function isServerTab(value: string): value is SettingsServerTab {
@@ -184,14 +186,18 @@ export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = cr
       },
       select(tab: string) {
         const current = view()
-        const next: SettingsView =
+        const next: SettingsView | undefined =
           current.type === "root" && isRootTab(tab)
             ? { ...current, tab }
             : current.type === "server" && isServerTab(tab)
               ? { ...current, tab }
               : current.type === "project" && isProjectTab(tab)
                 ? { ...current, tab }
-                : current
+                : undefined
+        // Unknown values must not replace the route. Composed tabs used to miss
+        // the stock whitelist, so every activation snapped back to the current
+        // tab and queued another navigation — the shell got slower each time.
+        if (!next) return
         show({ ...next, target: undefined, subtab: undefined }, true)
       },
       subtab(subtab: SettingsView["subtab"]) {

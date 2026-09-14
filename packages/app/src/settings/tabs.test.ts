@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { SettingsTabEntry } from "@/composition"
 import type { SettingsNavGroup } from "./navigation"
-import { composeSettingsNavGroups } from "./tabs"
+import { composeSettingsNavGroups, isComposedSettingsTab } from "./tabs"
 
 const tab = (value: string, before?: string): SettingsTabEntry =>
   ({ value, label: value, icon: "mcp", content: () => null, ...(before ? { before } : {}) }) as SettingsTabEntry
@@ -104,5 +104,17 @@ describe("composeSettingsNavGroups", () => {
       ["providers", "models"],
       ["skills", "mcp", "plugins", "code-references"],
     ])
+  })
+
+  test("treats composed add values as selectable root destinations", () => {
+    const composition = {
+      add: [tab("skills"), tab("mcp"), tab("plugins"), tab("code-references")],
+    }
+    expect(
+      ["skills", "mcp", "plugins", "code-references"].every((value) => isComposedSettingsTab(value, composition)),
+    ).toBe(true)
+    expect(isComposedSettingsTab("models", composition)).toBe(false)
+    expect(isComposedSettingsTab("skills")).toBe(false)
+    expect(isComposedSettingsTab("skills", { add: [] })).toBe(false)
   })
 })
