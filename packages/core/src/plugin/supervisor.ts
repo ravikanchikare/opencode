@@ -11,6 +11,8 @@ import { Plugin } from "../plugin.js"
 import { InstancePlugins } from "./instance.js"
 import { PluginInternal } from "./internal.js"
 import { PluginModule } from "./module.js"
+import { PluginOptionConfig } from "./option-config.js"
+import { PluginOptions } from "./options.js"
 import { SdkPlugins } from "./sdk.js"
 import { PluginUpdate } from "./update.js"
 import { Watcher } from "../filesystem/watcher.js"
@@ -28,6 +30,7 @@ const resolve = Effect.fn("PluginSupervisor.resolve")(function* (
   const definitions = [...pre, ...post]
   const enabled = new Set(definitions.map((plugin) => plugin.id))
   const packages = new Map<string, Plugin.Generation>()
+  const overrides = new Map<string, Record<string, unknown>>()
   const pending = new Set<string>()
   const failures = new Map<
     string,
@@ -52,6 +55,12 @@ const resolve = Effect.fn("PluginSupervisor.resolve")(function* (
       operation.target.startsWith("opencode.")
     if (selectsPlugins) {
       matched.forEach((plugin) => enabled.add(plugin.id))
+      const exact = operation.target !== "*" && !operation.target.endsWith(".*")
+      if (exact) {
+        for (const plugin of matched.filter((plugin) => plugin.id === operation.target)) {
+          overrides.set(plugin.id, PluginOptions.merge(overrides.get(plugin.id) ?? {}, operation.options))
+        }
+      }
       continue
     }
 
@@ -88,11 +97,12 @@ const resolve = Effect.fn("PluginSupervisor.resolve")(function* (
     enabled.add(plugin.id)
   }
 
+  const withOptions = (plugin: Plugin.Generation) => PluginOptions.apply(plugin, overrides.get(plugin.id))
   const ordered = [
     ...pre.filter((plugin) => enabled.has(plugin.id)),
     ...[...packages.values()].filter((plugin) => enabled.has(plugin.id)),
     ...post.filter((plugin) => enabled.has(plugin.id)),
-  ]
+  ].map(withOptions)
   // Registry activation dies on a duplicate ID, which would drop the whole generation including builtins.
   // Keep the first occurrence in boot order and report later ones like any other plugin setup failure.
   const duplicate = (plugin: Plugin.Generation, index: number) =>
@@ -140,16 +150,10 @@ export const layer = Layer.effectDiscard(
       // Combine internal plugins with host-contributed plugins in boot order.
       // Instance-bound plugins come last: later activation can override earlier
       // container writes, so the instance's explicit choices win over globals.
-      const pre = [
-        ...internal.pre.map((plugin) => ({ ...plugin, revision: "internal", source: { type: "builtin" as const } })),
-        ...sdk.all(),
-        ...instance.all(),
-      ]
-      const post = internal.post.map((plugin) => ({
-        ...plugin,
-        revision: "internal",
-        source: { type: "builtin" as const },
-      }))
+      const stamp = (plugin: (typeof internal.pre)[number]) =>
+        Plugin.fromDefinition(plugin, { revision: "internal", source: { type: "builtin" as const } })
+      const pre = [...internal.pre.map(stamp), ...sdk.all(), ...instance.all()]
+      const post = internal.post.map(stamp)
       const operations = yield* sources.operations()
       // Activate everything available locally before waiting on missing package installs.
       const immediate = yield* resolve(modules, pre, post, operations, false, running)
@@ -243,6 +247,7 @@ const nodeDeps = [
   SdkPlugins.node,
   InstancePlugins.node,
   ConfigPluginSource.node,
+  PluginOptionConfig.node,
   PluginUpdate.node,
   Bus.node,
   Npm.node,
