@@ -31,6 +31,8 @@ import { Plugin } from "@opencode/core/plugin"
 import { PluginHooks } from "@opencode/core/plugin/hooks"
 import { Snapshot } from "@opencode/core/snapshot"
 import { Skill } from "@opencode/core/skill"
+import { ExtensionEnablement } from "@opencode/core/extension-enablement"
+import { extensionEnablementNode } from "./fixture/extension-enablement"
 import { tmpdirScoped } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 
@@ -72,7 +74,10 @@ const locations = makeGlobalNode({
           // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
           Layer.mergeAll(
             LayerNode.compile(LayerNode.group([PluginHooks.node, Skill.node]), {
-              replacements: [Bus.node.replace(Layer.succeed(Bus.Service, bus))],
+              replacements: [
+                Bus.node.replace(Layer.succeed(Bus.Service, bus)),
+                ExtensionEnablement.node.replace(extensionEnablementNode()),
+              ],
             }),
             Layer.mock(Image.Service, {
               normalize: (_resource, content) =>
