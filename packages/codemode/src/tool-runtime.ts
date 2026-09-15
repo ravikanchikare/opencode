@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Formatter, Schema } from "effect"
 import type { Json } from "./data.js"
 import type { DiagnosticKind } from "./codemode.js"
-import { toolError } from "./tool-error.js"
+import { ToolError, toolError } from "./tool-error.js"
 import {
   decodeInput as decodeToolInput,
   decodeOutput as decodeToolOutput,
@@ -51,11 +51,19 @@ export type ToolCallEnded = {
   readonly message?: string
 }
 
+export class PropagatedToolCause extends Error {
+  constructor(readonly originalCause: Cause.Cause<unknown>) {
+    super("The host ended this tool call.")
+  }
+}
+
 export type ToolCallHooks<R = never> = {
   /** Observes decoded tool input immediately before tool execution. */
   readonly onToolCallStart?: ((call: ToolCallStarted) => Effect.Effect<void, never, R>) | undefined
   /** Observes each admitted tool call as it succeeds, fails, or is interrupted. */
   readonly onToolCallEnd?: ((call: ToolCallEnded) => Effect.Effect<void, never, R>) | undefined
+  /** Lets a host preserve selected tool causes rather than making them program-visible errors. */
+  readonly propagateToolCause?: ((cause: Cause.Cause<unknown>) => boolean) | undefined
 }
 
 export type ToolDescription = {
@@ -380,8 +388,9 @@ export const make = <R>(
         Effect.gen(function* () {
           if (hooks?.onToolCallStart !== undefined) yield* hooks.onToolCallStart(call)
           const raw = yield* Effect.suspend(() => tool.execute(input)).pipe(
-            Effect.catchCause((cause) => {
+            Effect.catchCause((cause): Effect.Effect<never, PropagatedToolCause | ToolError> => {
               if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt
+              if (hooks?.propagateToolCause?.(cause)) return Effect.fail(new PropagatedToolCause(cause))
               return Effect.fail(
                 toolError(
                   Cause.prettyErrors(cause)
