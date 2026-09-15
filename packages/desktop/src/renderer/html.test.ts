@@ -67,3 +67,24 @@ test("renders before loading optional telemetry", async () => {
   expect(source.indexOf("render(() =>")).toBeLessThan(source.indexOf("initializeSentry(version)"))
   expect(source).not.toContain("await initializeSentry")
 })
+
+/**
+ * The window title is product identity, and it reaches the user in places the
+ * hidden titlebar does not cover: Mission Control, the window switcher, and the
+ * Window menu. Electron adopts the page title once the renderer loads, so a
+ * branded title set only in the main process is replaced by the static one in
+ * index.html a moment later — both halves are required, and this pins them.
+ */
+describe("window title", () => {
+  test("the renderer sets the title from the configured product name", async () => {
+    const source = await Bun.file(join(dir, "index.tsx")).text()
+    expect(source).toContain("document.title = PRODUCT_NAME")
+    expect(source).toContain('from "@opencode/app/brand"')
+  })
+
+  test("the main process opens the window with the same name", async () => {
+    const appearance = await Bun.file(join(root, "src/main/windows/appearance.ts")).text()
+    expect(appearance).toContain("title: PRODUCT_NAME")
+    expect(appearance).not.toContain('title: "OpenCode"')
+  })
+})
