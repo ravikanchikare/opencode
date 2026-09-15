@@ -4761,6 +4761,7 @@ describe("SessionRunnerLLM", () => {
           transform: registry.transform,
           reload: () => Effect.void,
           hook: () => Effect.die("unused tool hook"),
+          list: () => Effect.succeed([]),
         },
       }),
     )
@@ -4813,6 +4814,7 @@ describe("SessionRunnerLLM", () => {
           transform: registry.transform,
           reload: () => Effect.void,
           hook: () => Effect.die("unused tool hook"),
+          list: () => Effect.succeed([]),
         },
       }),
     )

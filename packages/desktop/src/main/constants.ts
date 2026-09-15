@@ -7,11 +7,19 @@ const raw = import.meta.env.OPENCODE_CHANNEL
 export const CHANNEL: Channel = raw === "local" || raw === "dev" || raw === "beta" || raw === "prod" ? raw : "dev"
 export const VERSION = app.isPackaged ? app.getVersion() : (process.env.OPENCODE_VERSION ?? app.getVersion())
 
-export const APP_NAME = import.meta.env.OPENCODE_DESKTOP_NAME?.trim()
+export const APP_NAME = import.meta.env.OPENCODE_DESKTOP_NAME?.trim() || (app.isPackaged ? "OpenCode" : "OpenCode Dev")
 
 /** The product name shown to a user. Stock builds are "OpenCode". */
 export const PRODUCT_NAME = APP_NAME || "OpenCode"
-export const APP_ID = import.meta.env.OPENCODE_DESKTOP_APP_ID?.trim()
+export const APP_ID =
+  import.meta.env.OPENCODE_DESKTOP_APP_ID?.trim() ||
+  (app.isPackaged
+    ? CHANNEL === "prod"
+      ? "ai.opencode.desktop"
+      : CHANNEL === "beta"
+        ? "ai.opencode.desktop.beta"
+        : "ai.opencode.desktop.dev"
+    : "ai.opencode.desktop.dev")
 export const DEEP_LINK_SCHEME = import.meta.env.OPENCODE_DESKTOP_DEEP_LINK_SCHEME?.trim() || "opencode"
 export const MANUAL_UPDATE_URL = import.meta.env.OPENCODE_DESKTOP_MANUAL_UPDATE_URL?.trim()
 export const ICON_DIR = import.meta.env.OPENCODE_DESKTOP_ICON_DIR?.trim() || "icons"
