@@ -9,6 +9,7 @@ import { APP_ID, APP_IDENTITY, APP_NAME, CHANNEL, DEEP_LINK_SCHEME, SERVICE_ID }
 import { DesktopPaths } from "../paths"
 import { getUserShell, loadShellEnv } from "../service/shell-env"
 import { registerRendererProtocol, setDockIcon } from "../windows"
+import { shouldImportLoginShellEnvironment } from "./environment-policy"
 
 const appNames: Record<string, string> = {
   dev: "OpenCode Dev",
@@ -64,7 +65,16 @@ export const prepareApplicationEnvironment = Effect.gen(function* () {
 
 export const preferApplicationEnvironment = Effect.gen(function* () {
   const shell = process.platform === "win32" ? null : getUserShell()
-  const shellEnv = shell ? yield* loadShellEnv(shell) : null
+  const shellEnv = shouldImportLoginShellEnvironment({
+    packaged: app.isPackaged,
+    onboardingTest: testOnboarding,
+    testRoot: process.env.OPENCODE_DESKTOP_TEST_ROOT,
+    testDisableShellEnvironment: process.env.OPENCODE_DESKTOP_TEST_DISABLE_SHELL_ENV,
+  })
+    ? shell
+      ? yield* loadShellEnv(shell)
+      : null
+    : null
   yield* Effect.sync(() => {
     if (!shellEnv?.XDG_STATE_HOME) delete process.env.XDG_STATE_HOME
     Object.assign(process.env, {
