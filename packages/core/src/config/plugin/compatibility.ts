@@ -8,6 +8,7 @@ import { Config } from "../../config.js"
 import { Watcher } from "../../filesystem/watcher.js"
 import { AbsolutePath } from "../../schema.js"
 import { Skill } from "../../skill.js"
+import { SkillSourceAdmission } from "../../skill/source-admission.js"
 import { SkillFile } from "./skill-file.js"
 
 export const Plugin = define({
@@ -16,6 +17,7 @@ export const Plugin = define({
     const config = yield* Config.Service
     const fs = yield* FSUtil.Service
     const watcher = yield* Watcher.Service
+    const admission = yield* SkillSourceAdmission.policy().pipe(Effect.orDie)
     const watches = yield* FiberMap.make<string>()
     const changes = yield* PubSub.sliding<string>(1)
     const lock = Semaphore.makeUnsafe(1)
@@ -38,7 +40,12 @@ export const Plugin = define({
       function* () {
         yield* FiberMap.clear(watches)
         const roots = config.compatibility ? yield* config.compatibility() : { claude: [], agents: [] }
-        const directories = [...roots.claude, ...roots.agents].map((root) => path.join(root, "skills"))
+        // Claude/agents skill directories exist only as ecosystem harnesses.
+        // Explicit config skill paths stay in ConfigSkillPlugin and are never
+        // gated by this policy.
+        const directories = SkillSourceAdmission.allows(admission, true)
+          ? [...roots.claude, ...roots.agents].map((root) => path.join(root, "skills"))
+          : []
         const loaded = new Map<Skill.ID, Skill.Info>()
         for (const directory of directories) {
           const resolved = yield* fs.realPath(directory).pipe(Effect.orElseSucceed(() => undefined))
