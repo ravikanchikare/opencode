@@ -1,6 +1,7 @@
-import { lazy, Show, Suspense, type ParentProps } from "solid-js"
+import { lazy, Show, Suspense, type Component, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createMediaQuery } from "@solid-primitives/media"
+import { Dynamic } from "solid-js/web"
 import { ResizeHandle } from "@opencode/ui/resize-handle"
 import { Titlebar, type TitlebarUpdate } from "@/shell/titlebar/titlebar"
 import { usePlatform } from "@/runtime/platform/platform"
@@ -11,18 +12,14 @@ import { useSettingsSurface } from "@/settings/surface"
 import { useSettings } from "@/settings/model"
 import { SshAuthentication } from "@/servers/ssh/authentication"
 import { useUpdaterInstall } from "@/shell/updates/download"
-import { useCommand } from "@/shell/commands/command"
-import { useLanguage } from "@/runtime/i18n/language"
 
 const DebugBar = lazy(() => import("@/shell/debug/debug-bar").then((module) => ({ default: module.DebugBar })))
 
-export default function Layout(props: ParentProps) {
+export default function Layout(props: ParentProps & { overlay?: Component }) {
   const platform = usePlatform()
   const settings = useSettingsSurface()
   const preferences = useSettings()
   const installUpdate = useUpdaterInstall()
-  const command = useCommand()
-  const language = useLanguage()
   const mobile = createMediaQuery("(max-width: 767px)")
   const [state, setState] = createStore({
     debugTools: false,
@@ -39,21 +36,14 @@ export default function Layout(props: ParentProps) {
     install: installUpdate,
   }
   // A plain object avoids the compiler's conditional-prop memo, which leaks when read from event handlers.
-  const debugTools = {
-    get visible() {
-      return state.debugTools
-    },
-    toggle: () => setState("debugTools", (value) => !value),
-  }
-
-  command.register("debug-bar", () => [
-    {
-      id: "debugBar.toggle",
-      title: language.t("command.debugBar.toggle"),
-      category: language.t("command.category.view"),
-      onSelect: debugTools.toggle,
-    },
-  ])
+  const debugTools = import.meta.env.DEV
+    ? {
+        get visible() {
+          return state.debugTools
+        },
+        toggle: () => setState("debugTools", (value) => !value),
+      }
+    : undefined
 
   return (
     <TitlebarRightProvider>
@@ -117,13 +107,14 @@ export default function Layout(props: ParentProps) {
             </SshAuthentication>
           </main>
         </div>
-        <Show when={state.debugTools}>
+        <Show when={import.meta.env.DEV && state.debugTools}>
           <Suspense>
-            <DebugBar diagnostics={import.meta.env.DEV} inline />
+            <DebugBar inline />
           </Suspense>
         </Show>
         <ToastRegion />
         <UploadToastHost />
+        <Show when={props.overlay}>{(Overlay) => <Dynamic component={Overlay()} />}</Show>
       </div>
     </TitlebarRightProvider>
   )

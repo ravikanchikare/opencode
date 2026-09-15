@@ -1,4 +1,6 @@
 export const additionalIcons = {
+  "puzzle-piece": `<path d="M7.5 5.5V4a2 2 0 0 1 4 0v1.5H16V10h-1.5a2 2 0 0 0 0 4H16v3.5H3.5V13H5a2 2 0 0 0 0-4H3.5V5.5h4Z" stroke="currentColor" stroke-linejoin="round"/>`,
+  plug: `<path d="M7.5 2.5V6M12.5 2.5V6M5 6h10M6 6v4a4 4 0 0 0 8 0V6M10 14v3.5" stroke="currentColor" stroke-linecap="square" stroke-linejoin="round"/>`,
   "align-right": `<path d="M12.292 6.04167L16.2503 9.99998L12.292 13.9583M2.91699 9.99998H15.6253M17.0837 3.75V16.25" stroke="currentColor" stroke-linecap="square"/>`,
   "arrow-up": `<path fill-rule="evenodd" clip-rule="evenodd" d="M9.99991 2.24121L16.0921 8.33343L15.2083 9.21731L10.6249 4.63397V17.5001H9.37492V4.63398L4.7916 9.21731L3.90771 8.33343L9.99991 2.24121Z" fill="currentColor"/>`,
   "arrow-left": `<path d="M8.33464 4.58398L2.91797 10.0007L8.33464 15.4173M3.33464 10.0007H17.0846" stroke="currentColor" stroke-linecap="square"/>`,
