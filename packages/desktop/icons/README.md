@@ -12,3 +12,22 @@ so app icons appear larger than expected.
 
 For unpackaged Electron on macOS, `app.dock.setIcon()` should use a PNG. Keep `dock.png` in each channel folder synced with the
 extracted `icon_128x128@2x.png` from that channel's `icon.icns` so the dev Dock icon matches the packaged app inset.
+
+## Desktop notification branding
+
+Notifications use `icon.png` from `OPENCODE_DESKTOP_ICON_DIR`, the same directory
+used for package and runtime icons. Absolute paths select external distribution
+assets; relative paths are under `packages/desktop/resources`. Unset or `icons`
+uses the stock channel's tracked source under `icons/{dev,beta,prod}` (`local`
+uses `dev`), without requiring `copy-icons.ts` to have run.
+
+The desktop Vite config embeds the PNG as a data URL, so notifications need
+neither network access nor the original asset directory at runtime. A missing
+custom icon fails the build instead of silently showing stock branding.
+
+On macOS, Electron renders this image as a notification attachment. The sender's
+application icon is separate: macOS gets it from the installed `.app` bundle's
+`icon.icns` and identity. Changing `dock.png` or a notification attachment does
+not change that identity. Verify both images with a newly delivered notification
+from an installed package; an unpackaged Electron launch is not proof of the
+packaged sender icon.

@@ -4,8 +4,7 @@ import log from "electron-log/main.js"
 import { app, crashReporter, netLog, shell } from "electron"
 import { Context, Effect, FileSystem, Layer, Logger, Option, Path, References, Stream } from "effect"
 import { homedir } from "node:os"
-import { VERSION } from "../constants"
-import { marks } from "../lifecycle/marks"
+import { APP_IDENTITY, VERSION } from "../constants"
 
 const MAX_LOG_AGE_DAYS = 7
 const TAIL_LINES = 1000
@@ -35,7 +34,6 @@ const serviceLayer = Layer.effect(
       version: VERSION,
       packaged: app.isPackaged,
       onboardingTest: process.env.OPENCODE_TEST_ONBOARDING === "1",
-      marks,
     })
     const exportDebug = exportDebugLogsEffect(fs, path).pipe(Effect.orDie)
     return Service.of({
@@ -231,7 +229,10 @@ function manifest(path: Path.Path) {
 function serverLogRoots(path: Path.Path) {
   const xdgData = process.env.XDG_DATA_HOME || path.join(homedir(), ".local", "share")
   return [
-    ...new Set([path.join(xdgData, "opencode", "log"), path.join(app.getPath("userData"), "opencode", "log")]),
+    ...new Set([
+      path.join(xdgData, APP_IDENTITY, "log"),
+      path.join(app.getPath("userData"), APP_IDENTITY, "log"),
+    ]),
   ]
 }
 
