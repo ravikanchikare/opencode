@@ -1,0 +1,3 @@
+# Local rules are intentionally shared across this repository's managed
+# worktrees. Environment files remain per-worktree and are never copied.
+AGENTS.local.md
