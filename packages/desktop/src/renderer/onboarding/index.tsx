@@ -1,5 +1,15 @@
-import { ServerConnection, useCurrentRoute, useGlobal, useServers, useTabs } from "@opencode/app/desktop"
-import { createResource } from "solid-js"
+import {
+  getAppComposition,
+  ServerConnection,
+  ServerProvider,
+  useCurrentRoute,
+  useGlobal,
+  useServers,
+  useTabs,
+  type OnboardingSurfaceProps,
+  type ProviderConnectionBannerSurfaceProps,
+} from "@opencode/app/desktop"
+import { createResource, createSignal, Show, type Component } from "solid-js"
 import type { ElectronAPI } from "../api-types"
 
 export function DesktopFirstLaunchOnboarding(props: {
@@ -13,6 +23,9 @@ export function DesktopFirstLaunchOnboarding(props: {
   const global = useGlobal()
   const tabs = useTabs()
   const route = useCurrentRoute()
+  const composed = getAppComposition().onboarding
+  const banner = getAppComposition().providerConnectionBanner
+  const [surface, setSurface] = createSignal(false)
 
   const [completed] = createResource(async () => {
     await runFirstLaunchOnboarding()
@@ -34,13 +47,33 @@ export function DesktopFirstLaunchOnboarding(props: {
       console.info("[desktop-onboarding] first launch onboarding evaluated", {
         pending: props.pending,
         shouldTrigger,
+        composed: composed !== undefined,
         initialUrl: props.initialUrl,
         tabs: tabs.store.length,
         servers: server.list.map(ServerConnection.key),
       })
 
-      const directory = await props.api.finishFirstLaunchOnboarding(shouldTrigger)
-      if (!shouldTrigger || !directory) return
+      if (!shouldTrigger) {
+        await props.api.finishFirstLaunchOnboarding(false)
+        return
+      }
+
+      if (composed) {
+        setSurface(true)
+        return
+      }
+
+      await complete()
+    } finally {
+      props.onReady()
+    }
+  }
+
+  async function complete(options?: { openProject?: boolean }) {
+    const openProject = options?.openProject ?? true
+    try {
+      const directory = await props.api.finishFirstLaunchOnboarding(openProject)
+      if (!openProject || !directory) return
 
       console.info("[desktop-onboarding] starting first launch draft", { directory })
       const projects = server.projects.forServer(props.serverKey)
@@ -54,10 +87,49 @@ export function DesktopFirstLaunchOnboarding(props: {
       }
       tabs.select(await tabs.newDraft({ server: props.serverKey, directory }))
     } finally {
-      props.onReady()
+      setSurface(false)
     }
   }
 
   // Let startup failures reach the app's recovery screen, including its splash boundary.
-  return <>{completed()}</>
+  if (!composed && !banner) return <>{completed()}</>
+  const connection = () => server.list.find((item) => ServerConnection.key(item) === props.serverKey)
+  return (
+    <>
+      {completed()}
+      <Show when={connection()} keyed>
+        {(connection) => (
+          <ServerProvider conn={connection}>
+            <ComposedProviderConnectionBanner component={banner} show={() => !surface()} />
+            <ComposedOnboarding component={composed} show={surface} complete={complete} />
+          </ServerProvider>
+        )}
+      </Show>
+    </>
+  )
+}
+
+function ComposedOnboarding(props: {
+  component: Component<OnboardingSurfaceProps> | undefined
+  show: () => boolean
+  complete: OnboardingSurfaceProps["complete"]
+}) {
+  if (!props.component) return null
+  return (
+    <Show when={props.show()}>
+      <props.component complete={props.complete} />
+    </Show>
+  )
+}
+
+function ComposedProviderConnectionBanner(props: {
+  component: Component<ProviderConnectionBannerSurfaceProps> | undefined
+  show: () => boolean
+}) {
+  if (!props.component) return null
+  return (
+    <Show when={props.show()}>
+      <props.component />
+    </Show>
+  )
 }
