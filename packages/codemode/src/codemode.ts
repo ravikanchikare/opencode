@@ -111,7 +111,7 @@ export type Result = typeof Result.Type
 /** Reusable confined runtime over explicit tools. */
 export type Runtime<R = never> = {
   readonly catalog: ReadonlyArray<ToolDescription>
-  readonly execute: (code: string) => Effect.Effect<Result, never, R>
+  readonly execute: (code: string) => Effect.Effect<Result, unknown, R>
 }
 
 const validateLimit = (name: keyof ExecutionLimits, value: number | undefined, minimum: number): number | undefined => {
@@ -130,7 +130,7 @@ const resolveExecutionLimits = (limits?: ExecutionLimits): ResolvedExecutionLimi
 /** Executes one Effect-native CodeMode program without constructing a reusable runtime. */
 export const execute = <const Provided extends Record<string, unknown>>(
   options: ExecuteOptions<Provided>,
-): Effect.Effect<Result, never, Services<Provided>> => make(options).execute(options.code)
+): Effect.Effect<Result, unknown, Services<Provided>> => make(options).execute(options.code)
 
 /** Creates an Effect-native runtime over explicit, schema-described tools. */
 export const make = <const Provided extends Record<string, unknown> = {}>(
