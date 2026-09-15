@@ -436,7 +436,7 @@ it.live("retains Promise plugin groups for later registrations and ignores a dis
         }
       },
     })
-    yield* plugins.activate([{ ...definition, revision: "1" }])
+    yield* plugins.activate([Plugin.fromDefinition(definition, { revision: "1" })])
     yield* Effect.promise(register)
     yield* plugins.awaitActivation
     expect((yield* plugins.list())[0]?.state).toMatchObject({
