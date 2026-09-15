@@ -1,10 +1,58 @@
-- After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit generated client files directly.
+# Agent instructions
+
+Adapted from [upstream's `dev` instructions](https://raw.githubusercontent.com/anomalyco/opencode/refs/heads/dev/AGENTS.md)
+for this fork's `v2` layout and runtime. Follow upstream's `@opencode/*` package
+scope and hosted-service layout under `services/`. Preserve the session semantics
+and distribution workflow below when incorporating upstream updates.
+
+- After changing the public Protocol or Server `HttpApi`, run `bun run generate` from `packages/client`. Do not edit `src/promise/generated`, `src/effect/generated`, or `src/effect/api` directly.
+- Client generation belongs to `packages/client`; `packages/sdk/script/build.ts` builds the composed SDK package. The upstream legacy `packages/sdk/js/script/build.ts` path does not exist in this V2 checkout.
 - Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk` composes Client, Core, and Server.
 - Current implementation changes belong in `packages/core`, `packages/cli`, `packages/server`, `packages/protocol`, `packages/schema`, and related generated client surfaces when required.
 - This repository does not use Changesets. Do not add `.changeset` files; follow the existing release workflow instead.
 - The default branch in this repo is `v2`.
 - Default new branches and worktrees to `v2`, or `origin/v2` when the local `v2` ref is unavailable, and default pull requests to target `v2`. Use another base or target branch when the requester explicitly instructs it.
 - Local `main` ref may not exist; use `v2` or `origin/v2` for diffs.
+
+## Downstream distributions
+
+This fork exists to carry generic, reusable extension seams that a downstream
+distribution composes. Keep distribution-specific implementation downstream.
+For example, a packaged build may name an updater provider in
+`updater-provider.json`; this fork loads that module and forwards its `config`
+untouched, while the distribution owns the provider's implementation, native
+code, packaging payloads, feeds, keys, signing, and release automation. This
+fork names no updater technology and infers no updater from branding.
+
+A distribution pins an exact revision of this fork. Publish before a consumer
+pins, and treat a published revision as immutable: preserve the old tip with an
+archive tag before rebasing and force-updating a shared branch, so existing
+pins stay fetchable.
+
+## Fork-stack maintenance
+
+Treat the fork stack as a small, reviewable set of extension seams, not a
+permanent record of every experiment. Before starting work and before
+publication:
+
+1. Fetch the upstream V2 line, compare the complete fork-only range with it,
+   and rebase the stack onto the latest `upstream/v2`.
+2. Give upstream behavior precedence. For each commit, identify upstream
+   capabilities that now provide the same behavior, make the change
+   unnecessary, or offer a better seam. Remove those changes and call the
+   candidates out for review rather than preserving them by default.
+3. Keep each remaining commit focused on one logical seam and independently
+   reviewable. Amend, split, squash, reorder, or drop commits as the upstream
+   base evolves; do not accumulate corrective or revert commits.
+4. Resolve a rebase conflict in the existing commit when the resolution belongs
+   to that commit's purpose. Create a new commit only when the change is a
+   separate logical concern that does not fit any existing commit.
+5. Validate the rebased range with affected package tests and typechecks,
+   check the diff from `upstream/v2` to `HEAD` for whitespace errors, and review
+   the final linear log before proposing publication.
+
+A change that only a downstream distribution needs, and that no other consumer
+of this fork could use, belongs downstream rather than here.
 
 ## Live V2 TUI Testing
 

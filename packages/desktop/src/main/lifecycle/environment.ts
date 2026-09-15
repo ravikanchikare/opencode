@@ -26,7 +26,6 @@ const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
 
 export const configureApplication = Effect.fn("Application.configure")(function* () {
   const path = yield* Path.Path
-  contextMenu({ showSaveImageAs: true, showLookUpSelection: false, showSearchWithGoogle: false })
   try {
     process.chdir(homedir())
   } catch {}
@@ -51,6 +50,10 @@ export const configureApplication = Effect.fn("Application.configure")(function*
     if (testOnboarding) app.setPath("documents", path.join(testRoot, "documents"))
   }
 })
+
+export const installContextMenu = Effect.sync(() =>
+  contextMenu({ showSaveImageAs: true, showLookUpSelection: false, showSearchWithGoogle: false }),
+)
 
 export function acquireApplicationLock() {
   if (app.requestSingleInstanceLock()) return true
