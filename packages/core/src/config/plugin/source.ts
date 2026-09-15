@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from "url"
 import { Config } from "../../config.js"
 import { Watcher } from "../../filesystem/watcher.js"
 import { Location } from "../../location.js"
+import { ManagedPluginSource } from "../../plugin/managed-source.js"
 import { PluginSourceDirectory } from "../../plugin/source-directory.js"
 
 export type Operation =
@@ -39,6 +40,7 @@ export const layer = Layer.effect(
     const watcher = yield* Watcher.Service
     const fs = yield* FSUtil.Service
     const location = yield* Location.Service
+    const managed = yield* ManagedPluginSource.Service
     const configuredChanges = yield* PubSub.unbounded<void>()
     const watched = new Set<string>()
 
@@ -74,7 +76,10 @@ export const layer = Layer.effect(
     return Service.of({
       operations: Effect.fn("ConfigPluginSource.operations")(function* () {
         const entries = yield* config.entries()
-        const operations = yield* scan(fs, location, entries)
+        const operations = [
+          ...(yield* managed.operations().pipe(Effect.orDie)),
+          ...(yield* scan(fs, location, entries)),
+        ]
         yield* watchConfiguredSources(entries, operations)
         return operations
       }),
@@ -95,7 +100,7 @@ export const layer = Layer.effect(
 export const node = makeLocationNode({
   service: Service,
   layer,
-  deps: [Config.node, FSUtil.node, Watcher.node, Location.node],
+  deps: [Config.node, FSUtil.node, Watcher.node, Location.node, ManagedPluginSource.node],
 })
 
 export const empty = makeLocationNode({
