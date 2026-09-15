@@ -1,8 +1,22 @@
 import { Tabs } from "@opencode/ui/tabs"
 import { useDialog } from "@opencode/ui/context/dialog"
-import { createEffect, createMemo, on, onCleanup, onMount, Show, Switch, Match, type Accessor } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  For,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+  Match,
+  type Accessor,
+} from "solid-js"
 import { createStore } from "solid-js/store"
+import { Dynamic } from "solid-js/web"
 import { useLanguage } from "@/runtime/i18n/language"
+import { usePlatform } from "@/runtime/platform/platform"
 import { useLayout } from "@/shell/state/layout"
 import { useTabs } from "@/shell/tabs/tabs"
 import { displayName } from "@/shell/layout/helpers"
@@ -32,6 +46,11 @@ import { SettingsNavigation, type SettingsNavGroup } from "./navigation"
 import { SettingsProjectGeneral } from "./workspaces/project"
 import { ProjectSettingsExtensions } from "./workspaces/project-extensions"
 import { useSettingsSurface } from "./surface"
+import { EXTENSION_PANELS } from "./extensions/panels"
+import { getAppComposition } from "@/composition"
+import { composeSettingsNavGroups } from "./tabs"
+import { globalConfigPath } from "./config-path"
+import { settingsVersionLines } from "./version"
 import { pageIcons } from "./pages"
 import { revealSettingsSearch } from "./search-reveal"
 import "@/settings/settings.css"
@@ -181,6 +200,7 @@ export function SettingsScreen() {
 
 function RootSettings() {
   const language = useLanguage()
+  const platform = usePlatform()
   const dialog = useDialog()
   const surface = useSettingsSurface()
   const layout = useLayout()
@@ -245,6 +265,27 @@ function RootSettings() {
     ...trailingTabs.map((items) => ({ items: items.map((item) => ({ ...item, label: language.t(item.label) })) })),
   ])
 
+  const tabComposition = getAppComposition().settingsTabs
+  const hiddenTabs = new Set(tabComposition?.hide ?? [])
+  const addedTabs = tabComposition?.add ?? []
+  const composedGroups = createMemo(() => composeSettingsNavGroups(groups(), tabComposition))
+  const serverCtx = useServerCtx(single)
+  const [configEntries] = createResource(
+    () => {
+      if (!tabComposition?.showConfigPath) return
+      const ctx = serverCtx()
+      if (ctx?.sdk.connection.status() !== "connected") return
+      return ctx
+    },
+    (ctx) => ctx.sdk.api.config.get(),
+  )
+  const configPath = createMemo(() => globalConfigPath(configEntries() ?? []))
+  const productVersionLines = () => settingsVersionLines({ productVersion: platform.productVersion })
+  const showProviders = () => {
+    dialog.close()
+    surface.select("providers")
+  }
+
   createEffect(() => {
     const view = surface.view()
     if (view.type !== "root" || !multiple()) return
@@ -264,7 +305,7 @@ function RootSettings() {
   return (
     <SettingsNavigation
       value={surface.view().tab}
-      groups={groups()}
+      groups={composedGroups()}
       backLabel={language.t("settings.backToApp")}
       onBack={() => surface.close()}
       onChange={change}
@@ -282,12 +323,34 @@ function RootSettings() {
       <Tabs.Content value="shortcuts" class="settings-panel">
         <SettingsKeybinds active={surface.view().tab === "shortcuts"} autofocus={!surface.search.state.selected} />
       </Tabs.Content>
-      <Tabs.Content value="experimental" class="settings-panel">
-        <SettingsExperimental />
-      </Tabs.Content>
-      <Tabs.Content value="about" class="settings-panel settings-about">
-        <SettingsAbout active={surface.view().tab === "about"} />
-      </Tabs.Content>
+      <Show when={!hiddenTabs.has("experimental")}>
+        <Tabs.Content value="experimental" class="settings-panel">
+          <SettingsExperimental />
+        </Tabs.Content>
+      </Show>
+      <Show when={!hiddenTabs.has("about")}>
+        <Tabs.Content value="about" class="settings-panel settings-about">
+          <SettingsAbout active={surface.view().tab === "about"} />
+          <Show when={productVersionLines().length > 0 || configPath()}>
+            <div class="settings-about-distribution">
+              <For each={productVersionLines()}>
+                {(line) => (
+                  <p title={line.title}>
+                    <bdi dir="ltr">{line.text}</bdi>
+                  </p>
+                )}
+              </For>
+              <Show when={configPath()}>
+                {(path) => (
+                  <p class="settings-about-config-path" title={path()}>
+                    <bdi dir="ltr">{path()}</bdi>
+                  </p>
+                )}
+              </Show>
+            </div>
+          </Show>
+        </Tabs.Content>
+      </Show>
       <Show when={single()} keyed>
         {(server) => (
           <SettingsServerDataScope server={server}>
@@ -311,18 +374,42 @@ function RootSettings() {
               />
             </Tabs.Content>
             <Tabs.Content value="providers" class="settings-panel">
-              <SettingsProviders directory={undefined} onBack={() => surface.select("providers")} />
+              <Dynamic
+                component={getAppComposition().settingsProviders ?? SettingsProviders}
+                directory={sourceServer() === server ? sourceDirectory() : undefined}
+                onBack={showProviders}
+              />
             </Tabs.Content>
             <Tabs.Content value="models" class="settings-panel">
               <SettingsModels active={surface.view().tab === "models"} autofocus={!surface.search.state.selected} />
             </Tabs.Content>
-            <Tabs.Content value="extensions" class="settings-panel">
-              <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
-            </Tabs.Content>
+            <Show when={!hiddenTabs.has("extensions")}>
+              <Tabs.Content value="extensions" class="settings-panel">
+                <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
+              </Tabs.Content>
+            </Show>
+            {/*
+              Composed tabs render *inside* the scope, so a registration gets the
+              selected server and this location without wrapping itself. They used
+              to render after the closing tag: a composed tab opened from Home had
+              no server context at all and `useServer` threw, and one opened from a
+              session silently borrowed that route's server.
+            */}
+            <For each={addedTabs}>
+              {(entry) => (
+                <Tabs.Content value={entry.value} class="settings-panel">
+                  <Dynamic
+                    component={entry.panel ? EXTENSION_PANELS[entry.panel] : entry.content!}
+                    directory={sourceServer() === server ? sourceDirectory() : undefined}
+                    onBack={showProviders}
+                  />
+                </Tabs.Content>
+              )}
+            </For>
           </SettingsServerDataScope>
         )}
       </Show>
-      <Show when={singleEntry()}>
+      <Show when={hiddenTabs.has("servers") ? undefined : singleEntry()}>
         {(entry) => (
           <Tabs.Content value="servers" class="settings-panel">
             <SettingsServerGeneral entry={entry()} onAddServer={addServer} />
