@@ -81,6 +81,7 @@ function fixture(input: { session?: Commit; agents?: Agent[]; config?: ConfigMod
     visible: true,
     configLoaded: true,
     connection: "connected",
+    resolvedDefault: undefined as string | undefined,
     route: { id: "ses_a" as string | undefined },
     agents: input.agents ?? [agent("build"), agent("plan")],
     config: input.config as ConfigModel | undefined,
@@ -127,7 +128,10 @@ function fixture(input: { session?: Commit; agents?: Agent[]; config?: ConfigMod
           },
         },
         provider: { list: () => state.providers },
-        model: { list: () => state.models },
+        model: {
+          list: () => state.models,
+          default: { list: () => state.models.find((model) => model.id === state.resolvedDefault) },
+        },
         integration: { list: () => [] },
       },
     },
@@ -211,6 +215,21 @@ test("new-session promotion does not mask a command's durable overrides", () => 
   local.session.promote(f.directory, "ses_a", { agent: "build", model: key("a"), variant: "low" })
   f.set("sessions", "ses_a", durable("b", "high", "plan"))
   expect(selection(local)).toEqual({ agent: "plan", model: "b", variant: "high" })
+})
+
+test("new-session drafts react to the server default without overriding explicit choices", () => {
+  const f = fixture()
+  f.set("route", "id", undefined)
+  f.set("resolvedDefault", "b")
+  const { composer } = f.mount(true)
+  if (!composer) throw new Error("missing draft composer")
+  expect(composer.current()?.id).toBe("b")
+  f.set("resolvedDefault", "c")
+  expect(composer.current()?.id).toBe("c")
+  composer.set(key("a"))
+  expect(composer.current()?.id).toBe("a")
+  f.set("resolvedDefault", "b")
+  expect(composer.current()?.id).toBe("a")
 })
 
 test("new-session drafts remember each agent's model and hand off inactive choices", () => {
