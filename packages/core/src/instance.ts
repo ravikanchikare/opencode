@@ -26,6 +26,7 @@ import { Permission } from "./permission.js"
 import { Plugin } from "./plugin.js"
 import { PluginHooks } from "./plugin/hooks.js"
 import { InstancePlugins } from "./plugin/instance.js"
+import { PluginOptionConfig } from "./plugin/option-config.js"
 import { PluginSupervisor } from "./plugin/supervisor.js"
 import { WorktreeRefresh } from "./worktree/refresh.js"
 import { Worktree } from "./worktree.js"
@@ -75,6 +76,7 @@ const nodes = [
   Plugin.node,
   PluginHooks.node,
   InstancePlugins.node,
+  PluginOptionConfig.node,
   PluginSupervisor.node,
   WorktreeRefresh.node,
   Worktree.node,
