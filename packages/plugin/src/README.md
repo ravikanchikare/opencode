@@ -39,6 +39,43 @@ setup: async (ctx) => {
 
 Configuration supplied for the plugin is available as `ctx.options`.
 
+### Settings metadata
+
+Both Promise and Effect definitions may supply `name` and `description` for
+the plugin identity shown in Settings. The technical `id` continues to own
+selectors and configuration; display names are not identities.
+
+A multi-select option choice may supply a read-only `tools` catalog:
+
+```ts
+{
+  value: "records",
+  label: "Records",
+  tools: [
+    { name: "records-list", description: "List records", input: { type: "object" } },
+  ],
+}
+```
+
+`input` is an optional JSON Schema. Derive this metadata from the same
+definitions used to register tools, including choices that are currently off.
+Settings searches names and descriptions, expands catalogs per choice, and
+renders schemas only on disclosure. This is authored documentation, not live
+tool-registry state: another transform, permissions, or failed activation can
+change availability. Never include credentials or resolved configuration in it.
+These fields do not register tools or grant permission to execute them.
+
+A parent choice may add one level of `children` when a plugin needs an
+independent functional-group gate above grouped controls. Every child is a leaf
+and must name its display group; the parent and child values remain ordinary,
+independently persisted multi-select values. Turning a parent off preserves its
+selected children, so the plugin must require both values when deciding which
+tools to register.
+
+Plugins with option descriptors have a Settings details action. Inventory-only
+plugins remain read-only rows. Option updates use the existing exact-ID options
+API; no plugin activation switch is implied.
+
 A registration may be removed early through `dispose`:
 
 ```ts
