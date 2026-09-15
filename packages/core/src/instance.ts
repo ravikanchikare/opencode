@@ -27,6 +27,7 @@ import { Permission } from "./permission.js"
 import { Plugin } from "./plugin.js"
 import { PluginHooks } from "./plugin/hooks.js"
 import { InstancePlugins } from "./plugin/instance.js"
+import { PluginOptionConfig } from "./plugin/option-config.js"
 import { PluginSupervisor } from "./plugin/supervisor.js"
 import { WorktreeStrategies } from "./worktree/strategies.js"
 import { Pty } from "./pty.js"
@@ -76,6 +77,7 @@ const nodes = [
   Plugin.node,
   PluginHooks.node,
   InstancePlugins.node,
+  PluginOptionConfig.node,
   PluginSupervisor.node,
   WorktreeStrategies.node,
   FileSystemSearch.node,
