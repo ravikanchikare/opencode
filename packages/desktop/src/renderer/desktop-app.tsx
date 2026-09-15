@@ -111,18 +111,24 @@ export function DesktopApp(props: { api: ElectronAPI; updater: UpdaterPlatform; 
       <Show when={ready()}>
         <Show when={effectiveDefaultServer()} keyed>
           {(key) => (
-            <AppInterface defaultServer={key} servers={servers()} router={router}>
+            <AppInterface
+              defaultServer={key}
+              servers={servers()}
+              router={router}
+              overlay={() => (
+                <DesktopFirstLaunchOnboarding
+                  api={props.api}
+                  initialUrl={initialUrl}
+                  serverKey={key}
+                  pending={firstLaunch() ?? false}
+                  onReady={() => setStartup("onboardingReady", true)}
+                />
+              )}
+            >
               <DesktopStartupReady
                 routeReady={!initialRoute.loading && startup.onboardingReady}
                 onReady={() => setStartup("ready", true)}
                 onRoute={(route) => setStartup("route", route)}
-              />
-              <DesktopFirstLaunchOnboarding
-                api={props.api}
-                initialUrl={initialUrl}
-                serverKey={key}
-                pending={firstLaunch() ?? false}
-                onReady={() => setStartup("onboardingReady", true)}
               />
               <DesktopEffects api={props.api} />
               <Suspense fallback={null}>
