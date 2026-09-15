@@ -11,7 +11,8 @@ export interface SkillEditor {
   remove(id: string): void
 }
 
-export interface SkillDomain extends SkillApi<unknown> {
+// Skill availability is served over HTTP only; plugins edit skills through the editor.
+export interface SkillDomain extends Pick<SkillApi<unknown>, "list"> {
   readonly transform: Transform<SkillEditor>
   readonly reload: () => Effect.Effect<void>
 }
