@@ -55,7 +55,52 @@ export interface Context {
 
 export interface Plugin<R = Scope.Scope> {
   readonly id: string
+  readonly name?: string
+  readonly description?: string
+  readonly options?: ReadonlyArray<OptionDescriptor>
   readonly effect: (context: Context) => Effect.Effect<void, never, R>
+}
+
+/** Read-only authored catalog; activation and tool transforms remain host-owned. */
+export interface OptionTool {
+  readonly name: string
+  readonly description: string
+  readonly input?: Record<string, unknown>
+}
+
+export interface OptionChoiceGroup {
+  readonly id: string
+  readonly label: string
+  readonly description?: string
+}
+
+export interface OptionChildChoice {
+  readonly value: string
+  readonly label: string
+  readonly description?: string
+  /** Choices in a group form one expandable row; choice labels identify its control columns. */
+  readonly group: OptionChoiceGroup
+  readonly tools?: ReadonlyArray<OptionTool>
+}
+
+export interface OptionChoice {
+  readonly value: string
+  readonly label: string
+  readonly description?: string
+  readonly group?: OptionChoiceGroup
+  readonly tools?: ReadonlyArray<OptionTool>
+  /** Functional-group gate with one level of independently selectable child choices. */
+  readonly children?: ReadonlyArray<OptionChildChoice>
+}
+
+export interface OptionDescriptor {
+  readonly type: "multi-select"
+  readonly key: string
+  readonly label: string
+  readonly description?: string
+  readonly choices: ReadonlyArray<OptionChoice>
+  readonly default?: ReadonlyArray<string>
+  readonly secret?: boolean
 }
 
 export function define<R = Scope.Scope>(plugin: Plugin<R>) {
