@@ -126,6 +126,38 @@ test("reconciles a stale running tool when execution settles", async () => {
   }
 })
 
+test("syncs the configured default model for a location", async () => {
+  const api = OpenCode.make({
+    baseUrl: "http://opencode.local",
+    fetch: async (input, init) => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      const url = new URL(request.url)
+      if (url.pathname !== "/api/model/default" || url.searchParams.get("location[directory]") !== "/project")
+        throw new Error(`Unexpected request: ${request.url}`)
+      return Response.json({
+        location: { directory: "/project", project: { id: "project", directory: "/project", canonical: "/project" } },
+        data: null,
+      })
+    },
+  })
+  const setup = createRoot((dispose) => ({
+    data: createData({
+      api: () => api,
+      directory: "/project",
+      event: { on: () => () => {}, listen: () => () => {} },
+      connection: { status: () => "connected" },
+    }),
+    dispose,
+  }))
+
+  try {
+    await setup.data.location.model.default.sync()
+    expect(setup.data.location.model.default.list()).toBeNull()
+  } finally {
+    setup.dispose()
+  }
+})
+
 test("revalidates after an event overtakes an active session read", async () => {
   let release!: () => void
   const gate = new Promise<void>((resolve) => (release = resolve))
@@ -494,12 +526,14 @@ test("refreshes global credential events across every loaded location", async ()
         data: { credentialID, integrationID: "integration" },
       }
       listeners.forEach((listener) => listener({ name: switched.type, details: switched }))
-      await wait(() => requests.length === 4)
+      await wait(() => requests.length === 6)
       expect(requests.map((url) => [url.pathname, url.searchParams.get("location[directory]")])).toEqual(
         expect.arrayContaining([
           ["/api/model", "/project"],
+          ["/api/model/default", "/project"],
           ["/api/provider", "/project"],
           ["/api/model", "/other"],
+          ["/api/model/default", "/other"],
           ["/api/provider", "/other"],
         ]),
       )
@@ -525,6 +559,8 @@ for (const resource of ["provider", "model"] as const) {
         const url = new URL(request.url)
         requests.push(url)
         const directory = url.searchParams.get("location[directory]") ?? "/project"
+        if (url.pathname === "/api/model/default")
+          return Response.json({ location: { directory }, data: null })
         if (url.pathname !== "/api/provider" && url.pathname !== "/api/model")
           throw new Error(`Unexpected request: ${request.url}`)
         return Response.json({
@@ -578,6 +614,7 @@ for (const resource of ["provider", "model"] as const) {
       await wait(() => setup.data.location[resource].list(project)?.[0]?.name === "After")
       expect(requests.map((url) => [url.pathname, url.searchParams.get("location[directory]")])).toEqual([
         [`/api/${resource}`, "/project"],
+        ...(resource === "model" ? [["/api/model/default", "/project"]] : []),
       ])
       expect(setup.data.location[unaffected].list(project)).toBe(untouchedResource)
       expect(setup.data.location[resource].list(other)).toBe(untouchedLocation)
@@ -598,6 +635,8 @@ test("revalidates model discovery when an update overtakes an in-flight model li
     baseUrl: "http://opencode.local",
     fetch: async (input, init) => {
       const request = input instanceof Request ? input : new Request(input, init)
+      if (new URL(request.url).pathname === "/api/model/default")
+        return Response.json({ location: { directory: "/project" }, data: null })
       if (new URL(request.url).pathname !== "/api/model") throw new Error(`Unexpected request: ${request.url}`)
       const initial = ++requests === 1
       if (initial) {
