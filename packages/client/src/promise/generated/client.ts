@@ -11,6 +11,8 @@ import type {
   PluginListOutput,
   PluginCheckInput,
   PluginCheckOutput,
+  PluginSetOptionsInput,
+  PluginSetOptionsOutput,
   PluginUpdateInput,
   PluginUpdateOutput,
   SessionListInput,
@@ -481,6 +483,19 @@ export function make(options: ClientOptions) {
             body: { target: input?.["target"] },
             successStatus: 200,
             declaredStatuses: [400, 401],
+            empty: false,
+          },
+          requestOptions,
+        ),
+      setOptions: (input: PluginSetOptionsInput, requestOptions?: RequestOptions) =>
+        request<PluginSetOptionsOutput>(
+          {
+            method: "PUT",
+            path: `/api/plugin/${encodeURIComponent(input.plugin)}/options`,
+            query: { location: input["location"] },
+            body: input["payload"],
+            successStatus: 200,
+            declaredStatuses: [400, 401, 404],
             empty: false,
           },
           requestOptions,
