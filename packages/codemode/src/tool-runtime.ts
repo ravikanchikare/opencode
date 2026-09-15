@@ -1,7 +1,7 @@
 import { Cause, Effect, Exit, Formatter, Schema } from "effect"
 import type { Json } from "./data.js"
 import type { DiagnosticKind } from "./codemode.js"
-import { toolError } from "./tool-error.js"
+import { ToolError, toolError } from "./tool-error.js"
 import {
   decodeInput as decodeToolInput,
   decodeOutput as decodeToolOutput,
@@ -60,6 +60,8 @@ export type Hooks<R = never> = {
   readonly "extension.after"?:
     | ((call: ExtensionInvocation, result: CallResult) => Effect.Effect<void, never, R>)
     | undefined
+  /** Lets a host preserve selected tool causes rather than making them program-visible errors. */
+  readonly propagateToolCause?: ((cause: Cause.Cause<unknown>) => boolean) | undefined
 }
 
 /** Runs `before`, then `run`, then `after` with how it ended, including when interrupted. */
@@ -78,6 +80,12 @@ export const hooked = <Call, A, R>(
           return after(call, { status: "failure", error: Cause.squash(exit.cause) })
         })
   return before === undefined ? observed : Effect.andThen(before(call), observed)
+}
+
+export class PropagatedToolCause extends Error {
+  constructor(readonly originalCause: Cause.Cause<unknown>) {
+    super("The host ended this tool call.")
+  }
 }
 
 export type ToolDescription = {
@@ -401,8 +409,9 @@ export const make = <R>(
         hooks["tool.after"],
         Effect.gen(function* () {
           const raw = yield* Effect.suspend(() => tool.execute(input)).pipe(
-            Effect.catchCause((cause) => {
+            Effect.catchCause((cause): Effect.Effect<never, PropagatedToolCause | ToolError> => {
               if (Cause.hasInterruptsOnly(cause)) return Effect.interrupt
+              if (hooks?.propagateToolCause?.(cause)) return Effect.fail(new PropagatedToolCause(cause))
               return Effect.fail(
                 toolError(
                   Cause.prettyErrors(cause)
