@@ -94,6 +94,7 @@ type LocationData = {
   mcpServer?: McpServer[]
   mcpResource?: McpResource[]
   model?: ModelInfo[]
+  defaultModel?: ModelInfo | null
   provider?: ProviderInfo[]
   reference?: ReferenceInfo[]
   websearch?: WebSearchProvider[]
@@ -1196,8 +1197,15 @@ export function createData(config: CreateDataInput) {
           }),
         }))
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
-        refresh(() => Promise.all([result.location.model.sync(location), result.location.provider.sync(location)]))
+        refresh(() =>
+          Promise.all([
+            result.location.model.sync(location),
+            result.location.model.default.sync(location),
+            result.location.provider.sync(location),
+          ]),
+        )
       })
       return
     }
@@ -1211,7 +1219,13 @@ export function createData(config: CreateDataInput) {
         break
       case "model.updated":
         result.location.model.invalidate(location)
-        refresh(() => result.location.model.sync(location))
+        result.location.model.default.invalidate(location)
+        refresh(() =>
+          Promise.all([
+            result.location.model.sync(location),
+            result.location.model.default.sync(location),
+          ]),
+        )
         break
       case "agent.updated":
         result.location.agent.invalidate(location)
@@ -1263,11 +1277,13 @@ export function createData(config: CreateDataInput) {
       case "integration.updated":
         result.location.integration.invalidate(location)
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
         refresh(() =>
           Promise.all([
             result.location.integration.sync(location),
             result.location.model.sync(location),
+            result.location.model.default.sync(location),
             result.location.provider.sync(location),
           ]),
         )
@@ -1863,6 +1879,7 @@ export function createData(config: CreateDataInput) {
           result.location.mcp.server.sync(location),
           result.location.mcp.resource.sync(location),
           result.location.model.sync(location),
+          result.location.model.default.sync(location),
           result.location.provider.sync(location),
           result.location.reference.sync(location),
           result.location.skill.sync(location),
@@ -1881,6 +1898,7 @@ export function createData(config: CreateDataInput) {
         result.location.mcp.server.invalidate(location)
         result.location.mcp.resource.invalidate(location)
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
         result.location.reference.invalidate(location)
         result.location.skill.invalidate(location)
@@ -1902,7 +1920,10 @@ export function createData(config: CreateDataInput) {
           return { location: response.location, data: response.data.resources }
         }),
       },
-      model: locationResource("model", (location) => api().model.list({ location }), { alias: true }),
+      model: {
+        ...locationResource("model", (location) => api().model.list({ location }), { alias: true }),
+        default: locationResource("defaultModel", (location) => api().model.default({ location }), { alias: true }),
+      },
       provider: locationResource("provider", (location) => api().provider.list({ location }), { alias: true }),
       reference: locationResource("reference", (location) => api().reference.list({ location })),
       websearch: {

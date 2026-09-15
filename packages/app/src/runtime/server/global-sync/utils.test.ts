@@ -45,6 +45,28 @@ describe("normalizeAgentList", () => {
 })
 
 describe("normalizeProviderList", () => {
+  test.each([0, Date.UTC(2026, 8, 1)])("preserves unknown and known release dates (%s)", (released) => {
+    const result = normalizeProviderList(
+      [{ id: "gateway", name: "Gateway" }] as ProviderListOutput["data"],
+      [
+        {
+          id: "model",
+          modelID: "model",
+          providerID: "gateway",
+          name: "Model",
+          capabilities: { tools: true, input: ["text"], output: ["text"] },
+          variants: [],
+          time: { released },
+          cost: [],
+          status: "active",
+          enabled: true,
+          limit: { context: 128000, output: 8192 },
+        },
+      ] as ModelListOutput["data"],
+    )
+    expect(result.all.get("gateway")?.models.model.release_date).toBe(released ? "2026-09-01" : "")
+  })
+
   test("groups current models into the app provider catalog", () => {
     const result = normalizeProviderList(
       [{ id: "openai", name: "OpenAI", package: "@ai-sdk/openai" }] as ProviderListOutput["data"],
