@@ -80,6 +80,7 @@ export const { use: useGlobal, provider: GlobalProvider } = createSimpleContext(
 function createGlobalModels() {
   const [store, setStore, _, ready] = persisted(Persist.global("model"), ModelState, {
     user: [],
+    defaultsInitialized: false,
     recent: [],
     variant: {},
   })
