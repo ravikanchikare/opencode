@@ -23,6 +23,9 @@
     "package:linux": "electron-builder --linux --config electron-builder.config.ts"
   },
   "main": "./out/main/index.js",
+  "exports": {
+    "./composition": "./src/main/composition.ts"
+  },
   "dependencies": {
     "@zip.js/zip.js": "2.7.62",
     "electron-context-menu": "4.1.2",

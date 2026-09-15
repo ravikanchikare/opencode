@@ -1,6 +1,8 @@
 import { app } from "electron"
 import { Context, Effect, FileSystem, Layer, Path } from "effect"
 import { BackgroundServiceState } from "./background-service-state"
+import { APP_IDENTITY, SERVICE_ID } from "../constants"
+import { prepareServiceConnection } from "../composition"
 import { cleanStages, DesktopCli } from "./desktop-cli"
 import { SidecarCredentials } from "./sidecar-credentials"
 
@@ -35,12 +37,13 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const cli = yield* desktopCli.resolve
   const version = mode === "initial" ? cli.version : undefined
   if (isolated) process.env.XDG_STATE_HOME = app.getPath("userData")
+  yield* Effect.promise(prepareServiceConnection)
   const client = yield* Effect.promise(() => import("@opencode/client/service"))
   const service = yield* Effect.tryPromise(() =>
     client.Service.ensure({
       file:
         isolated && process.env.OPENCODE_DESKTOP_SERVER_CHANNEL === "local"
-          ? path.join(app.getPath("userData"), "opencode", "service-local.json")
+          ? path.join(app.getPath("userData"), APP_IDENTITY, client.registrationFilename("local", SERVICE_ID))
           : undefined,
       version,
       command: [...cli.command, "serve", "--service", ...(isolated ? ["--port", "0"] : [])],
@@ -52,6 +55,7 @@ const connect = Effect.fn("BackgroundService.connect")(function* (mode: "initial
   const url = new URL(service.url)
   if (url.hostname === "0.0.0.0") url.hostname = "127.0.0.1"
   yield* Effect.logInfo("v2 CLI background service ready", {
+    username: service.auth.username,
     version,
     ...endpoint(url.origin),
   })
