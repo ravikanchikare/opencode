@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { fixture } from "../performance/timeline/session-timeline-stress.fixture"
-import { installStressSessionTabs, stressSessionHref } from "../performance/timeline/timeline-test-helpers"
+import { installStressSessionTabs, stressDraftHref, stressSessionHref } from "../performance/timeline/timeline-test-helpers"
 import { mockOpenCodeServer } from "../utils/mock-server"
 import { expectAppVisible } from "../utils/waits"
 
@@ -167,4 +167,63 @@ test("restores each existing session's model and variant when switching tabs", a
   await expect(page).toHaveURL(hrefA)
   await expect(modelControl).toHaveText("Model A")
   await expect(variant).toHaveText("high")
+})
+
+/**
+ * The server resolves the default; provider order does not.
+ *
+ * Selection used to fall back to the first model of the first connected
+ * provider, so a distribution whose configured default lives on a later
+ * provider silently got someone else's newest model instead. Here the default
+ * is `slow/preferred-model` while `fast` is listed first and offers
+ * `other-model`, which is exactly the shape that used to fail.
+ *
+ * A draft carries no stored model, so the composer must resolve one through the
+ * fallback chain — which is the code under test.
+ */
+test("prefers the server-resolved default over the first connected provider", async ({ page }) => {
+  const draftID = "draft_server_default"
+  await mockOpenCodeServer(page, {
+    ...fixture,
+    sessions: [],
+    pageMessages: () => ({ items: [] }),
+    provider: () => ({
+      all: [
+        {
+          id: "fast",
+          name: "Fast",
+          models: {
+            "other-model": { id: "other-model", name: "Other Model", limit: { context: 200_000 } },
+          },
+        },
+        {
+          id: "slow",
+          name: "Slow",
+          models: {
+            "preferred-model": { id: "preferred-model", name: "Preferred Model", limit: { context: 200_000 } },
+          },
+        },
+      ],
+      connected: ["fast", "slow"],
+      default: { providerID: "slow", modelID: "preferred-model" },
+    }),
+  })
+  await installStressSessionTabs(page, { draftID })
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      "opencode.global.dat:model",
+      JSON.stringify({
+        user: [
+          { providerID: "fast", modelID: "other-model", visibility: "show" },
+          { providerID: "slow", modelID: "preferred-model", visibility: "show" },
+        ],
+        recent: [],
+        variant: {},
+      }),
+    )
+  })
+
+  await page.goto(stressDraftHref(draftID))
+  await expectAppVisible(page.locator('[data-component="composer-editor"]'))
+  await expect(page.locator('[data-action="composer-model"]')).toContainText("Preferred Model")
 })

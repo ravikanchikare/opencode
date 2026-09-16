@@ -49,6 +49,7 @@ export function createComposerModelSelection(input: {
   agent: () => { name: string; model?: ModelKey; variant?: string } | undefined
 }) {
   const sdk = useWorkspaceLocation()
+  const data = useData()
   const models = useModels()
   const local = useLocal()
   const prompt = useComposerState()
@@ -75,6 +76,20 @@ export function createComposerModelSelection(input: {
     return !!provider?.models[model.modelID] && connected().has(model.providerID)
   }
   const recent = () => models.recent.list().find(valid)
+  /**
+   * The default the *server* resolved, which is the only value that accounts for
+   * what a plugin configured: `Model.default()` honors a configured preference
+   * and only then falls back. `id` is the catalog key, since
+   * `normalizeProviderList` stores each model under `provider.models[model.id]`.
+   */
+  const serverDefault = () => {
+    const model = data.location.model.default.list({ directory: sdk().directory })
+    return model ? { providerID: model.providerID, modelID: model.id } : undefined
+  }
+  /**
+   * Last resort. Provider order is whatever the catalog yields, not a
+   * preference, so this is only reached when nothing else applies.
+   */
   const fallback = () =>
     providers.connected().flatMap((provider) => {
       const modelID = Object.values(provider.models)[0]?.id
@@ -82,9 +97,14 @@ export function createComposerModelSelection(input: {
     })[0]
   const current = () => {
     if (!configuredModel.ready()) return
-    const key = [prompt.model.current(), input.agent()?.model, configuredModel(), recent(), fallback()].find(
-      (item): item is ModelKey => !!item && valid(item),
-    )
+    const key = [
+      prompt.model.current(),
+      input.agent()?.model,
+      configuredModel(),
+      recent(),
+      serverDefault(),
+      fallback(),
+    ].find((item): item is ModelKey => !!item && valid(item))
     return key ? models.find(key) : undefined
   }
   const recentModels = createMemo(() =>
