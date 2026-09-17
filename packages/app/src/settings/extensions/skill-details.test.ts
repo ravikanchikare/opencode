@@ -13,6 +13,7 @@ test("list and detail page share the availability controls and mutation owner", 
   expect(details).not.toContain("props.skill.location")
   expect(details).not.toContain("props.skill.slash")
   expect(details).not.toContain("settings.skills.source")
+  expect(details).not.toContain("settings.skills.id")
 })
 
 test("disabling a selected skill keeps details open and resolves the refetched state", () => {

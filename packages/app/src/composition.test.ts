@@ -5,6 +5,8 @@ import {
   configureAppComposition,
   getAppComposition,
   isPluginVisible,
+  modelVisibilityDefault,
+  showManageModelsConnectProvider,
   showModelProviderPromotions,
   showNewSessionProviderTip,
   type AppComposition,
@@ -26,6 +28,28 @@ describe("new-session provider tip composition", () => {
     const composition: AppComposition = {}
     expect(composition.newSession).toBeUndefined()
     expect(showNewSessionProviderTip(composition)).toBe(true)
+  })
+})
+
+describe("manage-models provider connection composition", () => {
+  test("shows the connection action unless a composition opts out", () => {
+    expect(showManageModelsConnectProvider({})).toBe(true)
+    expect(showManageModelsConnectProvider({ modelSelector: {} })).toBe(true)
+    expect(showManageModelsConnectProvider({ modelSelector: { showConnectProvider: false } })).toBe(false)
+    expect(showManageModelsConnectProvider({ modelSelector: { showConnectProvider: true } })).toBe(true)
+  })
+})
+
+describe("model visibility defaults composition", () => {
+  const arcus = {
+    modelSelector: { defaultVisibleModels: { litellm: ["claude-sonnet-5"] } },
+  } satisfies AppComposition
+
+  test("applies defaults only to configured providers", () => {
+    expect(modelVisibilityDefault({ providerID: "litellm", modelID: "claude-sonnet-5" }, arcus)).toBe(true)
+    expect(modelVisibilityDefault({ providerID: "litellm", modelID: "other" }, arcus)).toBe(false)
+    expect(modelVisibilityDefault({ providerID: "anthropic", modelID: "claude-sonnet-5" }, arcus)).toBeUndefined()
+    expect(modelVisibilityDefault({ providerID: "litellm", modelID: "other" }, {})).toBeUndefined()
   })
 })
 
