@@ -23,7 +23,7 @@ const version = desktopVersion()
 
 const updater = startDesktopUpdater(api)
 startDesktopMenu(api)
-startDeepLinks(api)
 
 render(() => <DesktopApp api={api} updater={updater} version={version} />, root)
+startDeepLinks(api)
 void initializeSentry(version)
