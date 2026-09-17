@@ -35,10 +35,6 @@ export const SkillDetails: Component<{
           />
         </header>
         <dl class="skill-details-metadata">
-          <dt>{language.t("settings.skills.id")}</dt>
-          <dd>
-            <code>{props.skill.id}</code>
-          </dd>
           <dt>{language.t("settings.skills.autoinvoke")}</dt>
           <dd>{language.t(autoInvokeEnabled(props.skill) ? "settings.skills.enabled" : "settings.skills.disabled")}</dd>
           <dt>{language.t("settings.skills.availability")}</dt>
