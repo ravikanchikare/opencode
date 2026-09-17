@@ -69,7 +69,12 @@ export type AppComposition = {
   onboarding?: Component<OnboardingSurfaceProps>
   providerConnectionBanner?: Component<ProviderConnectionBannerSurfaceProps>
   settingsProviders?: Component<SettingsProvidersSurfaceProps>
-  modelSelector?: { showProviderPromotions?: boolean }
+  modelSelector?: {
+    showProviderPromotions?: boolean
+    showConnectProvider?: boolean
+    /** Provider-specific defaults; persisted user visibility still wins. */
+    defaultVisibleModels?: Readonly<Record<string, readonly string[]>>
+  }
   newSession?: AppNewSessionComposition
   settingsTabs?: {
     hide?: readonly string[]
@@ -111,4 +116,18 @@ export function showNewSessionProviderTip(value: AppComposition = composition) {
 /** Distributions can use the regular model picker even without a paid provider. */
 export function showModelProviderPromotions(value: AppComposition = composition) {
   return value.modelSelector?.showProviderPromotions !== false
+}
+
+/** Provider connection remains available unless a distribution owns that workflow elsewhere. */
+export function showManageModelsConnectProvider(value: AppComposition = composition) {
+  return value.modelSelector?.showConnectProvider !== false
+}
+
+export function modelVisibilityDefault(
+  model: { providerID: string; modelID: string },
+  value: AppComposition = composition,
+) {
+  const models = value.modelSelector?.defaultVisibleModels?.[model.providerID]
+  if (!models) return
+  return models.includes(model.modelID)
 }
