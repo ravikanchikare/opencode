@@ -99,24 +99,7 @@ export function createHomeController() {
         setSelection(toggleHomeProjectSelection(selection(), key, directory))
       },
       add: (conn: ServerConnection.Any, directories: string[]) => {
-        const directory = directories[0]
-        if (!directory) return
-        const ctx = global.ensureServerCtx(conn)
-        directories.forEach((item) => {
-          if (ctx.projects.list().some((project) => project.worktree === item)) return
-          const location = { directory: item }
-          void ctx.sdk.api.file
-            .list({ path: ".", location })
-            .then(async (files) => {
-              // TODO: Initialize empty directories when V2 exposes a native Git init API.
-              return ctx.sdk.api.location.get({ location }).then((result) => result.project)
-            })
-            .then((project) => ctx.sync.child(item, { bootstrap: false })[1]("project", project.id))
-            .catch(() => undefined)
-          ctx.projects.open(item)
-        })
-        ctx.projects.touch(directory)
-        setSelection({ server: ServerConnection.key(conn), directory })
+        addHomeProjects(global, setSelection, conn, directories)
       },
       openNewSession: () => {
         const conn = focusedServer()
@@ -128,6 +111,32 @@ export function createHomeController() {
       openProjectSession,
     },
   }
+}
+
+export function addHomeProjects(
+  global: ReturnType<typeof useGlobal>,
+  setSelection: (next: HomeProjectSelection) => void,
+  conn: ServerConnection.Any,
+  directories: string[],
+) {
+  const directory = directories[0]
+  if (!directory) return
+  const ctx = global.ensureServerCtx(conn)
+  directories.forEach((item) => {
+    if (ctx.projects.list().some((project) => project.worktree === item)) return
+    const location = { directory: item }
+    void ctx.sdk.api.file
+      .list({ path: ".", location })
+      .then(async (files) => {
+        // TODO: Initialize empty directories when V2 exposes a native Git init API.
+        return ctx.sdk.api.location.get({ location }).then((result) => result.project)
+      })
+      .then((project) => ctx.sync.child(item, { bootstrap: false })[1]("project", project.id))
+      .catch(() => undefined)
+    ctx.projects.open(item)
+  })
+  ctx.projects.touch(directory)
+  setSelection({ server: ServerConnection.key(conn), directory })
 }
 
 export type HomeController = ReturnType<typeof createHomeController>
