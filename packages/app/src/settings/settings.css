@@ -936,6 +936,10 @@
   height: 28px;
 }
 
+.settings-models-group-control {
+  margin-inline-end: 16px;
+}
+
 .settings-models-group-trigger {
   display: flex;
   align-items: center;

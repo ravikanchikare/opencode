@@ -16,6 +16,7 @@ import { DialogConnectProvider } from "@/providers/connect/dialog"
 import { decode64 } from "@/runtime/persistence/base64"
 import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
+import { showManageModelsConnectProvider } from "@/composition"
 import "@/settings/settings.css"
 
 type ModelItem = ReturnType<ReturnType<typeof useLocal>["model"]["list"]>[number]
@@ -65,9 +66,11 @@ export const DialogManageModels: Component = () => {
           title={language.t("dialog.model.manage")}
           description={language.t("dialog.model.manage.description")}
         />
-        <Button variant="neutral" icon="plus" onClick={handleConnectProvider}>
-          {language.t("command.provider.connect")}
-        </Button>
+        <Show when={showManageModelsConnectProvider()}>
+          <Button variant="neutral" icon="plus" onClick={handleConnectProvider}>
+            {language.t("command.provider.connect")}
+          </Button>
+        </Show>
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
         <div class="px-4 pt-px pb-3">
@@ -153,7 +156,7 @@ export const DialogManageModels: Component = () => {
                             </span>
                           </button>
                           <Switch
-                            class="me-6"
+                            class="settings-models-group-control"
                             checked={providerVisible(group.category)}
                             onChange={(checked) => setProviderVisibility(group.category, checked)}
                             hideLabel
