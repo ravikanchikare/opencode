@@ -10,6 +10,8 @@ import { DesktopLogging, scoped } from "../native/logging"
 import { DesktopStorage } from "../storage"
 import { safeWebContentsURL } from "../windows/state"
 import { getLastFocusedWindow, makeMainWindows, setAppQuitting, setRelaunchHandler } from "../windows"
+import { acquireApplicationLock, configureApplication } from "./environment"
+import { validDeepLinks } from "./deep-links"
 import { initializeFirstLaunchOnboarding } from "./onboarding"
 import { Shutdown } from "./shutdown"
 
@@ -40,6 +42,9 @@ const runtime = Layer.effect(
       const win = getLastFocusedWindow()
       if (win) emitIpcEvent(win.webContents, new DeepLinksOpened({ urls }))
     }
+    const receiveDeepLinks = (urls: string[]) => {
+      void validDeepLinks(urls, DEEP_LINK_SCHEME).then(emitDeepLinks)
+    }
     const relaunch = () => {
       setAppQuitting()
       runFork(
@@ -57,7 +62,7 @@ const runtime = Layer.effect(
       const urls = argv.filter((arg) => arg.startsWith(`${DEEP_LINK_SCHEME}://`))
       if (urls.length) {
         runFork(Effect.logInfo("deep link received via second-instance", { urls }))
-        emitDeepLinks(urls)
+        receiveDeepLinks(urls)
       }
       const win = getLastFocusedWindow()
       if (!win) return
@@ -67,7 +72,7 @@ const runtime = Layer.effect(
     const openUrl = (event: Event, url: string) => {
       event.preventDefault()
       runFork(Effect.logInfo("deep link received via open-url", { url }))
-      emitDeepLinks([url])
+      receiveDeepLinks([url])
     }
     const beforeQuit = (event: Event) => {
       setAppQuitting()
