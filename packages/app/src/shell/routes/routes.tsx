@@ -1,6 +1,7 @@
 import { Route, type RouteSectionProps, useParams } from "@solidjs/router"
 import { createMemo, lazy, Show, Suspense, type Component, type ParentProps } from "solid-js"
 import { Home } from "@/home/route"
+import { HomeDeepLinks } from "@/home/deep-links"
 import { ServerProvider } from "@/runtime/server/current"
 import { useGlobal } from "@/runtime/server/runtime"
 import { ServerConnection, useServers } from "@/runtime/server/registry"
@@ -84,6 +85,7 @@ function AppLayout(props: ParentProps & { overlay?: Component }) {
       <LayoutProvider>
         <SettingsSurfaceProvider>
           <BrowserAttachmentsProvider>
+            <HomeDeepLinks />
             <Shell overlay={props.overlay}>{props.children}</Shell>
           </BrowserAttachmentsProvider>
         </SettingsSurfaceProvider>
