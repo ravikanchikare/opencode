@@ -51,4 +51,14 @@ export function hasPluginDetails(plugin: PluginInfo) {
   return !!plugin.id && !!plugin.options?.descriptors.length
 }
 
+export function hasManyPluginTools(plugin: PluginInfo) {
+  const count =
+    plugin.options?.descriptors.reduce(
+      (total, descriptor) =>
+        total + descriptor.choices.reduce((choices, choice) => choices + (choice.tools?.length ?? 0), 0),
+      0,
+    ) ?? 0
+  return count > 8
+}
+
 export { scopeOf }

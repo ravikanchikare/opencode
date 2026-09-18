@@ -12,7 +12,7 @@ import { useLanguage } from "@/runtime/i18n/language"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
 import { showToast } from "@/shell/notifications/toast"
 import { SettingsList } from "@/settings/list"
-import { canReset, editorValues, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
+import { canReset, editorValues, hasManyPluginTools, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
 import { filterPluginChoices, groupPluginChoices } from "./plugin-catalog"
 import "./extensions.css"
 
@@ -30,6 +30,7 @@ export const PluginOptionsEditor: Component<{
   const pluginId = () => String(props.plugin.id ?? "")
   const location = () => (props.directory ? { directory: props.directory } : undefined)
   const descriptors = () => props.plugin.options?.descriptors ?? []
+  const showToolUtilities = () => hasManyPluginTools(props.plugin)
 
   // File-watcher activation can finish after the save response and its first refresh.
   onCleanup(
@@ -113,24 +114,26 @@ export const PluginOptionsEditor: Component<{
       <header class="plugin-details-heading">
         <div class="plugin-details-toolbar plugin-details-title-row">
           <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
-          <Show when={descriptors().length}>
+          <Show when={showToolUtilities() || canReset(props.plugin.options?.inherited ?? true, scope())}>
             <div class="plugin-details-actions">
-              <Button
-                size="small"
-                variant="ghost"
-                disabled={!!store.pending || !pluginId()}
-                onClick={() => void saveAll("all")}
-              >
-                {language.t("settings.plugins.selectAll")}
-              </Button>
-              <Button
-                size="small"
-                variant="ghost"
-                disabled={!!store.pending || !pluginId()}
-                onClick={() => void saveAll("none")}
-              >
-                {language.t("settings.plugins.clearAll")}
-              </Button>
+              <Show when={showToolUtilities()}>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  disabled={!!store.pending || !pluginId()}
+                  onClick={() => void saveAll("all")}
+                >
+                  {language.t("settings.plugins.selectAll")}
+                </Button>
+                <Button
+                  size="small"
+                  variant="ghost"
+                  disabled={!!store.pending || !pluginId()}
+                  onClick={() => void saveAll("none")}
+                >
+                  {language.t("settings.plugins.clearAll")}
+                </Button>
+              </Show>
               <Show when={canReset(props.plugin.options?.inherited ?? true, scope())}>
                 <Button
                   size="small"
@@ -185,21 +188,25 @@ export const PluginOptionsEditor: Component<{
               class="plugin-options-field"
               aria-label={optionLabel(pluginId(), descriptor().key, descriptor().label)}
             >
-              <div
-                class="plugin-search-row"
-                classList={{ grouped: grouped().columns.length > 0 }}
-                style={{ "--plugin-columns": grouped().columns.length }}
-              >
-                <TextInput
-                  type="search"
-                  appearance="base"
-                  value={store.query}
-                  onInput={(event) => setStore("query", event.currentTarget.value)}
-                  placeholder={language.t("settings.plugins.search")}
-                  aria-label={language.t("settings.plugins.search")}
-                />
-                <For each={grouped().columns}>{(column) => <span>{column}</span>}</For>
-              </div>
+              <Show when={showToolUtilities() || grouped().columns.length > 0}>
+                <div
+                  class="plugin-search-row"
+                  classList={{ grouped: grouped().columns.length > 0 }}
+                  style={{ "--plugin-columns": grouped().columns.length }}
+                >
+                  <Show when={showToolUtilities()} fallback={<span aria-hidden="true" />}>
+                    <TextInput
+                      type="search"
+                      appearance="base"
+                      value={store.query}
+                      onInput={(event) => setStore("query", event.currentTarget.value)}
+                      placeholder={language.t("settings.plugins.search")}
+                      aria-label={language.t("settings.plugins.search")}
+                    />
+                  </Show>
+                  <For each={grouped().columns}>{(column) => <span>{column}</span>}</For>
+                </div>
+              </Show>
               <Show when={store.pending === descriptor().key || !isSelectionActive(props.plugin, descriptor().key)}>
                 <div role="status" aria-live="polite" class="plugin-details-description">
                   {language.t(
@@ -338,7 +345,7 @@ function PluginInputSchema(props: { name: string; input?: Record<string, unknown
     <Show when={props.input}>
       <Collapsible variant="ghost">
         <Collapsible.Trigger aria-label={language.t("settings.plugins.inputFor", { name: props.name })}>
-          <Collapsible.Arrow />
+          <Icon name="braces" size="small" />
           {language.t("settings.plugins.input")}
         </Collapsible.Trigger>
         <Collapsible.Content>
