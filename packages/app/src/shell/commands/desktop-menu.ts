@@ -72,6 +72,16 @@ export type DesktopMenu = {
   platforms?: DesktopMenuPlatform[]
 }
 
+export function parseHiddenDesktopMenuActions(raw?: string) {
+  const value = raw?.trim()
+  if (!value) return new Set<string>()
+  return new Set(value.split(",").map((part) => part.trim()).filter(Boolean))
+}
+
+const hiddenDesktopMenuActions = parseHiddenDesktopMenuActions(
+  import.meta.env.OPENCODE_DESKTOP_HIDE_MENU ?? import.meta.env.VITE_OPENCODE_DESKTOP_HIDE_MENU,
+)
+
 export const DESKTOP_MENU: DesktopMenu[] = [
   {
     id: "app",
@@ -299,6 +309,11 @@ export const DESKTOP_MENU: DesktopMenu[] = [
   },
 ]
 
-export function desktopMenuVisible(item: { platforms?: DesktopMenuPlatform[] }, platform: DesktopMenuPlatform) {
+export function desktopMenuVisible(
+  item: { type?: DesktopMenuEntry["type"]; action?: DesktopMenuAction; platforms?: DesktopMenuPlatform[] },
+  platform: DesktopMenuPlatform,
+  hidden: ReadonlySet<string> = hiddenDesktopMenuActions,
+) {
+  if (item.type === "item" && item.action && hidden.has(item.action)) return false
   return !item.platforms || item.platforms.includes(platform)
 }
