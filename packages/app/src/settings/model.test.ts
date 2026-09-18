@@ -6,6 +6,7 @@ import {
   settingsSchema,
   settingsPersistence,
   defaultSettings,
+  resolveSettingsDefaults,
   monoDefault,
   monoFontFamily,
   sansDefault,
@@ -43,6 +44,14 @@ describe("settings schema", () => {
     expect(settings.general).not.toHaveProperty("showStatus")
     expect(settings.sessionSummary).toEqual({ projectExpanded: false, serverExpanded: true })
     expect(decode(encode(settings)).sessionSummary).toEqual(settings.sessionSummary)
+  })
+
+  test("merges distribution defaults without changing stock defaults", () => {
+    expect(resolveSettingsDefaults({ general: { followUpBehavior: "queue" } })).toMatchObject({
+      general: { followUpBehavior: "queue", autoSave: true },
+      appearance: defaultSettings.appearance,
+    })
+    expect(defaultSettings.general.followUpBehavior).toBe("steer")
   })
 
   test("uses the supplied initial values independently of the current schema", () => {
@@ -148,6 +157,49 @@ describe("settings schema", () => {
     expect(decode({ general: { experimentalBrowser: false } }).general.experimentalBrowser).toBe(false)
   })
 
+  test("migrates legacy experimental preferences to appearance", () => {
+    expect(
+      decode({
+        experiments: {
+          fontSize: 16,
+          mono: "Legacy Mono",
+          sans: "Legacy Sans",
+          terminal: "Legacy Terminal",
+          tabLayout: "vertical",
+          showProjectName: true,
+        },
+      }).appearance,
+    ).toEqual({
+      fontSize: 16,
+      mono: "Legacy Mono",
+      sans: "Legacy Sans",
+      terminal: "Legacy Terminal",
+      tabLayout: "vertical",
+      showProjectName: true,
+    })
+  })
+
+  test("keeps current appearance preferences when legacy experiments are also saved", () => {
+    expect(
+      decode({
+        appearance: { fontSize: 18, mono: "Current Mono", tabLayout: "vertical" },
+        experiments: { fontSize: 16, mono: "Legacy Mono", sans: "Legacy Sans", showProjectName: true },
+      }).appearance,
+    ).toEqual({
+      ...defaultSettings.appearance,
+      fontSize: 18,
+      mono: "Current Mono",
+      tabLayout: "vertical",
+    })
+  })
+
+  test("recovers valid legacy experiment preferences beside malformed values", () => {
+    expect(decode({ experiments: { fontSize: "large", mono: "Legacy Mono" } }).appearance).toEqual({
+      ...defaultSettings.appearance,
+      mono: "Legacy Mono",
+    })
+  })
+
   test.each([undefined, null, false, 7, "invalid", []].map((invalid) => [invalid]))(
     "defaults malformed sections without losing other sections: %j",
     (invalid) => {
@@ -156,6 +208,7 @@ describe("settings schema", () => {
         decode({
           general: invalid,
           appearance: { fontSize: 18 },
+          experiments: invalid,
           keybinds: invalid,
           permissions: invalid,
           workspaces: invalid,
