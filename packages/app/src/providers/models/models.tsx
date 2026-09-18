@@ -3,6 +3,7 @@ import { filter, firstBy, flat, groupBy, mapValues, pipe, uniqueBy, values } fro
 import { createSimpleContext } from "@opencode/ui/context"
 import { useProviders } from "@/providers/catalog/providers"
 import { useGlobal } from "@/runtime/server/runtime"
+import { modelVisibilityDefault } from "@/composition"
 
 export type ModelKey = { providerID: string; modelID: string }
 
@@ -97,6 +98,8 @@ const createModelsController = (directory: Accessor<string | undefined>) => {
     const state = visibility().get(key)
     if (state === "hide") return false
     if (state === "show") return true
+    const configured = modelVisibilityDefault(model)
+    if (configured !== undefined) return configured
     if (latestSet().has(key)) return true
     // Models without a parseable release date stay visible.
     return !Number.isFinite(release().get(key) ?? NaN)
