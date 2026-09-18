@@ -49,6 +49,12 @@ export function Home() {
           <HomeSessions sessions={sessions} search={search} scroll={scroll} />
         </div>
       </ScrollView>
+      {/*
+        Stock position: a fixed strip below the scroll region, shown only
+        between the md and lg breakpoints. Only the component is composable —
+        moving it inside `ScrollView` made it scroll away and appear below md,
+        which is a layout change no composition asked for.
+      */}
       <div class="hidden shrink-0 px-3 py-2 md:block lg:hidden">
         <HomeUtilityNav
           class="flex"
