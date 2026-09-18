@@ -5,6 +5,7 @@ import {
   canReset,
   currentPlugin,
   editorValues,
+  hasManyPluginTools,
   hasPluginDetails,
   isSelectionActive,
   optionLabel,
@@ -44,6 +45,42 @@ describe("plugin detail destinations", () => {
     expect(hasPluginDetails(configurable)).toBe(true)
     expect(hasPluginDetails({ ...configurable, id: undefined })).toBe(false)
     expect(hasPluginDetails({ ...configurable, state: { status: "failed", error: "Setup failed" } })).toBe(true)
+  })
+})
+
+describe("plugin tool utilities", () => {
+  const withTools = (count: number) =>
+    plugin({
+      options: {
+        descriptors: [
+          {
+            type: "multi-select",
+            key: "tools",
+            label: "Tools",
+            choices: Array.from({ length: count }, (_, index) => ({
+              value: `tool-${index}`,
+              label: `Tool ${index}`,
+              tools: [{ name: `tool-${index}`, description: `Tool ${index}` }],
+            })),
+          },
+        ],
+        inherited: true,
+        scope: "default",
+        effective: {},
+      },
+    })
+
+  test("shows search and bulk actions only above eight tools", () => {
+    expect(hasManyPluginTools(withTools(8))).toBe(false)
+    expect(hasManyPluginTools(withTools(9))).toBe(true)
+  })
+
+  test("the editor applies the threshold and uses braces for input schemas", () => {
+    const source = readFileSync(new URL("./plugin-options-editor.tsx", import.meta.url), "utf8")
+    expect(source).toContain("showToolUtilities")
+    expect(source).toContain("<Show when={showToolUtilities()}>")
+    expect(source).toContain('<Icon name="braces" size="small" />')
+    expect(source).not.toContain("<Collapsible.Arrow />\n          {language.t(\"settings.plugins.input\")}")
   })
 })
 
