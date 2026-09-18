@@ -39,6 +39,36 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
       group: { id: "beta", label: "Beta" },
       tools: [{ name: "beta.get", description: "Read Beta.", input: { type: "object" } }],
     },
+    {
+      value: "beta:write",
+      label: "Write",
+      group: { id: "beta", label: "Beta" },
+      tools: [{ name: "beta.update", description: "Update Beta.", input: { type: "object", required: ["id"] } }],
+    },
+    {
+      value: "beta:delete",
+      label: "Delete",
+      group: { id: "beta", label: "Beta" },
+      tools: [{ name: "beta.delete", description: "Delete Beta.", input: { type: "object", required: ["id"] } }],
+    },
+    {
+      value: "gamma:read",
+      label: "Read",
+      group: { id: "gamma", label: "Gamma" },
+      tools: [{ name: "gamma.get", description: "Read Gamma.", input: { type: "object" } }],
+    },
+    {
+      value: "gamma:write",
+      label: "Write",
+      group: { id: "gamma", label: "Gamma" },
+      tools: [{ name: "gamma.update", description: "Update Gamma.", input: { type: "object", required: ["id"] } }],
+    },
+    {
+      value: "gamma:delete",
+      label: "Delete",
+      group: { id: "gamma", label: "Gamma" },
+      tools: [{ name: "gamma.delete", description: "Delete Gamma.", input: { type: "object", required: ["id"] } }],
+    },
   ]
   const plugin = (): PluginInfo => ({
     id: "example.tools",
@@ -58,7 +88,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
         },
       ],
       scope: "location",
-      inherited: true,
+      inherited: false,
       effective: { tools: state.effective },
     },
   })
@@ -127,19 +157,10 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   await dialog.getByRole("button", { name: /Example Flat Tools/ }).click()
   await expect(dialog.getByRole("heading", { name: "Example Flat Tools", exact: true })).toBeVisible()
   await expect(dialog.getByText("This description belongs in the inventory.", { exact: true })).toBeVisible()
-  const flatSearch = dialog.getByRole("searchbox")
   const flatCard = dialog.locator('[data-component="settings-list"]')
   const flatToggle = dialog.getByRole("switch", { name: "inspect", exact: true })
   await expect(dialog.getByText("Inspect the local state.", { exact: true })).toHaveCount(1)
-  await expect
-    .poll(() =>
-      flatSearch.evaluate((element) => {
-        const row = element.closest(".plugin-search-row")!.getBoundingClientRect()
-        const field = element.closest('[data-component="text-input-v2"]')!.getBoundingClientRect()
-        return Math.abs(row.width - field.width)
-      }),
-    )
-    .toBeLessThanOrEqual(1)
+  await expect(dialog.getByRole("searchbox")).toHaveCount(0)
   await expect
     .poll(() =>
       flatCard.getByText("Inspect the local state.", { exact: true }).evaluate((description) => {
@@ -153,7 +174,9 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
       }),
     )
     .toBeGreaterThanOrEqual(24)
-  await dialog.getByRole("button", { name: "Input schema for inspect", exact: true }).click()
+  const schema = dialog.getByRole("button", { name: "Input schema for inspect", exact: true })
+  await expect(schema.locator('use[href="#opencode-v2-icon-braces"]')).toHaveCount(1)
+  await schema.click()
   await expect(dialog.locator("pre").filter({ hasText: '"type": "object"' })).toBeVisible()
   await expect(dialog.getByText("Inspect the local state.", { exact: true })).toHaveCount(1)
   await dialog.getByRole("button", { name: "Plugins", exact: true }).click()
@@ -177,28 +200,21 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
   events.push({ id: "evt_plugin_changed", type: "plugin.updated", data: {}, location: { directory } })
   await expect(write).toBeChecked()
   await expect(dialog.getByRole("switch", { name: "Beta: Read", exact: true })).toBeChecked()
-  await expect(dialog.getByRole("switch", { name: "Beta: Write", exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole("switch", { name: "Beta: Write", exact: true })).not.toBeChecked()
   await expect(dialog.getByRole("button", { name: "Alpha", exact: true })).toHaveAttribute("aria-expanded", "true")
   await expect(dialog.getByText("Read", { exact: true })).toBeVisible()
   await expect(dialog.getByText("Write", { exact: true })).toBeVisible()
   await expect(dialog.getByText("Delete", { exact: true })).toBeVisible()
-  await expect
-    .poll(() =>
-      dialog.evaluate((element) => {
-        const title = element.querySelector(".plugin-details-title-row .settings-tab-title")!.getBoundingClientRect()
-        const action = [...element.querySelectorAll(".plugin-details-title-row button")]
-          .find((button) => button.textContent?.trim() === "Enable all")!
-          .getBoundingClientRect()
-        return Math.abs(title.y + title.height / 2 - action.y - action.height / 2)
-      }),
-    )
-    .toBeLessThanOrEqual(1)
+  await expect(dialog.getByRole("searchbox")).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "Enable all", exact: true })).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "Disable all", exact: true })).toBeVisible()
+  await expect(dialog.getByRole("button", { name: "Reset", exact: true })).toBeVisible()
   // Project Settings keeps its navigation rail; 720px is the smallest width
   // where this four-column detail layout is presented.
   for (const width of [1280, 720]) {
     await page.setViewportSize({ width, height: 844 })
     const card = dialog.locator('[data-component="settings-list"]')
-    await expect(card.locator(":scope > .plugin-domain")).toHaveCount(2)
+    await expect(card.locator(":scope > .plugin-domain")).toHaveCount(3)
     await expect(card).toHaveCSS("border-left-width", "1px")
     await expect(card).toHaveCSS("border-left-style", "solid")
     await expect(card).toHaveCSS("box-shadow", "none")
