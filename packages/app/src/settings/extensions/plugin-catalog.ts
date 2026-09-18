@@ -1,21 +1,33 @@
 import type { PluginOptionChoice } from "@opencode/client"
 
+export function pluginChoiceValues(choices: readonly PluginOptionChoice[]) {
+  return choices.flatMap((choice) => [choice.value, ...(choice.children ?? []).map((child) => child.value)])
+}
+
+export function pluginChoiceMatches(choice: PluginOptionChoice, query: string) {
+  const search = query.trim().toLowerCase()
+  if (!search) return true
+  return `${choice.label} ${choice.description ?? ""} ${choice.group?.label ?? ""} ${choice.group?.description ?? ""}`
+    .toLowerCase()
+    .includes(search)
+}
+
 /** A domain match keeps its catalog; an operation match reveals only matching operations. */
 export function filterPluginChoices(choices: readonly PluginOptionChoice[], query: string) {
   const search = query.trim().toLowerCase()
   return choices.flatMap((choice) => {
-    if (
-      !search ||
-      `${choice.label} ${choice.description ?? ""} ${choice.group?.label ?? ""} ${choice.group?.description ?? ""}`
-        .toLowerCase()
-        .includes(search)
-    )
-      return [{ choice, tools: choice.tools ?? [] }]
+    if (pluginChoiceMatches(choice, search)) return [{ choice, tools: choice.tools ?? [] }]
     const tools = (choice.tools ?? []).filter((tool) =>
       `${tool.name} ${tool.description}`.toLowerCase().includes(search),
     )
     return tools.length ? [{ choice, tools }] : []
   })
+}
+
+/** A parent match reveals its entire child catalog; otherwise children match by domain or operation. */
+export function filterPluginChoiceChildren(choice: PluginOptionChoice, query: string) {
+  if (pluginChoiceMatches(choice, query)) return filterPluginChoices(choice.children ?? [], "")
+  return filterPluginChoices(choice.children ?? [], query)
 }
 
 /** Authored order controls both rows and columns; missing cells remain unavailable. */

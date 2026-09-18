@@ -13512,7 +13512,7 @@
                   "properties": {
                     "action": {
                       "type": "string",
-                      "enum": ["provider.use"]
+                      "enum": ["provider.use", "permission"]
                     },
                     "resource": {
                       "type": "string"
@@ -16443,7 +16443,7 @@
         "required": ["source", "features", "state"],
         "additionalProperties": false
       },
-      "Plugin.OptionChoice": {
+      "Plugin.OptionChildChoice": {
         "type": "object",
         "properties": {
           "value": {
@@ -16454,22 +16454,6 @@
           },
           "description": {
             "type": "string"
-          },
-          "group": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "label": {
-                "type": "string"
-              },
-              "description": {
-                "type": "string"
-              }
-            },
-            "required": ["id", "label"],
-            "additionalProperties": false
           },
           "tools": {
             "type": "array",
@@ -16488,6 +16472,79 @@
               },
               "required": ["name", "description"],
               "additionalProperties": false
+            }
+          },
+          "group": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "label"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["value", "label", "group"],
+        "additionalProperties": false
+      },
+      "Plugin.OptionChoice": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "tools": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "input": {
+                  "type": "object"
+                }
+              },
+              "required": ["name", "description"],
+              "additionalProperties": false
+            }
+          },
+          "group": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": ["id", "label"],
+            "additionalProperties": false
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Plugin.OptionChildChoice"
             }
           }
         },

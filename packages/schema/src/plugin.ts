@@ -41,16 +41,30 @@ export const OptionTool = Schema.Struct({
   input: Schema.Record(Schema.String, Schema.Unknown).pipe(optional),
 })
 
-export const OptionChoice = Schema.Struct({
+const OptionChoiceGroup = Schema.Struct({
+  id: Schema.String,
+  label: Schema.String,
+  description: Schema.String.pipe(optional),
+})
+
+const OptionChoiceFields = {
   value: Schema.String,
   label: Schema.String,
   description: Schema.String.pipe(optional),
-  group: Schema.Struct({
-    id: Schema.String,
-    label: Schema.String,
-    description: Schema.String.pipe(optional),
-  }).pipe(optional),
   tools: Schema.Array(OptionTool).pipe(optional),
+}
+
+/** A child choice is a leaf; option choices deliberately support one nesting level only. */
+export const OptionChildChoice = Schema.Struct({
+  ...OptionChoiceFields,
+  group: OptionChoiceGroup,
+}).annotate({ identifier: "Plugin.OptionChildChoice" })
+export type OptionChildChoice = typeof OptionChildChoice.Type
+
+export const OptionChoice = Schema.Struct({
+  ...OptionChoiceFields,
+  group: OptionChoiceGroup.pipe(optional),
+  children: Schema.Array(OptionChildChoice).pipe(optional),
 }).annotate({ identifier: "Plugin.OptionChoice" })
 export type OptionChoice = typeof OptionChoice.Type
 

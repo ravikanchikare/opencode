@@ -13,7 +13,13 @@ import { pluginDisplayName } from "@/providers/catalog/plugin"
 import { showToast } from "@/shell/notifications/toast"
 import { SettingsList } from "@/settings/list"
 import { canReset, editorValues, hasManyPluginTools, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
-import { filterPluginChoices, groupPluginChoices } from "./plugin-catalog"
+import {
+  filterPluginChoiceChildren,
+  filterPluginChoices,
+  groupPluginChoices,
+  pluginChoiceMatches,
+  pluginChoiceValues,
+} from "./plugin-catalog"
 import "./extensions.css"
 
 export const PluginOptionsEditor: Component<{
@@ -77,7 +83,7 @@ export const PluginOptionsEditor: Component<{
     try {
       for (const descriptor of descriptors()) {
         const value =
-          mode === "default" ? undefined : mode === "all" ? descriptor.choices.map((choice) => choice.value) : []
+          mode === "default" ? undefined : mode === "all" ? pluginChoiceValues(descriptor.choices) : []
         await serverSDK.api.plugin.setOptions({
           plugin: pluginId(),
           location: location(),
@@ -166,13 +172,29 @@ export const PluginOptionsEditor: Component<{
           const selected = createMemo(
             () => new Set(editorValues(props.plugin, descriptor().key, descriptor().default ?? [])),
           )
-          const rows = createMemo(() => filterPluginChoices(descriptor().choices, store.query))
-          const grouped = createMemo(() => groupPluginChoices(descriptor().choices, store.query))
-          const toggle = (choice: PluginOptionChoice, label = choice.label) => (
+          const rows = createMemo(() =>
+            filterPluginChoices(
+              descriptor().choices.filter((choice) => !choice.children?.length),
+              store.query,
+            ),
+          )
+          const grouped = createMemo(() =>
+            groupPluginChoices(
+              descriptor().choices.filter((choice) => !choice.children?.length),
+              store.query,
+            ),
+          )
+          const parents = createMemo(() =>
+            descriptor()
+              .choices.filter((choice) => choice.children?.length)
+              .map((choice) => ({ choice, rows: filterPluginChoiceChildren(choice, store.query) }))
+              .filter((parent) => parent.rows.length),
+          )
+          const toggle = (choice: PluginOptionChoice, label = choice.label, disabled = false) => (
             <Switch
               checked={selected().has(choice.value)}
               hideLabel
-              disabled={!!store.pending || !pluginId()}
+              disabled={disabled || !!store.pending || !pluginId()}
               onChange={(checked) => {
                 const next = new Set(selected())
                 if (checked) next.add(choice.value)
@@ -215,10 +237,115 @@ export const PluginOptionsEditor: Component<{
                 </div>
               </Show>
               <Show
-                when={rows().length}
+                when={rows().length || parents().length}
                 fallback={<p class="plugin-details-description">{language.t("settings.plugins.empty")}</p>}
               >
-                <SettingsList>
+                <Show when={parents().length}>
+                  <SettingsList>
+                    <Key each={parents()} by={(parent) => parent.choice.value}>
+                      {(parent) => {
+                        const key = () => `${descriptor().key}:${parent().choice.value}`
+                        const groupedChildren = createMemo(() =>
+                          groupPluginChoices(
+                            parent().choice.children ?? [],
+                            pluginChoiceMatches(parent().choice, store.query) ? "" : store.query,
+                          ),
+                        )
+                        const enabled = () => selected().has(parent().choice.value)
+                        return (
+                          <Collapsible
+                            class="plugin-functional-group"
+                            variant="ghost"
+                            open={!!store.query.trim() || !!store.expanded[key()]}
+                            onOpenChange={(open) => setStore("expanded", key(), open)}
+                          >
+                            <div class="plugin-domain-row">
+                              <Collapsible.Trigger class="plugin-domain-trigger" disabled={!!store.query.trim()}>
+                                <Collapsible.Arrow />
+                                <span class="plugin-domain-label">{parent().choice.label}</span>
+                              </Collapsible.Trigger>
+                              {toggle(parent().choice)}
+                            </div>
+                            <Show when={parent().choice.description}>
+                              <p class="plugin-details-description">{parent().choice.description}</p>
+                            </Show>
+                            <Collapsible.Content>
+                              <div
+                                class="plugin-search-row grouped"
+                                style={{ "--plugin-columns": groupedChildren().columns.length }}
+                              >
+                                <span aria-hidden="true" />
+                                <For each={groupedChildren().columns}>{(column) => <span>{column}</span>}</For>
+                              </div>
+                              <SettingsList>
+                                <Key each={groupedChildren().rows} by="id">
+                                  {(group) => {
+                                    const groupKey = () => `${key()}:${group().id}`
+                                    return (
+                                      <Collapsible
+                                        class="plugin-domain"
+                                        variant="ghost"
+                                        open={!!store.query.trim() || !!store.expanded[groupKey()]}
+                                        onOpenChange={(open) => setStore("expanded", groupKey(), open)}
+                                      >
+                                        <div
+                                          class="plugin-control-columns"
+                                          style={{ "--plugin-columns": groupedChildren().columns.length }}
+                                        >
+                                          <Collapsible.Trigger class="plugin-domain-trigger" disabled={!!store.query.trim()}>
+                                            <Collapsible.Arrow />
+                                            <span class="plugin-domain-label">{group().label}</span>
+                                          </Collapsible.Trigger>
+                                          <For each={groupedChildren().columns}>
+                                            {(column) => (
+                                              <div class="plugin-control-cell">
+                                                <Show
+                                                  when={group().choices.find((choice) => choice.label === column)}
+                                                  fallback={<span>—</span>}
+                                                >
+                                                  {(choice) => toggle(choice(), `${group().label}: ${column}`, !enabled())}
+                                                </Show>
+                                              </div>
+                                            )}
+                                          </For>
+                                        </div>
+                                        <Show when={group().description}>
+                                          <p class="plugin-details-description">{group().description}</p>
+                                        </Show>
+                                        <Collapsible.Content>
+                                          <div class="plugin-domain-tools">
+                                            <For each={group().choices}>
+                                              {(choice) => (
+                                                <For each={groupedChildren().matched.get(choice.value) ?? []}>
+                                                  {(tool) => (
+                                                    <div
+                                                      class="plugin-operation"
+                                                      data-enabled={enabled() && selected().has(choice.value)}
+                                                    >
+                                                      <code>{tool.name}</code>
+                                                      <p class="plugin-details-description">{tool.description}</p>
+                                                      <PluginInputSchema name={tool.name} input={tool.input} />
+                                                    </div>
+                                                  )}
+                                                </For>
+                                              )}
+                                            </For>
+                                          </div>
+                                        </Collapsible.Content>
+                                      </Collapsible>
+                                    )
+                                  }}
+                                </Key>
+                              </SettingsList>
+                            </Collapsible.Content>
+                          </Collapsible>
+                        )
+                      }}
+                    </Key>
+                  </SettingsList>
+                </Show>
+                <Show when={rows().length}>
+                  <SettingsList>
                   <Key each={grouped().rows} by="id">
                     {(group) => {
                       const key = () => `${descriptor().key}:${group().id}`
@@ -329,7 +456,8 @@ export const PluginOptionsEditor: Component<{
                       )
                     }}
                   </Key>
-                </SettingsList>
+                  </SettingsList>
+                </Show>
               </Show>
             </section>
           )

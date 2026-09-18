@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test"
-import { filterPluginChoices, groupPluginChoices } from "./plugin-catalog"
+import {
+  filterPluginChoiceChildren,
+  filterPluginChoices,
+  groupPluginChoices,
+  pluginChoiceMatches,
+  pluginChoiceValues,
+} from "./plugin-catalog"
 
 const choices = [
   {
@@ -63,5 +69,33 @@ describe("plugin catalog search", () => {
     expect(filterPluginChoices(choices, "Read a table")[0]?.choice.value).toBe("tables")
     expect(filterPluginChoices(choices, "Without a catalog")[0]?.choice.value).toBe("legacy")
     expect(filterPluginChoices(choices, "missing")).toEqual([])
+  })
+})
+
+describe("nested plugin choices", () => {
+  const nested = [
+    {
+      value: "data",
+      label: "Data",
+      children: [
+        {
+          value: "records:read",
+          label: "Read",
+          group: { id: "records", label: "Records" },
+          tools: [{ name: "records.get", description: "Read a record" }],
+        },
+      ],
+    },
+  ]
+
+  test("flattens values and retains the matching parent hierarchy", () => {
+    expect(pluginChoiceValues(nested)).toEqual(["data", "records:read"])
+    expect(pluginChoiceMatches(nested[0]!, "data")).toBe(true)
+    expect(filterPluginChoiceChildren(nested[0]!, "data").map((row) => row.choice.value)).toEqual(["records:read"])
+    expect(filterPluginChoiceChildren(nested[0]!, "records.get").map((row) => row.choice.value)).toEqual(["records:read"])
+    expect(groupPluginChoices(
+      nested[0]!.children,
+      pluginChoiceMatches(nested[0]!, "data") ? "" : "data",
+    ).rows.map((row) => row.id)).toEqual(["records"])
   })
 })

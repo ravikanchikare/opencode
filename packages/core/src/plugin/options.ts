@@ -27,7 +27,7 @@ export function validate(descriptors: readonly Plugin.OptionDescriptor[]) {
     if (keys.has(descriptor.key)) throw new Error(`Duplicate plugin option key: ${descriptor.key}`)
     keys.add(descriptor.key)
     const values = new Set<string>()
-    for (const choice of descriptor.choices) {
+    for (const choice of choices(descriptor)) {
       if (values.has(choice.value))
         throw new Error(`Duplicate choice "${choice.value}" for plugin option ${descriptor.key}`)
       values.add(choice.value)
@@ -51,10 +51,14 @@ export function validateSelection(
   descriptor: Plugin.OptionDescriptor,
   value: readonly string[],
 ): string | undefined {
-  const allowed = new Set(descriptor.choices.map((choice) => choice.value))
+  const allowed = new Set(choices(descriptor).map((choice) => choice.value))
   const unknown = value.filter((item) => !allowed.has(item))
   if (unknown.length === 0) return
   return `Unknown ${descriptor.key} selection: ${unknown.join(", ")}`
+}
+
+function choices(descriptor: Plugin.OptionDescriptor) {
+  return descriptor.choices.flatMap((choice) => [choice, ...(choice.children ?? [])])
 }
 
 export function apply<T extends { readonly optionValues?: Record<string, unknown>; readonly revision: string }>(
