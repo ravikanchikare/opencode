@@ -39,3 +39,17 @@ test("inventory icons align with the title and text keeps a fixed gap from contr
   )
   expect(css).toMatch(/\.extension-destination-description\s*\{[^}]*overflow-wrap: anywhere/)
 })
+
+test("nested plugin controls use balanced insets and one clean row surface", () => {
+  const css = read("./extensions.css")
+  expect(css).toMatch(
+    /\.plugin-functional-group > \[data-slot="collapsible-content"\]\s*\{[^}]*padding: 0 24px 8px/,
+  )
+  expect(css).toMatch(
+    /\.plugin-functional-group \[data-component="settings-list"\]\s*\{[^}]*overflow: hidden;[^}]*background: transparent;[^}]*box-shadow: none/,
+  )
+  expect(css).toMatch(/\.plugin-domain\s*\{[^}]*border-radius: 0;[^}]*border-bottom:/)
+  expect(css).toMatch(
+    /\.plugin-operation > \[data-component="collapsible"\] > \[data-slot="collapsible-trigger"\]\s*\{[^}]*gap: 4px/,
+  )
+})

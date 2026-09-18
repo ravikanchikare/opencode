@@ -307,7 +307,7 @@ button.extension-destination-label:focus-visible {
 }
 
 .plugin-functional-group > [data-slot="collapsible-content"] {
-  padding: 0 0 8px 24px;
+  padding: 0 24px 8px;
 }
 
 .plugin-functional-group > [data-slot="collapsible-content"] > .plugin-search-row {
@@ -317,6 +317,9 @@ button.extension-destination-label:focus-visible {
 .plugin-functional-group [data-component="settings-list"] {
   border: 0.5px solid var(--v2-border-border-base);
   padding-inline: 0;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: none;
 }
 
 .plugin-functional-group .plugin-domain {
@@ -434,6 +437,10 @@ button.extension-destination-label:focus-visible {
 .plugin-operation {
   padding-block: 10px;
   border-top: 0.5px solid var(--v2-border-border-base);
+}
+
+.plugin-operation > [data-component="collapsible"] > [data-slot="collapsible-trigger"] {
+  gap: 4px;
 }
 
 .plugin-operation code {
