@@ -298,6 +298,31 @@ button.extension-destination-label:focus-visible {
   border-bottom: 0.5px solid var(--v2-border-border-base);
 }
 
+.plugin-functional-group {
+  border-bottom: 0.5px solid var(--v2-border-border-base);
+}
+
+.plugin-functional-group > .plugin-domain-row {
+  padding-inline: var(--plugin-row-inset);
+}
+
+.plugin-functional-group > [data-slot="collapsible-content"] {
+  padding: 0 0 8px 24px;
+}
+
+.plugin-functional-group > [data-slot="collapsible-content"] > .plugin-search-row {
+  padding-inline-start: var(--plugin-row-inset);
+}
+
+.plugin-functional-group [data-component="settings-list"] {
+  border: 0.5px solid var(--v2-border-border-base);
+  padding-inline: 0;
+}
+
+.plugin-functional-group .plugin-domain {
+  padding-inline: var(--plugin-row-inset);
+}
+
 .plugin-domain:last-child {
   border-bottom: none;
 }
@@ -389,7 +414,8 @@ button.extension-destination-label:focus-visible {
   color: var(--v2-text-text-base);
 }
 
-.plugin-domain [data-slot="collapsible-trigger"].plugin-domain-trigger {
+.plugin-domain [data-slot="collapsible-trigger"].plugin-domain-trigger,
+.plugin-functional-group > .plugin-domain-row > [data-slot="collapsible-trigger"].plugin-domain-trigger {
   flex: 1;
   min-width: 0;
   height: auto;

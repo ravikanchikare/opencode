@@ -37,6 +37,43 @@ describe("PluginOptions.merge", () => {
   })
 })
 
+describe("PluginOptions nested choices", () => {
+  const descriptor = {
+    type: "multi-select" as const,
+    key: "capabilities",
+    label: "Capabilities",
+    choices: [
+      {
+        value: "data",
+        label: "Data",
+        children: [{ value: "records:read", label: "Read", group: { id: "records", label: "Records" } }],
+      },
+    ],
+  }
+
+  test("validates defaults and selections across parent and child values", () => {
+    expect(() => PluginOptions.validate([{ ...descriptor, default: ["data", "records:read"] }])).not.toThrow()
+    expect(PluginOptions.validateSelection(descriptor, ["data", "records:read"])).toBeUndefined()
+    expect(PluginOptions.validateSelection(descriptor, ["missing"])).toContain("Unknown capabilities selection")
+  })
+
+  test("rejects duplicate values shared by a parent and child", () => {
+    expect(() =>
+      PluginOptions.validate([
+        {
+          ...descriptor,
+          choices: [
+            {
+              ...descriptor.choices[0],
+              children: [{ value: "data", label: "Read", group: { id: "records", label: "Records" } }],
+            },
+          ],
+        },
+      ]),
+    ).toThrow('Duplicate choice "data"')
+  })
+})
+
 describe("PluginOptionConfig.upsert", () => {
   test("adds an exact-ID override, then removing the key drops the entry", () => {
     const added = PluginOptionConfig.upsert(["other"], "acme.packaged", "domains", ["beta"])

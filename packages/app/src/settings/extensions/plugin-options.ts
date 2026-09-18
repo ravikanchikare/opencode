@@ -55,7 +55,12 @@ export function hasManyPluginTools(plugin: PluginInfo) {
   const count =
     plugin.options?.descriptors.reduce(
       (total, descriptor) =>
-        total + descriptor.choices.reduce((choices, choice) => choices + (choice.tools?.length ?? 0), 0),
+        total +
+        descriptor.choices.reduce(
+          (choices, choice) =>
+            choices + (choice.tools?.length ?? 0) + (choice.children ?? []).reduce((total, child) => total + (child.tools?.length ?? 0), 0),
+          0,
+        ),
       0,
     ) ?? 0
   return count > 8

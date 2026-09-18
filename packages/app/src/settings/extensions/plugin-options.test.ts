@@ -75,6 +75,35 @@ describe("plugin tool utilities", () => {
     expect(hasManyPluginTools(withTools(9))).toBe(true)
   })
 
+  test("counts tools in functional-group children", () => {
+    expect(
+      hasManyPluginTools(
+        plugin({
+          options: {
+            descriptors: [
+              {
+                type: "multi-select",
+                key: "tools",
+                label: "Tools",
+                choices: [{
+                  value: "data",
+                  label: "Data",
+                  children: withTools(9).options!.descriptors[0]!.choices.map((choice) => ({
+                    ...choice,
+                    group: { id: choice.value, label: choice.label },
+                  })),
+                }],
+              },
+            ],
+            inherited: true,
+            scope: "default",
+            effective: {},
+          },
+        }),
+      ),
+    ).toBe(true)
+  })
+
   test("the editor applies the threshold and uses braces for input schemas", () => {
     const source = readFileSync(new URL("./plugin-options-editor.tsx", import.meta.url), "utf8")
     expect(source).toContain("showToolUtilities")

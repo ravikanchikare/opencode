@@ -24,12 +24,12 @@ export type PluginFeatures = { server?: true; tui?: true; rpc?: true }
 
 export type PluginState = { status: "active" } | { status: "failed"; error: string; ref?: string }
 
-export type PluginOptionChoice = {
+export type PluginOptionChildChoice = {
   value: string
   label: string
   description?: string
-  group?: { id: string; label: string; description?: string }
   tools?: Array<{ name: string; description: string; input?: { [x: string]: JsonValue } }>
+  group: { id: string; label: string; description?: string }
 }
 
 export type SessionForkBoundary = { type: "before"; messageID: string } | { type: "through"; messageID: string }
@@ -493,14 +493,13 @@ export type ProviderRequest = {
 
 export type PermissionRule = { action: string; resource: string; effect: PermissionEffect }
 
-export type PluginOptionDescriptor = {
-  type: "multi-select"
-  key: string
+export type PluginOptionChoice = {
+  value: string
   label: string
   description?: string
-  choices: Array<PluginOptionChoice>
-  default?: Array<string>
-  secret?: boolean
+  tools?: Array<{ name: string; description: string; input?: { [x: string]: JsonValue } }>
+  group?: { id: string; label: string; description?: string }
+  children?: Array<PluginOptionChildChoice>
 }
 
 export type SessionRevert = { messageID: string; partID?: string; snapshot?: string; files?: Array<FileDiffInfo> }
@@ -1701,12 +1700,14 @@ export type SessionInboxMove = {
 
 export type PermissionRuleset = Array<PermissionRule>
 
-export type PluginOptionState = {
-  descriptors: Array<PluginOptionDescriptor>
-  requested?: { [x: string]: JsonValue }
-  effective: { [x: string]: JsonValue }
-  inherited: boolean
-  scope: "default" | "location"
+export type PluginOptionDescriptor = {
+  type: "multi-select"
+  key: string
+  label: string
+  description?: string
+  choices: Array<PluginOptionChoice>
+  default?: Array<string>
+  secret?: boolean
 }
 
 export type SessionRevertStaged = {
@@ -2177,14 +2178,12 @@ export type ConfigEntry =
     }
   | { type: "directory"; path: string }
 
-export type PluginInfo = {
-  id?: string
-  name?: string
-  description?: string
-  source: PluginSource
-  features: PluginFeatures
-  state: PluginState
-  options?: PluginOptionState
+export type PluginOptionState = {
+  descriptors: Array<PluginOptionDescriptor>
+  requested?: { [x: string]: JsonValue }
+  effective: { [x: string]: JsonValue }
+  inherited: boolean
+  scope: "default" | "location"
 }
 
 export type SessionInboxUser = {
@@ -2242,6 +2241,16 @@ export type FormFields = [FormField, ...Array<FormField>]
 export type FormFields2 = [FormField1, ...Array<FormField1>]
 
 export type SessionsResponse = { data: Array<SessionInfo>; cursor: { previous?: string | null; next?: string | null } }
+
+export type PluginInfo = {
+  id?: string
+  name?: string
+  description?: string
+  source: PluginSource
+  features: PluginFeatures
+  state: PluginState
+  options?: PluginOptionState
+}
 
 export type SessionInboxInfo = SessionInboxUser | SessionInboxSynthetic | SessionInboxCompaction | SessionInboxMove
 
