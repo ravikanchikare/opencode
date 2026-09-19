@@ -345,9 +345,8 @@ export const PluginOptionsEditor: Component<{
                   </SettingsList>
                 </Show>
                 <Show when={rows().length}>
-                  <div class="plugin-domain-cards">
-                    <SettingsList>
-                      <Key each={grouped().rows} by="id">
+                  <SettingsList>
+                  <Key each={grouped().rows} by="id">
                     {(group) => {
                       const key = () => `${descriptor().key}:${group().id}`
                       return (
@@ -398,8 +397,8 @@ export const PluginOptionsEditor: Component<{
                         </Collapsible>
                       )
                     }}
-                      </Key>
-                      <Key each={rows().filter((row) => !row.choice.group)} by={(row) => row.choice.value}>
+                  </Key>
+                  <Key each={rows().filter((row) => !row.choice.group)} by={(row) => row.choice.value}>
                     {(row) => {
                       const flat = () =>
                         row().choice.tools?.length === 1 && row().choice.tools?.[0]?.name === row().choice.value
@@ -456,9 +455,8 @@ export const PluginOptionsEditor: Component<{
                         </Show>
                       )
                     }}
-                      </Key>
-                    </SettingsList>
-                  </div>
+                  </Key>
+                  </SettingsList>
                 </Show>
               </Show>
             </section>
