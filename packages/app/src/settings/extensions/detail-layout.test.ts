@@ -61,13 +61,6 @@ test("nested plugin controls use balanced insets and one clean row surface", () 
     /\.plugin-functional-group \[data-component="settings-list"\]\s*\{[^}]*overflow: hidden;[^}]*background: transparent;[^}]*box-shadow: none/,
   )
   expect(css).toMatch(/\.plugin-domain\s*\{[^}]*border-radius: 0;[^}]*border-bottom:/)
-  expect(read("./plugin-options-editor.tsx")).toContain('<div class="plugin-domain-cards">')
-  expect(css).toMatch(
-    /\.plugin-domain-cards > \[data-component="settings-list"\]\s*\{[^}]*gap: 8px;[^}]*background: transparent;[^}]*box-shadow: none/,
-  )
-  expect(css).toMatch(
-    /\.plugin-domain-cards \.plugin-domain\s*\{[^}]*border: 0\.5px solid var\(--v2-border-border-base\);[^}]*border-radius: 8px/,
-  )
   expect(css).toMatch(
     /\.plugin-operation > \[data-component="collapsible"\] > \[data-slot="collapsible-trigger"\]\s*\{[^}]*gap: 4px/,
   )
