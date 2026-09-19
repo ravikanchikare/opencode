@@ -375,6 +375,22 @@ button.extension-destination-label:focus-visible {
   box-shadow: none;
 }
 
+.plugin-domain-cards > [data-component="settings-list"] {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.plugin-domain-cards .plugin-domain {
+  padding-inline: var(--plugin-row-inset);
+  border: 0.5px solid var(--v2-border-border-base);
+  border-radius: 8px;
+  background: var(--v2-background-bg-base);
+}
+
 .plugin-control-columns > span,
 .plugin-control-cell {
   text-align: center;
