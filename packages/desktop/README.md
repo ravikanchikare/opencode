@@ -40,6 +40,11 @@ CLI preparation uses these channel rules:
 default. `bun dev --download-server <version>` instead downloads that CLI version for local development. Neither path
 requires `OPENCODE_CLI_DIST` or runs the production prebuild.
 
+Development accepts the same `OPENCODE_DESKTOP_NAME` and `OPENCODE_DESKTOP_APP_ID` distribution branding as
+packaging. On macOS, those values name the generated development `.app` bundle and set its bundle identifier; at
+runtime the app name and development storage identity use the same values. When unset, development remains
+`OpenCode Dev` with the `ai.opencode.desktop.dev` identity.
+
 ## Startup benchmark
 
 `bun run bench:startup` measures a **packaged** build from process spawn to the restored tab being ready and the
