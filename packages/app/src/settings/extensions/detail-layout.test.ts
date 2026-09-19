@@ -40,6 +40,18 @@ test("inventory icons align with the title and text keeps a fixed gap from contr
   expect(css).toMatch(/\.extension-destination-description\s*\{[^}]*overflow-wrap: anywhere/)
 })
 
+test("skill inventory descriptions clamp without truncating detail-page copy", () => {
+  expect(read("./shell.tsx")).toContain("descriptionLines?: 2")
+  expect(read("./shell.tsx")).toContain("extension-destination-description-clamp-2")
+  expect(read("./panels.tsx")).toContain("descriptionLines={2}")
+  expect(read("../providers/extensions.tsx")).toContain("descriptionLines={2}")
+  expect(read("../workspaces/project-extensions.tsx")).toContain("descriptionLines={2}")
+  expect(read("./skill-details.tsx")).toContain("{props.skill.description}")
+  expect(read("./extensions.css")).toMatch(
+    /\.extension-destination-description-clamp-2\s*\{[^}]*-webkit-line-clamp: 2/,
+  )
+})
+
 test("nested plugin controls use balanced insets and one clean row surface", () => {
   const css = read("./extensions.css")
   expect(css).toMatch(
@@ -52,4 +64,5 @@ test("nested plugin controls use balanced insets and one clean row surface", () 
   expect(css).toMatch(
     /\.plugin-operation > \[data-component="collapsible"\] > \[data-slot="collapsible-trigger"\]\s*\{[^}]*gap: 4px/,
   )
+  expect(css).toMatch(/\.plugin-options \.plugin-input-schema-trigger\s*\{[^}]*gap: 4px/)
 })

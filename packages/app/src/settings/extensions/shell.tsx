@@ -29,6 +29,7 @@ export const ExtensionRow: Component<{
   icon: IconProps["name"]
   name: string
   description?: string
+  descriptionLines?: 2
   detail?: string
   mono?: boolean
   onOpen?: () => void
@@ -47,7 +48,12 @@ export const ExtensionRow: Component<{
           {props.name}
         </span>
         <Show when={props.description}>
-          <span class="extension-destination-description">{props.description}</span>
+          <span
+            class="extension-destination-description"
+            classList={{ "extension-destination-description-clamp-2": props.descriptionLines === 2 }}
+          >
+            {props.description}
+          </span>
         </Show>
         <Show when={props.detail}>
           <span class="extension-destination-description">{props.detail}</span>

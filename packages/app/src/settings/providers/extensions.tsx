@@ -141,7 +141,14 @@ export const SettingsExtensions: Component<{
               </div>
               <SettingsList variant="catalog">
                 <For each={skills()}>
-                  {(skill) => <ExtensionRow icon="post-skill" name={skill.name} description={skill.description} />}
+                  {(skill) => (
+                    <ExtensionRow
+                      icon="post-skill"
+                      name={skill.name}
+                      description={skill.description}
+                      descriptionLines={2}
+                    />
+                  )}
                 </For>
               </SettingsList>
             </div>

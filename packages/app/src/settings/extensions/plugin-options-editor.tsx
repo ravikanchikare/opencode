@@ -472,8 +472,11 @@ function PluginInputSchema(props: { name: string; input?: Record<string, unknown
   return (
     <Show when={props.input}>
       <Collapsible variant="ghost">
-        <Collapsible.Trigger aria-label={language.t("settings.plugins.inputFor", { name: props.name })}>
-          <Icon name="braces" size="small" />
+        <Collapsible.Trigger
+          class="plugin-input-schema-trigger"
+          aria-label={language.t("settings.plugins.inputFor", { name: props.name })}
+        >
+          <Icon name="code-slash" size="small" />
           {language.t("settings.plugins.input")}
         </Collapsible.Trigger>
         <Collapsible.Content>
