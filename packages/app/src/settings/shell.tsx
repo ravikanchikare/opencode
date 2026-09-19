@@ -266,7 +266,6 @@ function RootSettings() {
   ])
 
   const tabComposition = getAppComposition().settingsTabs
-  const hiddenTabs = new Set(tabComposition?.hide ?? [])
   const addedTabs = tabComposition?.add ?? []
   const composedGroups = createMemo(() => composeSettingsNavGroups(groups(), tabComposition))
   const serverCtx = useServerCtx(single)
@@ -323,34 +322,30 @@ function RootSettings() {
       <Tabs.Content value="shortcuts" class="settings-panel">
         <SettingsKeybinds active={surface.view().tab === "shortcuts"} autofocus={!surface.search.state.selected} />
       </Tabs.Content>
-      <Show when={!hiddenTabs.has("experimental")}>
-        <Tabs.Content value="experimental" class="settings-panel">
-          <SettingsExperimental />
-        </Tabs.Content>
-      </Show>
-      <Show when={!hiddenTabs.has("about")}>
-        <Tabs.Content value="about" class="settings-panel settings-about">
-          <SettingsAbout active={surface.view().tab === "about"} />
-          <Show when={productVersionLines().length > 0 || configPath()}>
-            <div class="settings-about-distribution">
-              <For each={productVersionLines()}>
-                {(line) => (
-                  <p title={line.title}>
-                    <bdi dir="ltr">{line.text}</bdi>
-                  </p>
-                )}
-              </For>
-              <Show when={configPath()}>
-                {(path) => (
-                  <p class="settings-about-config-path" title={path()}>
-                    <bdi dir="ltr">{path()}</bdi>
-                  </p>
-                )}
-              </Show>
-            </div>
-          </Show>
-        </Tabs.Content>
-      </Show>
+      <Tabs.Content value="experimental" class="settings-panel">
+        <SettingsExperimental />
+      </Tabs.Content>
+      <Tabs.Content value="about" class="settings-panel settings-about">
+        <SettingsAbout active={surface.view().tab === "about"} />
+        <Show when={productVersionLines().length > 0 || configPath()}>
+          <div class="settings-about-distribution">
+            <For each={productVersionLines()}>
+              {(line) => (
+                <p title={line.title}>
+                  <bdi dir="ltr">{line.text}</bdi>
+                </p>
+              )}
+            </For>
+            <Show when={configPath()}>
+              {(path) => (
+                <p class="settings-about-config-path" title={path()}>
+                  <bdi dir="ltr">{path()}</bdi>
+                </p>
+              )}
+            </Show>
+          </div>
+        </Show>
+      </Tabs.Content>
       <Show when={single()} keyed>
         {(server) => (
           <SettingsServerDataScope server={server}>
@@ -381,11 +376,9 @@ function RootSettings() {
             <Tabs.Content value="models" class="settings-panel">
               <SettingsModels active={surface.view().tab === "models"} autofocus={!surface.search.state.selected} />
             </Tabs.Content>
-            <Show when={!hiddenTabs.has("extensions")}>
-              <Tabs.Content value="extensions" class="settings-panel">
-                <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
-              </Tabs.Content>
-            </Show>
+            <Tabs.Content value="extensions" class="settings-panel">
+              <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
+            </Tabs.Content>
             {/*
               Composed tabs render *inside* the scope, so a registration gets the
               selected server and this location without wrapping itself. They used
@@ -407,7 +400,7 @@ function RootSettings() {
           </SettingsServerDataScope>
         )}
       </Show>
-      <Show when={hiddenTabs.has("servers") ? undefined : singleEntry()}>
+      <Show when={singleEntry()}>
         {(entry) => (
           <Tabs.Content value="servers" class="settings-panel">
             <SettingsServerGeneral entry={entry()} onAddServer={addServer} />
