@@ -20,6 +20,7 @@ export { useLanguage } from "./runtime/i18n/language"
 export { useProviders } from "./providers/catalog/providers"
 export { useServer } from "./runtime/server/current"
 export { useServerSDK } from "./runtime/server/client"
+export { useSettingsSurface } from "./settings/surface"
 
 export { ProviderConnection } from "./providers/connect/dialog"
 export { SettingsList as SettingsListV2 } from "./settings/list"

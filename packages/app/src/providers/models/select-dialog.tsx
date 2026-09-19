@@ -22,6 +22,8 @@ import { createMenuDismissController } from "@/shell/commands/menu-dismiss"
 import { createEventListener } from "@solid-primitives/event-listener"
 import { matchesModelSearch } from "./search"
 import { SettingsList } from "@/settings/list"
+import { emptyModelCatalogDestination } from "@/composition"
+import { useSettingsSurface } from "@/settings/surface"
 import "@/settings/settings.css"
 
 const isFree = (provider: string, cost: { input: number } | undefined) =>
@@ -307,6 +309,7 @@ function ModelSelectorPopoverView(props: {
   onClose: () => void
 }) {
   const language = useLanguage()
+  const settings = useSettingsSurface()
   const [store, setStore] = createStore({ open: false, search: "", active: "" })
   let searchRef: HTMLInputElement | undefined
   let contentRef: HTMLDivElement | undefined
@@ -325,6 +328,10 @@ function ModelSelectorPopoverView(props: {
     store.active ? contentRef?.querySelector<HTMLElement>(`[data-option-key="${CSS.escape(store.active)}"]`) : undefined
   const setOpen = (open: boolean) => {
     if (open) {
+      if (emptyModelCatalogDestination() === "providers" && props.models("").length === 0) {
+        settings.open("providers")
+        return
+      }
       dismiss.allowTriggerRestore()
       setStore({ open: true, active: initialActive() })
       setTimeout(() =>
@@ -531,7 +538,15 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
   const dialog = useDialog()
   const language = useLanguage()
   const local = useLocal()
+  const settings = useSettingsSurface()
   const directory = () => decode64(local.slug())
+  const model = props.model ?? local.model
+
+  createEffect(() => {
+    if (emptyModelCatalogDestination() !== "providers" || model.list().length > 0) return
+    dialog.close()
+    settings.open("providers")
+  })
 
   const provider = () => {
     void import("@/providers/connect/dialog").then((x) => {
@@ -554,7 +569,7 @@ export const DialogSelectModel: Component<{ provider?: string; model?: ModelStat
         </Button>
       </DialogHeader>
       <DialogBody class="flex min-h-0 flex-1 flex-col">
-        <ModelList provider={props.provider} model={props.model} onSelect={() => dialog.close()} />
+        <ModelList provider={props.provider} model={model} onSelect={() => dialog.close()} />
         <div class="shrink-0 border-t border-v2-border-border-muted px-4 py-3">
           <button
             type="button"

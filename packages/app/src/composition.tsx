@@ -72,6 +72,8 @@ export type AppComposition = {
   modelSelector?: {
     showProviderPromotions?: boolean
     showConnectProvider?: boolean
+    /** Send an empty model catalog to the named Settings destination. */
+    emptyCatalogDestination?: "providers"
     /** Provider-specific defaults; persisted user visibility still wins. */
     defaultVisibleModels?: Readonly<Record<string, readonly string[]>>
   }
@@ -121,6 +123,11 @@ export function showModelProviderPromotions(value: AppComposition = composition)
 /** Provider connection remains available unless a distribution owns that workflow elsewhere. */
 export function showManageModelsConnectProvider(value: AppComposition = composition) {
   return value.modelSelector?.showConnectProvider !== false
+}
+
+/** A distribution may replace an empty selector with its provider settings. */
+export function emptyModelCatalogDestination(value: AppComposition = composition) {
+  return value.modelSelector?.emptyCatalogDestination
 }
 
 export function modelVisibilityDefault(

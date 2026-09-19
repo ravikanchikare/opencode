@@ -6,7 +6,7 @@ import { ProviderIcon } from "@opencode/ui/provider-icon"
 import { Switch } from "@opencode/ui/switch"
 import { TextInput } from "@opencode/ui/text-input"
 import { useFilteredList } from "@opencode/ui/hooks"
-import { For, Show, type Component } from "solid-js"
+import { createEffect, For, Show, type Component } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useLocal } from "@/providers/models/selection"
 import { popularProviders } from "@/providers/catalog/providers"
@@ -16,7 +16,8 @@ import { DialogConnectProvider } from "@/providers/connect/dialog"
 import { decode64 } from "@/runtime/persistence/base64"
 import { SettingsList } from "@/settings/list"
 import { SettingsRow } from "@/settings/row"
-import { showManageModelsConnectProvider } from "@/composition"
+import { emptyModelCatalogDestination, showManageModelsConnectProvider } from "@/composition"
+import { useSettingsSurface } from "@/settings/surface"
 import "@/settings/settings.css"
 
 type ModelItem = ReturnType<ReturnType<typeof useLocal>["model"]["list"]>[number]
@@ -25,8 +26,15 @@ export const DialogManageModels: Component = () => {
   const local = useLocal()
   const language = useLanguage()
   const dialog = useDialog()
+  const settings = useSettingsSurface()
   const [store, setStore] = createStore({ collapsed: {} as Record<string, boolean> })
   const directory = () => decode64(local.slug())
+
+  createEffect(() => {
+    if (emptyModelCatalogDestination() !== "providers" || local.model.list().length > 0) return
+    dialog.close()
+    settings.open("providers")
+  })
 
   const handleConnectProvider = () => {
     void dialog.show(() => <DialogConnectProvider directory={directory()} />)

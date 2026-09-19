@@ -9,6 +9,11 @@ test("guards provider connection through composition without changing the stock 
   expect(source).toContain('language.t("command.provider.connect")')
 })
 
+test("redirects an empty configured catalog to provider settings", () => {
+  expect(source).toContain('emptyModelCatalogDestination() !== "providers" || local.model.list().length > 0')
+  expect(source).toContain('settings.open("providers")')
+})
+
 test("aligns provider and model switches to the catalog content edge", () => {
   expect(source).toContain('class="settings-models-group-control"')
   expect(source).not.toContain('class="me-6"')
