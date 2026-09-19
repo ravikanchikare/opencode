@@ -105,7 +105,7 @@ export const PluginOptionsEditor: Component<{
   }
 
   return (
-    <div class="plugin-options">
+    <div class="plugin-options" data-plugin-id={pluginId()}>
       <Show when={props.onBack || props.headerActions}>
         <div class="plugin-details-toolbar">
           <Show when={props.onBack}>

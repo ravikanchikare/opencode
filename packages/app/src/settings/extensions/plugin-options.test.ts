@@ -108,6 +108,7 @@ describe("plugin tool utilities", () => {
     const source = readFileSync(new URL("./plugin-options-editor.tsx", import.meta.url), "utf8")
     expect(source).toContain("showToolUtilities")
     expect(source).toContain("<Show when={showToolUtilities()}>")
+    expect(source).toContain('class="plugin-options" data-plugin-id={pluginId()}')
     expect(source).toContain('class="plugin-input-schema-trigger"')
     expect(source).toContain('<Icon name="code-slash" size="small" />')
     expect(source).not.toContain('name="braces"')
