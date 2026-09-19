@@ -18,6 +18,13 @@
   color: var(--v2-text-text-muted);
 }
 
+.extension-destination-description-clamp-2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .extension-destination-list {
   display: flex;
   flex-direction: column;
@@ -428,6 +435,10 @@ button.extension-destination-label:focus-visible {
 
 .plugin-options [data-slot="collapsible-arrow"] {
   opacity: 1;
+}
+
+.plugin-options .plugin-input-schema-trigger {
+  gap: 4px;
 }
 
 .plugin-domain-tools {

@@ -45,9 +45,10 @@ const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
 )
 
 const ExtensionRow: Component<{
-  icon: "mcp" | "puzzle-piece" | "post-skill" | "code"
+  icon: "mcp" | "cube" | "post-skill" | "code"
   name: string
   description?: JSX.Element
+  descriptionLines?: 2
   children?: JSX.Element
 }> = (props) => (
   <div class="settings-extension-row project-settings-extension-row">
@@ -56,7 +57,12 @@ const ExtensionRow: Component<{
       <div class="project-settings-extension-row-copy">
         <span class="project-settings-extension-row-name settings-extension-name">{props.name}</span>
         <Show when={props.description}>
-          <span class="project-settings-extension-row-description">{props.description}</span>
+          <span
+            class="project-settings-extension-row-description"
+            classList={{ "extension-destination-description-clamp-2": props.descriptionLines === 2 }}
+          >
+            {props.description}
+          </span>
         </Show>
       </div>
     </div>
@@ -306,11 +312,11 @@ export const ProjectSettingsExtensions: Component<{
         <Show
           when={hasPluginDetails(plugin)}
           fallback={
-            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} description={plugin.description} />
+            <ExtensionRow icon="cube" name={pluginDisplayName(plugin)} description={plugin.description} />
           }
         >
           <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id))}>
-            <ExtensionRow icon="puzzle-piece" name={pluginDisplayName(plugin)} description={plugin.description}>
+            <ExtensionRow icon="cube" name={pluginDisplayName(plugin)} description={plugin.description}>
               <Icon name="chevron-right" size="small" />
             </ExtensionRow>
           </button>
@@ -321,7 +327,9 @@ export const ProjectSettingsExtensions: Component<{
 
   const skillRows = (items: SkillItem[]) => (
     <For each={items}>
-      {(item) => <ExtensionRow icon="post-skill" name={item.name} description={item.description} />}
+      {(item) => (
+        <ExtensionRow icon="post-skill" name={item.name} description={item.description} descriptionLines={2} />
+      )}
     </For>
   )
 

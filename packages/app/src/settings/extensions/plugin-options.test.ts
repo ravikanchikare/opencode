@@ -104,11 +104,13 @@ describe("plugin tool utilities", () => {
     ).toBe(true)
   })
 
-  test("the editor applies the threshold and uses braces for input schemas", () => {
+  test("the editor applies the threshold and uses the stock code icon for input schemas", () => {
     const source = readFileSync(new URL("./plugin-options-editor.tsx", import.meta.url), "utf8")
     expect(source).toContain("showToolUtilities")
     expect(source).toContain("<Show when={showToolUtilities()}>")
-    expect(source).toContain('<Icon name="braces" size="small" />')
+    expect(source).toContain('class="plugin-input-schema-trigger"')
+    expect(source).toContain('<Icon name="code-slash" size="small" />')
+    expect(source).not.toContain('name="braces"')
     expect(source).not.toContain("<Collapsible.Arrow />\n          {language.t(\"settings.plugins.input\")}")
   })
 })

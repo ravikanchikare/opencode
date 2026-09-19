@@ -175,7 +175,7 @@ test("plugin matrix and flat tools preserve identity, schema disclosure, and del
     )
     .toBeGreaterThanOrEqual(24)
   const schema = dialog.getByRole("button", { name: "Input schema for inspect", exact: true })
-  await expect(schema.locator('use[href="#opencode-v2-icon-braces"]')).toHaveCount(1)
+  await expect(schema.locator('use[href="#opencode-v2-icon-code-slash"]')).toHaveCount(1)
   await schema.click()
   await expect(dialog.locator("pre").filter({ hasText: '"type": "object"' })).toBeVisible()
   await expect(dialog.getByText("Inspect the local state.", { exact: true })).toHaveCount(1)

@@ -125,7 +125,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
                   when={hasPluginDetails(plugin)}
                   fallback={
                     <ExtensionRow
-                      icon="puzzle-piece"
+                      icon="cube"
                       name={pluginDisplayName(plugin)}
                       mono={!plugin.name}
                       description={plugin.description}
@@ -135,7 +135,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
                 >
                   <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id))}>
                     <ExtensionRow
-                      icon="puzzle-piece"
+                      icon="cube"
                       name={pluginDisplayName(plugin)}
                       mono={!plugin.name}
                       description={plugin.description}
@@ -219,6 +219,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
                 icon="post-skill"
                 name={item.name}
                 description={item.description}
+                descriptionLines={2}
                 detail={detailOf(item, scope())}
                 onOpen={() => setSelected(item.id)}
               >
@@ -328,7 +329,7 @@ export const IntegrationsPanel: Component<ExtensionPanelProps> = (props) => {
     >
       <ExtensionList each={rows()} empty="No service integrations are available">
         {(item) => (
-          <ExtensionRow icon="plug" name={item.name} detail={integrationSubtitle(item)}>
+          <ExtensionRow icon="link" name={item.name} detail={integrationSubtitle(item)}>
             <Show
               when={item.connected}
               fallback={
