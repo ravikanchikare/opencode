@@ -10,10 +10,12 @@ const endpoint = Schema.Struct({
   username: Schema.optionalKey(text(1_024)),
   password: Schema.optionalKey(text(4_096)),
 })
+const profile = Schema.Struct({ id: Schema.String.check(Schema.isMaxLength(1_024)) })
 const target = Schema.Struct({
   serverKey: text(16_384),
   sessionID: text(256).check(Schema.isStartsWith("ses")),
   endpoint,
+  profile: Schema.optionalKey(profile),
   restore: Schema.optionalKey(Browser.State),
 })
 const bounds = Schema.Struct({ x: Schema.Finite, y: Schema.Finite, width: Schema.Finite, height: Schema.Finite })
@@ -30,6 +32,7 @@ export const BrowserPaneRequestSchema = Schema.Union([
   Schema.Struct({ type: Schema.Literal("layout"), bindingID, layout: Schema.optionalKey(layout) }),
   Schema.Struct({ type: Schema.Literal("command"), bindingID, command: Browser.Action }),
   Schema.Struct({ type: Schema.Literal("close"), bindingID }),
+  Schema.Struct({ type: Schema.Literal("clear-profile"), serverKey: text(16_384), profile }),
 ])
 export type BrowserPaneRequest = Schema.Schema.Type<typeof BrowserPaneRequestSchema>
 

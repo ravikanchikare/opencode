@@ -1,6 +1,7 @@
 import { batch, createEffect, createMemo, on } from "solid-js"
 import type { Browser } from "@opencode/plugin-browser/rpc"
 import { createStore } from "solid-js/store"
+import { getAppComposition } from "@/composition"
 import { useLanguage } from "@/runtime/i18n/language"
 import type { BrowserPaneCommand } from "@/runtime/platform/browser-pane"
 import { useServer } from "@/runtime/server/current"
@@ -61,7 +62,9 @@ export function createSessionBrowser(session: SessionModel) {
   createEffect(() => {
     const sessionID = session.identity.sessionID()
     if (!sessionID) return
-    if (attachments.enabled()) attachments.attach(server, sessionID, session.layout.sessionKey())
+    const profile = getAppComposition().browser?.profile
+    if (attachments.enabled())
+      attachments.attach(server, sessionID, session.layout.sessionKey(), profile ? { id: profile } : undefined)
   })
   createEffect(
     on(

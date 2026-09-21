@@ -59,6 +59,7 @@ export function createDesktopPlatform(
           },
         }
       },
+      clearProfile: (serverKey, profile) => api.browserPane.request({ type: "clear-profile", serverKey, profile }),
     },
     updater,
     exportDebugLogs: () => api.exportDebugLogs(),

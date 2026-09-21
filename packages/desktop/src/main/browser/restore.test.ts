@@ -56,3 +56,26 @@ test("ignores malformed browser restoration metadata", () => {
     database.close()
   }
 })
+
+test("clears restore rows only for the selected browser profile and server", () => {
+  const database = openDatabase(":memory:")
+  const storage = createStateStore(database.db)
+  const restore = createBrowserRestoreStore(storage)
+  const empty = { tabs: [], focusedTabID: null }
+  try {
+    restore.save("one\nses_first", { ...empty, profile: { serverKey: "one", id: "work" } })
+    restore.save("one\nses_second", { ...empty, profile: { serverKey: "one", id: "personal" } })
+    restore.save("two\nses_first", { ...empty, profile: { serverKey: "two", id: "work" } })
+    restore.save("one\nses_ephemeral", empty)
+
+    restore.clearProfile({ serverKey: "one", id: "work" })
+
+    expect(storage.get("opencode.browser.dat", "one\nses_first")).toBeNull()
+    expect(storage.get("opencode.browser.dat", "one\nses_second")).not.toBeNull()
+    expect(storage.get("opencode.browser.dat", "two\nses_first")).not.toBeNull()
+    expect(storage.get("opencode.browser.dat", "one\nses_ephemeral")).not.toBeNull()
+  } finally {
+    storage.close()
+    database.close()
+  }
+})

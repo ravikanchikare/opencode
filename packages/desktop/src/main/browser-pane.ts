@@ -14,6 +14,8 @@ import { destinationOrigin, fileURLWithin } from "./browser/policy"
 import { emitIpcEvent } from "./ipc-events"
 import { SidecarCredentials } from "./service/sidecar-credentials"
 import { createBrowserRestoreStore } from "./browser/restore"
+import { resolveBrowserProfile } from "./browser/profile"
+import { createCookieJars } from "./browser/cookie-jar"
 import type { StateStore } from "./storage/state"
 
 type Entry = {
@@ -31,6 +33,7 @@ type Entry = {
   lastState?: string
   network?: BrowserNetwork
   storageKey: string
+  profile?: NonNullable<ReturnType<typeof resolveBrowserProfile>>
   /**
    * Workspace directories whose files may load as file:// documents. Set only for the desktop's
    * own sidecar: a forwarded or explicit loopback server does not share this machine's disk.
@@ -40,7 +43,10 @@ type Entry = {
 
 export function createBrowserPane(storage: StateStore) {
   const entries = new Map<string, Entry>()
+  const profiles = new Set<string>()
+  const clearingProfiles = new Set<string>()
   const restore = createBrowserRestoreStore(storage)
+  const jars = createCookieJars()
   // Keep long-lived RPC requests off Chromium's shared HTTP connection pool.
   const runtime = ManagedRuntime.make(NodeHttpClient.layerNodeHttp)
   let disposed = false
@@ -52,6 +58,9 @@ export function createBrowserPane(storage: StateStore) {
       if (win.isDestroyed() || win.webContents.isDestroyed()) throw new Error("browser.pane.owner.unavailable")
       const sessionID = SessionID.make(target.sessionID)
       const storageKey = `${target.serverKey}\n${sessionID}`
+      const profile = target.profile ? resolveBrowserProfile(target.serverKey, target.profile.id) : undefined
+      if (profile && clearingProfiles.has(profile.partition)) throw new Error("browser.pane.profile.busy")
+      if (profile) profiles.add(profile.partition)
       const saved = restore.load(storageKey)
       const previous = target.restore ?? {
         tabs: saved.tabs.map((tab) => ({
@@ -81,8 +90,10 @@ export function createBrowserPane(storage: StateStore) {
           ]),
         ),
         focusedTabID: previous.focusedTabID,
+        // Never the profile's partition: this partition carries this session's proxy and file:// guard.
         partition: `opencode-browser-${crypto.randomUUID()}`,
         storageKey,
+        profile,
         fileRoots: [],
       }
       const sidecar = SidecarCredentials.get()
@@ -134,6 +145,12 @@ export function createBrowserPane(storage: StateStore) {
               location: { directory: session.location.directory, workspace: session.location.workspaceID },
             }
             const attachment = { sessionID, connectionID: crypto.randomUUID() }
+            // Seed before the network exists, so no page loads without the profile's cookies.
+            if (profile)
+              yield* Effect.acquireRelease(
+                Effect.promise(() => jars.join(profile.partition, entry.partition)),
+                (leave) => Effect.sync(leave),
+              )
             const rpc = client.rpc(Browser.Definition)
             entry.network = yield* createBrowserNetwork({
               rpc,
@@ -300,9 +317,26 @@ export function createBrowserPane(storage: StateStore) {
       restore.remove(entry.storageKey)
       close(entry)
     },
+    async clearProfile(serverKey: string, input: { id: string }) {
+      const profile = resolveBrowserProfile(serverKey, input.id)
+      if (!profile) throw new Error("browser.pane.profile.invalid")
+      if (
+        clearingProfiles.has(profile.partition) ||
+        Array.from(entries.values()).some((entry) => entry.profile?.partition === profile.partition)
+      )
+        throw new Error("browser.pane.profile.busy")
+      clearingProfiles.add(profile.partition)
+      const session = electron.session.fromPartition(profile.partition)
+      await Promise.all([session.clearStorageData(), session.clearCache(), session.clearAuthCache()])
+        .then(() => restore.clearProfile(profile))
+        .finally(() => clearingProfiles.delete(profile.partition))
+    },
     async dispose() {
       disposed = true
       entries.forEach((entry) => close(entry))
+      await Promise.all(
+        Array.from(profiles, (partition) => electron.session.fromPartition(partition).flushStorageData()),
+      )
       await runtime.dispose()
     },
   }
@@ -370,6 +404,7 @@ export function createBrowserPane(storage: StateStore) {
           url: tab.url || entry.tabs.get(tab.id)?.url || "about:blank",
         })),
         focusedTabID: entry.focusedTabID,
+        ...(entry.profile ? { profile: { serverKey: entry.profile.serverKey, id: entry.profile.id } } : {}),
       })
     const next = JSON.stringify(event)
     if (entry.lastState === next) return
