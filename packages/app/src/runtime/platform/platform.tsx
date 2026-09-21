@@ -47,6 +47,9 @@ type PlatformBase = {
   /** Open an authentication page, reporting whether the browser could be launched. */
   openBrowser?(url: string): Promise<boolean>
 
+  /** Open a link according to platform policy, defaulting to the system application */
+  openLink(url: string, opts?: { source: "content" }): void
+
   /** Open a local path in a local app (desktop only) */
   openPath?(path: string, app?: string): Promise<void>
 

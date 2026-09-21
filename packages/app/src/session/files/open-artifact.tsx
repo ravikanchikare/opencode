@@ -1,6 +1,10 @@
 import { createEffect, onCleanup, type ParentProps } from "solid-js"
 import { createSimpleContext } from "@opencode/ui/context"
-import { MarkdownProvider, useMarkdown } from "@opencode/session-ui/context/markdown"
+import {
+  MarkdownProvider,
+  useMarkdown,
+  type OpenMarkdownLink,
+} from "@opencode/session-ui/context/markdown"
 import { useBrowserAttachments } from "@/session/browser/attachments"
 import type { SessionModel } from "@/session/model"
 import { useFile } from "@/workspaces/files/model"
@@ -19,6 +23,20 @@ export function ArtifactMarkdownProvider(props: ParentProps) {
   const artifacts = useArtifactOpener()
   return (
     <MarkdownProvider readImage={markdown?.readImage} openLocalFile={(path) => artifacts.open(path)}>
+      {props.children}
+    </MarkdownProvider>
+  )
+}
+
+/** Adds external-link handling only to timeline markdown while preserving local file behavior. */
+export function TimelineMarkdownLinkProvider(props: ParentProps<{ openLink: OpenMarkdownLink }>) {
+  const markdown = useMarkdown()
+  return (
+    <MarkdownProvider
+      readImage={markdown?.readImage}
+      openLocalFile={markdown?.openLocalFile}
+      openLink={props.openLink}
+    >
       {props.children}
     </MarkdownProvider>
   )

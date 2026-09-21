@@ -22,6 +22,7 @@ export async function mountMarkdown(options: {
   streaming?: boolean
   cached?: boolean
   images?: boolean
+  embeddedOrigins?: string[]
 }) {
   if (options.cached) await preloadMarkdown(options.text, "markdown-test")
   const host = document.createElement("div")
@@ -48,6 +49,15 @@ export async function mountMarkdown(options: {
         <MarkdownProvider
           readImage={(path, signal) =>
             options.images ? readLocalImage(api, "C:/project", path, signal) : Promise.resolve(undefined)
+          }
+          openLink={
+            options.embeddedOrigins
+              ? (url) => {
+                  if (options.embeddedOrigins?.includes(new URL(url).origin)) host.dataset.openedLink = url
+                  else host.dataset.externalLink = url
+                  return true
+                }
+              : undefined
           }
         >
           <Show when={visible()}>

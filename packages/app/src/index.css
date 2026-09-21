@@ -457,6 +457,21 @@
     timeline-scope: --manage-models-scroll;
   }
 
+  /* Content scrolling into the shell footer fades out instead of stopping hard. */
+  [data-slot="shell-footer"] {
+    position: relative;
+  }
+  [data-slot="shell-footer"]::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    height: 16px;
+    pointer-events: none;
+    background: linear-gradient(to top, var(--v2-background-bg-base), transparent);
+  }
+
   [data-slot="home-projects-scroll"]::before,
   [data-slot="home-projects-scroll"]::after,
   [data-slot="model-selector-scroll"]::before,

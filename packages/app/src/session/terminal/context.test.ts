@@ -44,6 +44,7 @@ describe("getWorkspaceTerminalCacheKey", () => {
       platform: "desktop",
       windowID: "window",
       openExternal: () => undefined,
+      openLink: () => undefined,
       restart: async () => undefined,
       notify: async () => undefined,
       openDirectoryPickerDialog: async () => null,

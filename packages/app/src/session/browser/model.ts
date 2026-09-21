@@ -33,15 +33,17 @@ export function createSessionBrowser(session: SessionModel) {
       attachment()?.browser?.tabs.filter((tab) => session.layout.tabs().all().includes(sessionBrowserTab(tab.id))) ??
       [],
   )
-  const command = (command: BrowserPaneCommand) => {
+  const request = (command: BrowserPaneCommand) => {
     const sessionID = session.identity.sessionID()
-    if (!sessionID) return
+    if (!sessionID) return Promise.reject(new Error("browser.pane.unavailable"))
     setLocal("error", undefined)
     const owner = session.ownership.capture()
-    void attachments.command(server, sessionID, command).catch(() => {
+    return attachments.command(server, sessionID, command).catch((error: unknown) => {
       if (owner.current()) setLocal("error", language.t("common.requestFailed"))
+      throw error
     })
   }
+  const command = (command: BrowserPaneCommand) => void request(command).catch(() => undefined)
   const open = () => {
     if (!available()) return
     command({ type: "tabs.open" })
@@ -120,5 +122,6 @@ export function createSessionBrowser(session: SessionModel) {
     close: (tabID: Browser.TabID) => session.layout.tabs().close(sessionBrowserTab(tabID)),
     open,
     command,
+    request,
   }
 }

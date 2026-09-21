@@ -62,6 +62,12 @@ describe("model visibility defaults composition", () => {
   })
 })
 
+test("retains distribution-authored embedded link origins", () => {
+  const links = { embeddedOrigins: ["https://review.example"] }
+  configureAppComposition({ links })
+  expect(getAppComposition().links).toEqual(links)
+})
+
 /**
  * The seam is additive: `configureAppComposition({})` must leave a build
  * indistinguishable from upstream. It did not, for a while — the composition
@@ -81,6 +87,7 @@ describe("an empty composition is upstream", () => {
     expect(composition.settingsTabs).toBeUndefined()
     expect(composition.pluginOptionLabels).toBeUndefined()
     expect(composition.pluginPresentation).toBeUndefined()
+    expect(composition.links).toBeUndefined()
   })
 
   test("keeps stock settings defaults", () => {

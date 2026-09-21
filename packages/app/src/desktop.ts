@@ -6,6 +6,7 @@ export {
 } from "./composition"
 export { ACCEPTED_FILE_EXTENSIONS } from "./runtime/platform/file-picker"
 export { useCommand } from "./shell/commands/command"
+export { ShellFooter } from "./shell/footer"
 export { currentRoute, type LayoutRoute, useCurrentRoute } from "./shell/state/layout"
 export { loadLocaleDict, normalizeLocale, type Locale, useLanguage } from "./runtime/i18n/language"
 export { type FatalRendererErrorLog, type Platform, PlatformProvider } from "./runtime/platform/platform"

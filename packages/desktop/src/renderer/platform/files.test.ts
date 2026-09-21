@@ -20,7 +20,9 @@ function fileApi(events: string[]) {
     },
     getPathForFile: () => "fallback",
     saveFile: async () => false,
-    openExternal: () => {},
+    openExternal: (url: string) => {
+      events.push(`external:${url}`)
+    },
     openBrowser: async () => true,
     openLocalFile: () => {},
     resolveAppPath: async () => null,
@@ -74,5 +76,14 @@ describe("desktop attachment files", () => {
     await files.writeClipboardText("ses_123")
 
     expect(events).toEqual(["clipboard:ses_123"])
+  })
+
+  test("opens links externally by default", () => {
+    const events: string[] = []
+    const files = createDesktopFiles(fileApi(events), "windows")
+
+    files.openLink("https://example.test", { source: "content" })
+
+    expect(events).toEqual(["external:https://example.test"])
   })
 })

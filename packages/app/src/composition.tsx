@@ -90,6 +90,9 @@ export type AppComposition = {
     /** Provider-specific defaults; persisted user visibility still wins. */
     defaultVisibleModels?: Readonly<Record<string, readonly string[]>>
   }
+  links?: {
+    embeddedOrigins?: readonly string[]
+  }
   newSession?: AppNewSessionComposition
   settingsTabs?: {
     hide?: readonly string[]
