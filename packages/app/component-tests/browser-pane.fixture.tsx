@@ -97,6 +97,9 @@ export function mountBrowserPane() {
         }
         if (command.type === "stop") setStore("loading", false)
       },
+      request: async (command) => {
+        browser.command(command)
+      },
     }
     return (
       <>

@@ -130,6 +130,7 @@ function Fixture(props: {
         windowID: "ssh-story",
         sshServers: api,
         openExternal() {},
+        openLink() {},
         restart: async () => {},
         notify: async () => {},
         openDirectoryPickerDialog: async () => null,

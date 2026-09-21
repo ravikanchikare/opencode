@@ -1,4 +1,5 @@
-import type { ParentProps } from "solid-js"
+import { Show, type ParentProps } from "solid-js"
+import { ShellFooterSlot } from "@/shell/footer"
 
 export function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   return (
@@ -11,7 +12,8 @@ export function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   )
 }
 
-export function SessionPanelFrame(props: ParentProps<{ raised?: boolean }>) {
+/** `footer` marks the view's primary panel, which ends with the shell footer slot. */
+export function SessionPanelFrame(props: ParentProps<{ raised?: boolean; footer?: boolean }>) {
   return (
     <div
       class="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[10px] bg-v2-background-bg-base"
@@ -20,6 +22,9 @@ export function SessionPanelFrame(props: ParentProps<{ raised?: boolean }>) {
       }}
     >
       {props.children}
+      <Show when={props.footer}>
+        <ShellFooterSlot />
+      </Show>
     </div>
   )
 }

@@ -236,6 +236,7 @@ test.skipIf(isServer)(
           platform: "desktop",
           windowID: "test",
           openExternal() {},
+          openLink() {},
           restart: async () => {},
           notify: async () => {},
           openDirectoryPickerDialog: async () => null,

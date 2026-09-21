@@ -33,8 +33,13 @@ import { SessionIdentityHeader } from "./session-identity-header"
 import { SessionReviewToggle } from "./header/session-header-actions"
 import { createAnimatedPresence } from "@/runtime/animated-presence"
 import { createSessionBrowser } from "./browser/model"
+import { createSessionLinkOpener } from "./browser/link"
 import { createTimelineCache } from "./timeline/cache"
-import { ArtifactMarkdownProvider, ArtifactOpenerProvider } from "./files/open-artifact"
+import {
+  ArtifactMarkdownProvider,
+  ArtifactOpenerProvider,
+  TimelineMarkdownLinkProvider,
+} from "./files/open-artifact"
 import { createSessionBtw } from "./btw/model"
 
 const SessionMobileFiles = lazy(async () => {
@@ -50,18 +55,24 @@ const SessionSummaryPanel = lazy(async () => {
 export function SessionScreen(props: { session: SessionModel }) {
   // The timeline cache captures its owner when created, so link handling must be provided above it.
   const browser = createSessionBrowser(props.session)
+  const openLink = createSessionLinkOpener(props.session, browser)
   return (
     <ArtifactOpenerProvider session={props.session} browser={browser}>
       <ArtifactMarkdownProvider>
-        <SessionScreenContent session={props.session} browser={browser} />
+        <SessionScreenContent session={props.session} browser={browser} openLink={openLink} />
       </ArtifactMarkdownProvider>
     </ArtifactOpenerProvider>
   )
 }
 
-function SessionScreenContent(props: { session: SessionModel; browser: ReturnType<typeof createSessionBrowser> }) {
+function SessionScreenContent(props: {
+  session: SessionModel
+  browser: ReturnType<typeof createSessionBrowser>
+  openLink: ReturnType<typeof createSessionLinkOpener>
+}) {
   const session = props.session
   const browser = props.browser
+  const openLink = props.openLink
   const server = useServer()
   const detailsProject = createMemo(() => {
     const info = session.data.info()
@@ -242,38 +253,40 @@ function SessionScreenContent(props: { session: SessionModel; browser: ReturnTyp
   const timelineView = createTimelineCache(
     session,
     (source, active) => (
-      <MessageTimeline
-        active={active()}
-        hideHeader={!isDesktop()}
-        session={source}
-        background={composer.requests.background}
-        actions={composer.actions.timeline}
-        scroll={timeline.scroll}
-        onResumeScroll={timeline.actions.resume}
-        setScrollRef={timeline.view.setScrollRef}
-        onScheduleScrollState={timeline.view.scheduleScrollState}
-        onPin={timeline.view.pin}
-        onUnpin={timeline.view.unpin}
-        onUserScroll={timeline.view.markUserScroll}
-        onHistoryScroll={timeline.view.onHistoryScroll}
-        onSelectionInteraction={timeline.view.selectionInteraction}
-        pinned={timeline.view.pinned()}
-        centered={screen.centered()}
-        reserveReviewToggle={!sideVisible()}
-        setContentRef={timeline.view.setContentRef}
-        diffs={review.details.diffs}
-        onReview={review.open}
-        workspaceMoveEligible={composer.workspaceMoveEligible()}
-        onSummaryOpenChange={review.details.setOpen}
-        anchor={timeline.view.anchor}
-        setRevealMessage={timeline.view.setRevealMessage}
-        setScrollToEnd={timeline.view.setScrollToEnd}
-        search={
-          <Show when={active()}>
-            <TimelineSearchBar controller={timelineSearch} />
-          </Show>
-        }
-      />
+      <TimelineMarkdownLinkProvider openLink={openLink}>
+        <MessageTimeline
+          active={active()}
+          hideHeader={!isDesktop()}
+          session={source}
+          background={composer.requests.background}
+          actions={composer.actions.timeline}
+          scroll={timeline.scroll}
+          onResumeScroll={timeline.actions.resume}
+          setScrollRef={timeline.view.setScrollRef}
+          onScheduleScrollState={timeline.view.scheduleScrollState}
+          onPin={timeline.view.pin}
+          onUnpin={timeline.view.unpin}
+          onUserScroll={timeline.view.markUserScroll}
+          onHistoryScroll={timeline.view.onHistoryScroll}
+          onSelectionInteraction={timeline.view.selectionInteraction}
+          pinned={timeline.view.pinned()}
+          centered={screen.centered()}
+          reserveReviewToggle={!sideVisible()}
+          setContentRef={timeline.view.setContentRef}
+          diffs={review.details.diffs}
+          onReview={review.open}
+          workspaceMoveEligible={composer.workspaceMoveEligible()}
+          onSummaryOpenChange={review.details.setOpen}
+          anchor={timeline.view.anchor}
+          setRevealMessage={timeline.view.setRevealMessage}
+          setScrollToEnd={timeline.view.setScrollToEnd}
+          search={
+            <Show when={active()}>
+              <TimelineSearchBar controller={timelineSearch} />
+            </Show>
+          }
+        />
+      </TimelineMarkdownLinkProvider>
     ),
     () => conversationVisible() && messagesReady(),
   )
@@ -364,7 +377,7 @@ function SessionScreenContent(props: { session: SessionModel; browser: ReturnTyp
             style={{ width: screen.panel.width() }}
           >
             <Show when={!!session.identity.params.id}>
-              <SessionPanelFrame raised>
+              <SessionPanelFrame raised footer>
                 <ErrorBoundary fallback={sessionErrorFallback}>{sessionPanelContent()}</ErrorBoundary>
               </SessionPanelFrame>
             </Show>

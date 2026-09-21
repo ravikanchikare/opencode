@@ -1,5 +1,6 @@
 import { Tabs } from "@opencode/ui/tabs"
 import { useDialog } from "@opencode/ui/context/dialog"
+import { ShellFooterSlot } from "@/shell/footer"
 import {
   createEffect,
   createMemo,
@@ -203,6 +204,7 @@ export function SettingsScreen() {
           </Show>
         </Match>
       </Switch>
+      <ShellFooterSlot />
     </div>
   )
 }

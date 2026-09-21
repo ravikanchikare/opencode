@@ -9,6 +9,7 @@ import { createHomeScrollController } from "./scroll"
 import { createHomeSessionSearchController } from "./sessions/search"
 import { createHomeSessionsController } from "./sessions/controller"
 import { HomeSessions } from "./sessions/region"
+import { ShellFooterSlot } from "@/shell/footer"
 
 export function Home() {
   const mobile = createMediaQuery("(max-width: 767px)")
@@ -63,6 +64,7 @@ export function Home() {
           language={projects.copy.language}
         />
       </div>
+      <ShellFooterSlot />
     </div>
   )
 }

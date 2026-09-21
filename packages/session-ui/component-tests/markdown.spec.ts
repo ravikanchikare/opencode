@@ -50,7 +50,7 @@ story("sanitizes raw HTML while preserving supported Markdown markup", async ({ 
   expect(result).toEqual([
     "<p><strong>Safe</strong> <em>formatting</em> <code>const x = 1</code></p>",
     '<img data-local-image="safe.png"><a>unsafe</a>',
-    '<a href="https://example.com" target="_blank" rel="nofollow noopener noreferrer">external</a><a href="/local">local</a>',
+    '<a href="https://example.com" target="_blank" rel="nofollow noopener noreferrer">external</a><a data-local-link="/local" role="link" tabindex="0">local</a>',
     '<form name="user-content-document" id="user-content-location"><input name="user-content-cookie"></form>',
     "<math><mrow><mi>x</mi><mo>+</mo><mn>1</mn></mrow></math>",
     '<svg viewBox="0 0 10 10"><path d="M0 0L10 10"></path></svg>',
@@ -244,6 +244,60 @@ story("keeps favicon space stable across loading and failure without fetching pr
   await expect(markdown.getByRole("link", { name: "GitHub" }).locator(".markdown-link-favicon")).toHaveCount(0)
   expect(requested).toHaveLength(2)
   expect(requested.every((url) => !url.includes("localhost") && !url.includes("github.com"))).toBe(true)
+})
+
+story("delegates only unmodified left-clicks on accepted external links", async ({ page }) => {
+  const result = await page.evaluate(async (fixture) => {
+    const { mountMarkdown } = await import(fixture)
+    await mountMarkdown({
+      text: "[Review](https://review.example/item/1) [Docs](https://docs.example/guide)",
+      embeddedOrigins: ["https://review.example"],
+    })
+    const host = document.querySelector<HTMLElement>('[data-testid="markdown-fixture"]')!
+    const root = host.querySelector<HTMLElement>('[data-component="markdown"]')!
+    const review = root.querySelector<HTMLAnchorElement>('a[href^="https://review.example"]')!
+    const docs = root.querySelector<HTMLAnchorElement>('a[href^="https://docs.example"]')!
+    const activate = (link: HTMLAnchorElement, init: MouseEventInit = {}) => {
+      let prevented = false
+      root.addEventListener(
+        "click",
+        (event) => {
+          prevented = event.defaultPrevented
+          event.preventDefault()
+        },
+        { once: true },
+      )
+      link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, ...init }))
+      return {
+        prevented,
+        opened: host.dataset.openedLink,
+        external: host.dataset.externalLink,
+      }
+    }
+    return {
+      plain: activate(review),
+      control: activate(review, { ctrlKey: true }),
+      meta: activate(review, { metaKey: true }),
+      shift: activate(review, { shiftKey: true }),
+      alt: activate(review, { altKey: true }),
+      middle: activate(review, { button: 1 }),
+      external: activate(docs),
+    }
+  }, fixture)
+
+  expect(result).toEqual({
+    plain: { prevented: true, opened: "https://review.example/item/1" },
+    control: { prevented: false, opened: "https://review.example/item/1" },
+    meta: { prevented: false, opened: "https://review.example/item/1" },
+    shift: { prevented: false, opened: "https://review.example/item/1" },
+    alt: { prevented: false, opened: "https://review.example/item/1" },
+    middle: { prevented: false, opened: "https://review.example/item/1" },
+    external: {
+      prevented: true,
+      opened: "https://review.example/item/1",
+      external: "https://docs.example/guide",
+    },
+  })
 })
 
 async function resolvedColor(page: Page, token: string) {

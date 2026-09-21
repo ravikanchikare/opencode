@@ -379,6 +379,27 @@ function setupLocalLinks(root: HTMLDivElement, open: () => OpenMarkdownLocalFile
   }
 }
 
+function setupExternalLinks(root: HTMLDivElement, open: () => ((url: string) => boolean) | undefined) {
+  const handleClick = (event: MouseEvent) => {
+    if (
+      event.defaultPrevented ||
+      event.button !== 0 ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey ||
+      !(event.target instanceof Element)
+    )
+      return
+    const link = event.target.closest("a.external-link")
+    if (!(link instanceof HTMLAnchorElement) || !link.href) return
+    if (!open()?.(link.href)) return
+    event.preventDefault()
+  }
+  root.addEventListener("click", handleClick)
+  return () => root.removeEventListener("click", handleClick)
+}
+
 function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
   const timeouts = new Map<HTMLElement, ReturnType<typeof setTimeout>>()
 
@@ -599,6 +620,7 @@ export function Markdown(
   let copyCleanup: (() => void) | undefined
   let linkCleanup: (() => void) | undefined
   let faviconCleanup: (() => void) | undefined
+  let externalLinkCleanup: (() => void) | undefined
   let readImage: ReadMarkdownImage | undefined
   let images: ReturnType<typeof createMarkdownImages> | undefined
 
@@ -657,6 +679,7 @@ export function Markdown(
       }))
     if (!linkCleanup) linkCleanup = setupLocalLinks(container, () => markdown?.openLocalFile)
     if (!faviconCleanup) faviconCleanup = setupExternalLinkFavicons(container)
+    if (!externalLinkCleanup) externalLinkCleanup = setupExternalLinks(container, () => markdown?.openLink)
     container.toggleAttribute("data-local-links", !!markdown?.openLocalFile)
     if (result?.ready && result.text === local.text) container.dataset.markdownReady = ""
   })
@@ -667,6 +690,7 @@ export function Markdown(
     if (copyCleanup) copyCleanup()
     if (linkCleanup) linkCleanup()
     if (faviconCleanup) faviconCleanup()
+    if (externalLinkCleanup) externalLinkCleanup()
     const container = root()
     if (container) disposeRenderedMarkdown(container)
     if (streamed) disposeMarkdownProjection(owner)
