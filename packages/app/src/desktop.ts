@@ -16,6 +16,7 @@ export type {
   BrowserPaneEvent,
   BrowserPaneLayout,
   BrowserPanePlatform,
+  BrowserPaneProfile,
   BrowserPaneRegistration,
   BrowserPaneState,
   BrowserPaneTarget,

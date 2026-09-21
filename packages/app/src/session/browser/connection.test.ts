@@ -35,6 +35,7 @@ function fixture() {
     focus: () => {},
     preview: (path) => previews.push(path),
     pane: {
+      clearProfile: async () => {},
       register(target, emit) {
         const call = { target, emit, closed: false, commands: [] as Browser.Action[] }
         calls.push(call)

@@ -93,6 +93,10 @@ export type AppComposition = {
   links?: {
     embeddedOrigins?: readonly string[]
   }
+  browser?: {
+    /** Persistent profile shared by every session's embedded browser on a server; stock browsers are ephemeral. */
+    profile?: string
+  }
   newSession?: AppNewSessionComposition
   settingsTabs?: {
     hide?: readonly string[]

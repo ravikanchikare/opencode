@@ -42,7 +42,8 @@ export const eventHandlers = EventRpcs.toLayer(
           if (request.type === "register") return target.pane.register(target.win, request.bindingID, request.target)
           if (request.type === "layout") return target.pane.layout(target.win, request.bindingID, request.layout)
           if (request.type === "command") return target.pane.command(target.win, request.bindingID, request.command)
-          return target.pane.close(target.win, request.bindingID)
+          if (request.type === "close") return target.pane.close(target.win, request.bindingID)
+          return target.pane.clearProfile(request.serverKey, request.profile)
         }).pipe(Effect.orDie),
       BrowserPaneCapture: (request, context) =>
         Effect.tryPromise(async () => {

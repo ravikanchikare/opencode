@@ -2,7 +2,7 @@ import { batch, createEffect, createMemo, createRoot, getOwner, on, onCleanup, r
 import { createStore, reconcile } from "solid-js/store"
 import { createSimpleContext } from "@opencode/ui/context"
 import { useLanguage } from "@/runtime/i18n/language"
-import type { BrowserPaneCommand } from "@/runtime/platform/browser-pane"
+import type { BrowserPaneCommand, BrowserPaneProfile } from "@/runtime/platform/browser-pane"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { useServer } from "@/runtime/server/current"
 import type { SessionStateKey } from "@/runtime/server/scope"
@@ -85,7 +85,7 @@ export const { use: useBrowserAttachments, provider: BrowserAttachmentsProvider 
       enabled,
       supported: (server: Server) => !unsupported[server.key],
       state: (server: Server, sessionID: string) => store[key(server, sessionID)],
-      attach(server: Server, sessionID: string, sessionKey: SessionStateKey) {
+      attach(server: Server, sessionID: string, sessionKey: SessionStateKey, profile?: BrowserPaneProfile) {
         const id = key(server, sessionID)
         if (live.has(id)) return
         const pane = platform.browserPane
@@ -100,6 +100,7 @@ export const { use: useBrowserAttachments, provider: BrowserAttachmentsProvider 
             serverKey: server.key,
             sessionID,
             endpoint: { ...server.conn.http, url: server.ctx.sdk.url },
+            ...(profile ? { profile } : {}),
           }),
           focus: (tabID) => {
             const tab = sessionBrowserTab(tabID)
