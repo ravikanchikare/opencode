@@ -14,15 +14,17 @@ test("redirects an empty configured catalog to provider settings", () => {
   expect(source).toContain('settings.open("providers")')
 })
 
-test("aligns provider and model switches to the catalog content edge", () => {
+test("aligns provider and model switches to the shared list content edge", () => {
   expect(source).toContain('class="settings-models-group-control"')
   expect(source).not.toContain('class="me-6"')
   expect(settings).toContain(`.settings-models-group-control {
   margin-inline-end: 16px;
 }`)
-  expect(settings).toContain(`[data-component="settings-list"][data-variant="catalog"] {
-  --settings-list-row-padding: 16px;
-  --settings-list-icon-gap: 8px;
-  padding-inline: 16px;
+  expect(settings).toContain(`[data-component="settings-list"] {
+  border-radius: 8px;
+  padding-inline: 0;
+  background-color: var(--v2-background-bg-base);
+  box-shadow: inset 0 0 0 0.5px var(--v2-border-border-base);
 }`)
+  expect(settings).toContain("padding-inline: 16px;")
 })

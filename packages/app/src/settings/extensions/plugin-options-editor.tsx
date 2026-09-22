@@ -122,7 +122,20 @@ export const PluginOptionsEditor: Component<{
       </Show>
       <header class="plugin-details-heading">
         <div class="plugin-details-toolbar plugin-details-title-row">
-          <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
+          <div class="plugin-details-title-with-help">
+            <h2 class="settings-tab-title">{pluginDisplayName(props.plugin)}</h2>
+            <Show when={props.documentationUrl}>
+              <button
+                type="button"
+                class="plugin-details-learn-more"
+                aria-label={language.t("settings.extensions.learnMore")}
+                title={language.t("settings.extensions.learnMore")}
+                onClick={() => platform.openExternal(props.documentationUrl!)}
+              >
+                <Icon name="help" size="small" />
+              </button>
+            </Show>
+          </div>
           <Show when={showToolUtilities() || canReset(props.plugin.options?.inherited ?? true, scope())}>
             <div class="plugin-details-actions">
               <Show when={showToolUtilities()}>
@@ -157,21 +170,7 @@ export const PluginOptionsEditor: Component<{
           </Show>
         </div>
         <Show when={props.plugin.description}>
-          <p class="plugin-details-description">
-            {props.plugin.description}
-            <Show when={props.documentationUrl}>
-              {" "}
-              <button
-                type="button"
-                class="plugin-details-learn-more"
-                aria-label={language.t("settings.extensions.learnMore")}
-                title={language.t("settings.extensions.learnMore")}
-                onClick={() => platform.openExternal(props.documentationUrl!)}
-              >
-                <Icon name="help" size="small" />
-              </button>
-            </Show>
-          </p>
+          <p class="plugin-details-description">{props.plugin.description}</p>
         </Show>
       </header>
       <Show when={props.plugin.state.status === "failed" ? props.plugin.state.error : undefined}>
@@ -273,7 +272,7 @@ export const PluginOptionsEditor: Component<{
                           <Collapsible
                             class="plugin-functional-group"
                             variant="ghost"
-                            open={!!store.query.trim() || !!store.expanded[key()]}
+                            open={!!store.query.trim() || (store.expanded[key()] ?? parent() === parents()[0])}
                             onOpenChange={(open) => setStore("expanded", key(), open)}
                           >
                             <div class="plugin-domain-row">
@@ -370,7 +369,7 @@ export const PluginOptionsEditor: Component<{
                         <Collapsible
                           class="plugin-domain"
                           variant="ghost"
-                          open={!!store.query.trim() || !!store.expanded[key()]}
+                          open={!!store.query.trim() || (store.expanded[key()] ?? group() === grouped().rows[0])}
                           onOpenChange={(open) => setStore("expanded", key(), open)}
                         >
                           <div class="plugin-control-columns" style={{ "--plugin-columns": grouped().columns.length }}>
@@ -463,11 +462,13 @@ export const PluginOptionsEditor: Component<{
                         >
                           <div class="plugin-domain plugin-flat-tool">
                             <div class="plugin-domain-row">
-                              <span class="plugin-domain-label">{row().choice.label}</span>
+                              <div class="plugin-tool-name">
+                                <span class="plugin-domain-label">{row().choice.label}</span>
+                                <PluginInputSchema name={row().choice.label} input={row().tools[0]?.input} />
+                              </div>
                               {toggle(row().choice)}
                             </div>
                             <p class="plugin-details-description">{row().tools[0]?.description}</p>
-                            <PluginInputSchema name={row().choice.label} input={row().tools[0]?.input} />
                           </div>
                         </Show>
                       )
@@ -492,9 +493,9 @@ function PluginInputSchema(props: { name: string; input?: Record<string, unknown
         <Collapsible.Trigger
           class="plugin-input-schema-trigger"
           aria-label={language.t("settings.plugins.inputFor", { name: props.name })}
+          title={language.t("settings.plugins.inputFor", { name: props.name })}
         >
           <Icon name="code-slash" size="small" />
-          {language.t("settings.plugins.input")}
         </Collapsible.Trigger>
         <Collapsible.Content>
           <pre class="plugin-operation-input">{JSON.stringify(props.input, null, 2)}</pre>

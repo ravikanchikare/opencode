@@ -40,6 +40,12 @@ test("inventory icons align with the title and text keeps a fixed gap from contr
   expect(css).toMatch(/\.extension-destination-description\s*\{[^}]*overflow-wrap: anywhere/)
 })
 
+test("clickable plugin rows retain dividers in native and project inventories", () => {
+  expect(read("./extensions.css")).toContain(
+    '.extension-destination-list > .plugin-options-open:not(:last-child),\n[data-component="settings-list"] > .plugin-options-open:not(:last-child)',
+  )
+})
+
 test("skill inventory descriptions clamp without truncating detail-page copy", () => {
   expect(read("./shell.tsx")).toContain("descriptionLines?: 2")
   expect(read("./shell.tsx")).toContain("extension-destination-description-clamp-2")
@@ -52,10 +58,10 @@ test("skill inventory descriptions clamp without truncating detail-page copy", (
   )
 })
 
-test("nested plugin controls use balanced insets and one clean row surface", () => {
+test("nested plugin controls separate compact group headers from bordered content", () => {
   const css = read("./extensions.css")
   expect(css).toMatch(
-    /\.plugin-functional-group > \[data-slot="collapsible-content"\]\s*\{[^}]*padding: 0 24px 8px/,
+    /\.plugin-functional-group > \[data-slot="collapsible-content"\]\s*\{[^}]*padding: 12px 0 0 24px/,
   )
   expect(css).toMatch(
     /\.plugin-functional-group \[data-component="settings-list"\]\s*\{[^}]*overflow: hidden;[^}]*background: transparent;[^}]*box-shadow: none/,

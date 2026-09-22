@@ -122,7 +122,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
         documentationUrl={plugin.documentationUrl}
         onOpen={() => setSelected(String(plugin.id))}
       >
-        <Icon name="chevron-right" size="small" class="extension-destination-icon" />
+        <Icon name="chevron-right" size="small" class="extension-destination-icon" aria-hidden="true" />
       </ExtensionRow>
     </Show>
   )
@@ -286,7 +286,7 @@ export const IntegrationsPanel: Component<ExtensionPanelProps> = (props) => {
   const serverSDK = useServerSDK()
   const integrations = useIntegrations(() => props.directory)
   const providers = useProviders(() => props.directory)
-  const controller = useProviderConnectController({ onBack: props.onBack })
+  const controller = useProviderConnectController()
 
   const [mcpOwned] = createResource(
     () => serverSDK.connection.status() === "connected",

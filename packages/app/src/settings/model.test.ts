@@ -175,7 +175,6 @@ describe("settings schema", () => {
       sans: "Legacy Sans",
       terminal: "Legacy Terminal",
       tabLayout: "vertical",
-      showProjectName: true,
     })
   })
 

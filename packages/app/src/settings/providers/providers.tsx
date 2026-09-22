@@ -8,7 +8,7 @@ import { showToast } from "@/shell/notifications/toast"
 import { popularProviders, useProviders } from "@/providers/catalog/providers"
 import { consoleProviderGroup } from "@/providers/catalog/console"
 import { useIntegrations } from "@/providers/catalog/integrations"
-import { createEffect, createMemo, type Component, For, Show } from "solid-js"
+import { createEffect, createMemo, type Component, For, Show, type JSX } from "solid-js"
 import { createStore, reconcile } from "solid-js/store"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useServerSDK } from "@/runtime/server/client"
@@ -18,6 +18,7 @@ import { DialogConnectProvider, useProviderConnectController } from "@/providers
 import { ProviderModelIcon } from "@/providers/models/provider-group"
 import { SettingsList } from "@/settings/list"
 import { activeProviderAccount, providerAccounts, type ProviderAccount } from "./accounts"
+import { SettingsGroup } from "@/settings/group"
 import "@/settings/settings.css"
 
 type ProviderSource = "env" | "api" | "account" | "config" | "custom"
@@ -33,6 +34,20 @@ const PROVIDER_NOTES = [
   { match: (id: string) => id === "openrouter", key: "dialog.provider.openrouter.note" },
   { match: (id: string) => id === "vercel", key: "dialog.provider.vercel.note" },
 ] as const
+
+const ProviderSection: Component<{
+  title: string
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
+  children: JSX.Element
+}> = (props) => (
+  <div class="settings-section">
+    <SettingsGroup expanded={props.expanded} onExpandedChange={props.onExpandedChange}>
+      <span class="settings-group-title">{props.title}</span>
+    </SettingsGroup>
+    <Show when={props.expanded}>{props.children}</Show>
+  </div>
+)
 
 export const SettingsProviders: Component<{
   directory: string | undefined
@@ -52,6 +67,7 @@ export const SettingsProviders: Component<{
     connecting: false,
     credentialID: undefined as string | undefined,
   })
+  const [store, setStore] = createStore({ collapsed: {} as Record<string, boolean> })
   const updateDisconnecting = (ids: string[], status: "removing" | "removed" | "absent" | undefined) =>
     setState("disconnecting", (current) => ({
       ...current,
@@ -374,9 +390,12 @@ export const SettingsProviders: Component<{
       </div>
 
       <div class="settings-tab-body settings-tab-body--sectioned settings-providers">
-        <div class="settings-section" data-component="connected-providers-section">
-          <h3 class="settings-section-title">{language.t("settings.providers.section.connected")}</h3>
-          <SettingsList variant="catalog">
+        <ProviderSection
+          title={language.t("settings.providers.section.connected")}
+          expanded={!store.collapsed.connected}
+          onExpandedChange={(expanded) => setStore("collapsed", "connected", !expanded)}
+        >
+          <SettingsList>
             <Show
               when={displayed().length > 0}
               fallback={<div class="settings-provider-empty">{language.t("settings.providers.connected.empty")}</div>}
@@ -507,11 +526,14 @@ export const SettingsProviders: Component<{
               </For>
             </Show>
           </SettingsList>
-        </div>
+        </ProviderSection>
 
-        <div class="settings-section">
-          <h3 class="settings-section-title">{language.t("settings.providers.section.popular")}</h3>
-          <SettingsList variant="catalog">
+        <ProviderSection
+          title={language.t("settings.providers.section.popular")}
+          expanded={!store.collapsed.popular}
+          onExpandedChange={(expanded) => setStore("collapsed", "popular", !expanded)}
+        >
+          <SettingsList>
             <For each={popular()}>
               {(item) => (
                 <div class="settings-provider-row">
@@ -543,7 +565,7 @@ export const SettingsProviders: Component<{
           <button type="button" class="settings-providers-view-all" onClick={() => connect()}>
             {language.t("dialog.provider.viewAll")}
           </button>
-        </div>
+        </ProviderSection>
       </div>
     </>
   )

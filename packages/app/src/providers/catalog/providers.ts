@@ -45,16 +45,18 @@ export function useProviders(directory: Accessor<string | undefined>) {
     return normalizeProviderList(provider, model)
   })
 
+  const ready = () => {
+    const ref = location()
+    return (
+      data.location.provider.list(ref) !== undefined &&
+      data.location.model.list(ref) !== undefined &&
+      !data.location.provider.pending(ref) &&
+      !data.location.model.pending(ref)
+    )
+  }
+
   return {
-    ready: () => {
-      const ref = location()
-      return (
-        data.location.provider.list(ref) !== undefined &&
-        data.location.model.list(ref) !== undefined &&
-        !data.location.provider.pending(ref) &&
-        !data.location.model.pending(ref)
-      )
-    },
+    ready,
     all: () => providers().all,
     default: () => providers().default,
     // V2 servers list only available providers, so the connectable catalog
