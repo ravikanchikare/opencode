@@ -190,3 +190,121 @@ const table = sqliteTable("session", {
 - Keep event replay ownership separate from clustered Session execution ownership.
 - Keep the Instructions algebra and built-ins in `src/instructions`; keep instruction producers with their observed domains, and keep Session History selection plus `InstructionState` and `InstructionEntry` persistence Session-owned. `InstructionDiscovery` observes ambient global and upward-project instructions. The runner composes built-ins, discovery, guidance, and entries explicitly in `loadInstructions`; there is no instruction registry.
 - `session.instructions.updated` stores changed source keys and content hashes and may freeze rendered chronological update text. Blob values live once in `instruction_blob`; the projected `instruction_state` row is the normal boundary-processing source of current and initial values. Request assembly renders the epoch baseline from stored values, while later frozen updates enter history as durable System messages. Completed compaction moves the instruction epoch; Session movement retains it so destination instruction changes are chronological, while committed revert clears it. Forks adopt the parent's newest instruction values even when copied message history ends at an earlier boundary. Unavailable sources retain the last value and block only the initial complete delta.
+
+## Fork
+
+Everything above this section is upstream's file, unmodified; follow it for
+branch names, commits, style, tests, and checks. This section adds only what
+the fork needs to develop Brain, Face, and Desktop in parallel on one trunk.
+Keep it last and never edit upstream's text, so upstream rebases conflict on
+this file only when upstream changes its final lines.
+
+### Trunk and refs
+
+- `upstream/v2`: canonical OpenCode, read-only (`https://github.com/anomalyco/opencode.git`).
+- `v2` / `origin/v2`: the only trunk. `upstream/v2` plus fork commits, linear,
+  always green, and the only thing the Starter pins.
+- Topic branches from `v2`, named per "Branch Names" above (at most three
+  hyphenated words), track first: `brain-plugin-api`, `face-home-search`,
+  `desktop-deep-links`. One Delta thread is one topic.
+- `archive/v2-<date>-<sha10>`: pushed before any force update of `v2`, so
+  published Starter pins stay fetchable.
+- No long-lived track branches, no merge commits, no integration branches.
+  The Starter's `opencode:bump` refuses a pin whose range over `upstream/v2`
+  contains a merge.
+
+### Tracks
+
+| Track | Paths |
+| --- | --- |
+| Brain | `packages/core`, `server`, `cli`, `tui`, `protocol`, `schema`, `client`, `sdk`, `plugin`, and any other package not listed below |
+| Face | `packages/app`, `packages/ui`, `packages/session-ui` |
+| Desktop | `packages/desktop` |
+| Tooling | `.agents/`, docs, repository configuration |
+
+A topic stays in one track when it can. A change that does not build when
+split, such as a feature that needs both the desktop main process and the app
+renderer, is one commit. A change that can be split becomes stacked commits
+ordered Brain, then Face, then Desktop. Scopes name the package: `feat(core)`,
+`fix(app)`, `fix(desktop)`.
+
+### Checks per track
+
+The fork's pre-push hook runs `bun run check`; run `bun install` after pulling a
+new `v2` so it has current dependencies. Run tests and `bun typecheck` from
+package directories.
+
+| Track | Checks |
+| --- | --- |
+| Brain | `bun typecheck` and `bun test` in each touched package; after Protocol or Server `HttpApi` changes, `bun run generate` in `packages/client` and commit the result |
+| Face | tests and `bun typecheck` in `packages/app` (unit and browser) and `packages/ui` |
+| Desktop | tests and `bun typecheck` in `packages/desktop` |
+| All | `bun run check`, `git diff --check origin/v2...HEAD` |
+
+### Landing a topic
+
+1. Rebase the topic onto `origin/v2`.
+2. Squash it to one commit, or to a short ordered series for split cross-track
+   work, with an upstream-style message.
+3. Run the track checks.
+4. Fast-forward `origin/v2`. A landing never rewrites published commits;
+   folding into one is "Rewriting published history" below.
+
+The Starter's `land` skill runs this through `land-fork`, pins the Starter to
+the exact new `v2` SHA, validates the Starter against it, publishes fork then
+Starter, and synchronizes both primary checkouts.
+
+### Upstream sync
+
+A separate operation by one operator; topic landings pause meanwhile. Sync
+often, in small batches.
+
+1. `git fetch upstream v2`.
+2. Publish it as "Rewriting published history" below, where the rewrite is
+   `git rebase upstream/v2` with `git config rerere.enabled true`. Resolve each
+   conflict in the commit it belongs to, then run `bun install`,
+   `bun run check`, and the checks for every track that conflicted. The
+   Starter's E2E smoke check runs when the pin lands.
+
+The stack grows by one commit per landed topic. At a release, it may be
+consolidated into fewer commits per track, the same way.
+
+### Rewriting published history
+
+Folding a fix into an earlier commit, rewording, consolidating, and every
+upstream sync rewrite commits already on `origin/v2`. Do it only when asked,
+by one operator, never as part of a topic landing.
+
+1. `git fetch origin --tags`, and record `old=$(git rev-parse origin/v2)`
+   before changing anything. Local `v2` must equal `$old`.
+2. Archive the old tip so published Starter pins stay fetchable:
+   `git push origin "${old}:refs/tags/archive/v2-$(date +%Y%m%d)-${old:0:10}"`.
+3. Rewrite: amend or fold into the owning commit, reword, or rebase. Run
+   `bun run check` and the checks for every track whose commits changed. A
+   message-only rewrite needs no checks when `git diff --quiet "$old" HEAD`.
+4. `git push --force-with-lease=v2:"$old" origin HEAD:v2`.
+5. Verify before touching any other checkout: after `git fetch origin`,
+   `git rev-parse origin/v2` equals `git rev-parse HEAD`.
+6. Land the Starter pin on the new tip. Its commit message names the archive
+   tag and the new `v2` SHA, so operators on other Macs know `v2` moved.
+7. Sync every other checkout of the fork (the primary, Delta-managed
+   checkouts, and each other Mac's clone) only after step 5. On another Mac,
+   `$old` is the archived tip named in the pin commit. Run
+   `git fetch origin --tags`, then:
+   - `v2` checked out and equal to `$old`: `git reset --keep origin/v2`, which
+     keeps uncommitted work and refuses when it overlaps;
+   - `v2` not checked out and equal to `$old`: `git branch -f v2 origin/v2`;
+   - anything else, such as local-only commits: stop and ask.
+
+   Never `git reset --hard`.
+8. Move in-flight topics: `git rebase --onto origin/v2 "$old" <topic>`.
+
+### Starter and releases
+
+- Every fork landing moves the Starter pin to the new `v2` tip in the same
+  landing. `bun run dev` follows `~/code/opencode`; `--fork <path>` selects a
+  topic worktree; tests, builds, packaging, and releases use only the pin.
+- E2E runs in the Starter against a pinned fork SHA.
+- Desktop releases are Starter tags on a commit whose pin passed E2E. Release
+  notes list the fork commits between the previous pin and the new one. No
+  cherry-picked release lines.
