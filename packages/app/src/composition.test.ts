@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   configureAppComposition,
+  emptyModelCatalogDestination,
   getAppComposition,
   isPluginVisible,
   modelVisibilityDefault,
@@ -37,6 +38,14 @@ describe("manage-models provider connection composition", () => {
     expect(showManageModelsConnectProvider({ modelSelector: {} })).toBe(true)
     expect(showManageModelsConnectProvider({ modelSelector: { showConnectProvider: false } })).toBe(false)
     expect(showManageModelsConnectProvider({ modelSelector: { showConnectProvider: true } })).toBe(true)
+  })
+})
+
+describe("empty model catalog composition", () => {
+  test("keeps the stock empty state unless a composition chooses provider settings", () => {
+    expect(emptyModelCatalogDestination({})).toBeUndefined()
+    expect(emptyModelCatalogDestination({ modelSelector: {} })).toBeUndefined()
+    expect(emptyModelCatalogDestination({ modelSelector: { emptyCatalogDestination: "providers" } })).toBe("providers")
   })
 })
 

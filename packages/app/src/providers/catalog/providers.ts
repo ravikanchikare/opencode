@@ -25,7 +25,14 @@ export function useProviders(directory: Accessor<string | undefined>) {
     void (async () => {
       if (!ref) await data.location.syncInfo()
       const resolved = ref ?? data.location.default()
-      await Promise.all([data.location.provider.sync(resolved), data.location.model.sync(resolved)])
+      // The resolved default travels with the catalog: model selection reads it
+      // to honor a configured preference, so syncing the list without it would
+      // leave that read empty for this location.
+      await Promise.all([
+        data.location.provider.sync(resolved),
+        data.location.model.sync(resolved),
+        data.location.model.default.sync(resolved),
+      ])
     })().catch(() => undefined)
   })
   const integrations = useIntegrations(directory)
@@ -38,13 +45,16 @@ export function useProviders(directory: Accessor<string | undefined>) {
     return normalizeProviderList(provider, model)
   })
 
-  const ready = () => {
-    const ref = location()
-    return data.location.provider.list(ref) !== undefined && data.location.model.list(ref) !== undefined
-  }
-
   return {
-    ready,
+    ready: () => {
+      const ref = location()
+      return (
+        data.location.provider.list(ref) !== undefined &&
+        data.location.model.list(ref) !== undefined &&
+        !data.location.provider.pending(ref) &&
+        !data.location.model.pending(ref)
+      )
+    },
     all: () => providers().all,
     default: () => providers().default,
     // V2 servers list only available providers, so the connectable catalog

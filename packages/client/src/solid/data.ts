@@ -94,6 +94,7 @@ type LocationData = {
   mcpServer?: McpServer[]
   mcpResource?: McpResource[]
   model?: ModelInfo[]
+  defaultModel?: ModelInfo | null
   provider?: ProviderInfo[]
   reference?: ReferenceInfo[]
   websearch?: WebSearchProvider[]
@@ -148,19 +149,28 @@ function createSync() {
   // that window are already covered, since the reload has not read anything yet.
   type Pending = { promise: Promise<void>; invalidated: boolean; started: boolean }
   const state = new Map<string, true | Pending>()
+  // Resource values live in the Solid store, but readiness also observes this request state.
+  const [revision, setRevision] = createSignal(0)
   const start = (key: string, load: () => Promise<void>, wait?: Promise<void>) => {
     const entry: Pending = { promise: Promise.resolve(), invalidated: false, started: !wait }
     state.set(key, entry)
+    setRevision((value) => value + 1)
     const run = () => {
       entry.started = true
       return load()
     }
     entry.promise = (wait ? wait.catch(() => undefined).then(run) : run())
       .then(() => {
-        if (state.get(key) === entry && !entry.invalidated) state.set(key, true)
+        if (state.get(key) === entry && !entry.invalidated) {
+          state.set(key, true)
+          setRevision((value) => value + 1)
+        }
       })
       .finally(() => {
-        if (state.get(key) === entry) state.delete(key)
+        if (state.get(key) === entry) {
+          state.delete(key)
+          setRevision((value) => value + 1)
+        }
       })
     return entry.promise
   }
@@ -180,6 +190,7 @@ function createSync() {
       return state.has(key)
     },
     pending(key: string) {
+      revision()
       const active = state.get(key)
       return active !== undefined && active !== true
     },
@@ -1196,8 +1207,15 @@ export function createData(config: CreateDataInput) {
           }),
         }))
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
-        refresh(() => Promise.all([result.location.model.sync(location), result.location.provider.sync(location)]))
+        refresh(() =>
+          Promise.all([
+            result.location.model.sync(location),
+            result.location.model.default.sync(location),
+            result.location.provider.sync(location),
+          ]),
+        )
       })
       return
     }
@@ -1211,7 +1229,13 @@ export function createData(config: CreateDataInput) {
         break
       case "model.updated":
         result.location.model.invalidate(location)
-        refresh(() => result.location.model.sync(location))
+        result.location.model.default.invalidate(location)
+        refresh(() =>
+          Promise.all([
+            result.location.model.sync(location),
+            result.location.model.default.sync(location),
+          ]),
+        )
         break
       case "agent.updated":
         result.location.agent.invalidate(location)
@@ -1263,11 +1287,13 @@ export function createData(config: CreateDataInput) {
       case "integration.updated":
         result.location.integration.invalidate(location)
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
         refresh(() =>
           Promise.all([
             result.location.integration.sync(location),
             result.location.model.sync(location),
+            result.location.model.default.sync(location),
             result.location.provider.sync(location),
           ]),
         )
@@ -1317,6 +1343,7 @@ export function createData(config: CreateDataInput) {
         })
       },
       invalidate: (ref?: LocationRef) => sync.invalidate(`location.${field}:${locationKey(ref ?? defaultLocation())}`),
+      pending: (ref?: LocationRef) => sync.pending(`location.${field}:${locationKey(ref ?? defaultLocation())}`),
     }
   }
 
@@ -1863,6 +1890,7 @@ export function createData(config: CreateDataInput) {
           result.location.mcp.server.sync(location),
           result.location.mcp.resource.sync(location),
           result.location.model.sync(location),
+          result.location.model.default.sync(location),
           result.location.provider.sync(location),
           result.location.reference.sync(location),
           result.location.skill.sync(location),
@@ -1881,6 +1909,7 @@ export function createData(config: CreateDataInput) {
         result.location.mcp.server.invalidate(location)
         result.location.mcp.resource.invalidate(location)
         result.location.model.invalidate(location)
+        result.location.model.default.invalidate(location)
         result.location.provider.invalidate(location)
         result.location.reference.invalidate(location)
         result.location.skill.invalidate(location)
@@ -1902,7 +1931,10 @@ export function createData(config: CreateDataInput) {
           return { location: response.location, data: response.data.resources }
         }),
       },
-      model: locationResource("model", (location) => api().model.list({ location }), { alias: true }),
+      model: {
+        ...locationResource("model", (location) => api().model.list({ location }), { alias: true }),
+        default: locationResource("defaultModel", (location) => api().model.default({ location }), { alias: true }),
+      },
       provider: locationResource("provider", (location) => api().provider.list({ location }), { alias: true }),
       reference: locationResource("reference", (location) => api().reference.list({ location })),
       websearch: {
