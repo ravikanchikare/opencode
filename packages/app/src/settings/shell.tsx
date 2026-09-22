@@ -1,7 +1,20 @@
 import { Tabs } from "@opencode/ui/tabs"
 import { useDialog } from "@opencode/ui/context/dialog"
-import { createEffect, createMemo, on, onCleanup, onMount, Show, Switch, Match, type Accessor } from "solid-js"
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  For,
+  on,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+  Match,
+  type Accessor,
+} from "solid-js"
 import { createStore } from "solid-js/store"
+import { Dynamic } from "solid-js/web"
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
 import { useLayout } from "@/shell/state/layout"
@@ -13,6 +26,7 @@ import { useServerCollectionController } from "@/servers/registry/controller"
 import { AddServerMenu } from "@/servers/wsl/settings"
 import { DialogServer } from "@/servers/connect/dialog"
 import { LocationProvider } from "@/workspaces/location"
+import { displayName } from "@/shell/layout/helpers"
 import { SettingsGeneral } from "./general/general"
 import { SettingsAppearance } from "./appearance/appearance"
 import { experimentalSettingsAvailable, SettingsExperimental } from "./experimental/experimental"
@@ -33,9 +47,19 @@ import { SettingsServerDataScope } from "./server-scope"
 import { SettingsNavigation, type SettingsNavGroup } from "./navigation"
 import { SettingsProjectGeneral } from "./workspaces/project"
 import { ProjectSettingsExtensions } from "./workspaces/project-extensions"
-import { useSettingsSurface } from "./surface"
+import { useSettingsSurface, type SettingsServerTab } from "./surface"
 import { settingsViewRedirect } from "./route"
-import { pageIcons } from "./pages"
+import { EXTENSION_PANELS } from "./extensions/panels"
+import { getAppComposition } from "@/composition"
+import {
+  composeProjectSettingsNavItems,
+  composeServerSettingsNavItems,
+  composeSettingsNavGroups,
+  isComposedSettingsTab,
+} from "./tabs"
+import { globalConfigPath } from "./config-path"
+import { settingsVersionLines } from "./version"
+import { pageIcons, pageLabels } from "./pages"
 import { revealSettingsSearch } from "./search-reveal"
 import "@/settings/settings.css"
 
@@ -185,6 +209,7 @@ export function SettingsScreen() {
 
 function RootSettings() {
   const language = useLanguage()
+  const platform = usePlatform()
   const dialog = useDialog()
   const surface = useSettingsSurface()
   const layout = useLayout()
@@ -192,7 +217,6 @@ function RootSettings() {
   const servers = useServerCollectionController()
   const inventory = useSettingsServers()
   const loaded = useSettingsServersLoaded()
-  const platform = usePlatform()
   const [state, setState] = createStore({
     worktreeFilterReset: 0,
     modelProvider: undefined as string | undefined,
@@ -266,9 +290,41 @@ function RootSettings() {
     { items: aboutTab.map((item) => ({ ...item, label: language.t(item.label) })) },
   ])
 
+  const tabComposition = getAppComposition().settingsTabs
+  const addedTabs = tabComposition?.add ?? []
+  // Composed tabs are server-scoped. With several servers they move under each
+  // server, like the stock server tabs; left here they had no server to render
+  // against and opened an empty page.
+  const composedGroups = createMemo(() =>
+    composeSettingsNavGroups(groups(), multiple() && tabComposition ? { ...tabComposition, add: [] } : tabComposition),
+  )
+  const serverCtx = useServerCtx(single)
+  const [configEntries] = createResource(
+    () => {
+      if (!tabComposition?.showConfigPath) return
+      const ctx = serverCtx()
+      if (ctx?.sdk.connection.status() !== "connected") return
+      return ctx
+    },
+    (ctx) => ctx.sdk.api.config.get(),
+  )
+  const configPath = createMemo(() => globalConfigPath(configEntries() ?? []))
+  const productVersionLines = () => settingsVersionLines({ productVersion: platform.productVersion })
+  const showProviders = () => {
+    dialog.close()
+    surface.select("providers")
+  }
+
   createEffect(() => {
     const view = surface.view()
     if (view.type !== "root" || !loaded() || !multiple()) return
+    if (isComposedSettingsTab(view.tab, tabComposition)) {
+      const source = sourceServer()
+      const key = source ? ServerConnection.key(source) : ordered()[0]?.key
+      if (key) surface.replaceServer(key, view.tab as SettingsServerTab)
+      else surface.open("general")
+      return
+    }
     if (["projects", "workspaces", "providers", "models", "extensions", "servers"].includes(view.tab))
       surface.open("general")
   })
@@ -285,7 +341,7 @@ function RootSettings() {
   return (
     <SettingsNavigation
       value={surface.view().tab}
-      groups={groups()}
+      groups={composedGroups()}
       backLabel={language.t("settings.backToApp")}
       onBack={() => surface.close()}
       onChange={change}
@@ -311,6 +367,24 @@ function RootSettings() {
       </Tabs.Content>
       <Tabs.Content value="about" class="settings-panel settings-about">
         <SettingsAbout active={surface.view().tab === "about"} />
+        <Show when={productVersionLines().length > 0 || configPath()}>
+          <div class="settings-about-distribution">
+            <For each={productVersionLines()}>
+              {(line) => (
+                <p title={line.title}>
+                  <bdi dir="ltr">{line.text}</bdi>
+                </p>
+              )}
+            </For>
+            <Show when={configPath()}>
+              {(path) => (
+                <p class="settings-about-config-path" title={path()}>
+                  <bdi dir="ltr">{path()}</bdi>
+                </p>
+              )}
+            </Show>
+          </div>
+        </Show>
       </Tabs.Content>
       <Show when={single()} keyed>
         {(server) => (
@@ -334,8 +408,10 @@ function RootSettings() {
               />
             </Tabs.Content>
             <Tabs.Content value="providers" class="settings-panel">
-              <SettingsProviders
-                directory={undefined}
+              <Dynamic
+                component={getAppComposition().settingsProviders ?? SettingsProviders}
+                directory={sourceServer() === server ? sourceDirectory() : undefined}
+                onBack={showProviders}
                 onSelectProvider={(providerID) => {
                   setState("modelProvider", providerID)
                   surface.select("models")
@@ -352,6 +428,24 @@ function RootSettings() {
             <Tabs.Content value="extensions" class="settings-panel">
               <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
             </Tabs.Content>
+            {/*
+              Composed tabs render *inside* the scope, so a registration gets the
+              selected server and this location without wrapping itself. They used
+              to render after the closing tag: a composed tab opened from Home had
+              no server context at all and `useServer` threw, and one opened from a
+              session silently borrowed that route's server.
+            */}
+            <For each={addedTabs}>
+              {(entry) => (
+                <Tabs.Content value={entry.value} class="settings-panel">
+                  <Dynamic
+                    component={entry.panel ? EXTENSION_PANELS[entry.panel] : entry.content!}
+                    directory={sourceServer() === server ? sourceDirectory() : undefined}
+                    onBack={showProviders}
+                  />
+                </Tabs.Content>
+              )}
+            </For>
           </SettingsServerDataScope>
         )}
       </Show>
@@ -375,14 +469,18 @@ function ServerSettings(props: { entry: SettingsServer }) {
     worktreeFilterReset: 0,
     modelProvider: undefined as string | undefined,
   })
+  const tabComposition = getAppComposition().settingsTabs
   const groups = createMemo<SettingsNavGroup[]>(() => [
     {
-      items: nestedServerTabs.map((item) => ({
-        ...item,
-        label: item.value === "general" ? props.entry.name : language.t(item.label),
-        disabled: item.value !== "general" && !props.entry.connection,
-        onPrefetch: item.value === "workspaces" ? prefetchWorkspaces : undefined,
-      })),
+      items: composeServerSettingsNavItems(nestedServerTabs, tabComposition).map((item) => {
+        const stock = nestedServerTabs.find((entry) => entry.value === item.value)
+        return {
+          ...item,
+          label: item.value === "general" ? props.entry.name : stock ? language.t(stock.label) : item.label,
+          disabled: item.value !== "general" && !props.entry.connection,
+          onPrefetch: item.value === "workspaces" ? prefetchWorkspaces : undefined,
+        }
+      }),
     },
   ])
   createEffect(() => {
@@ -448,6 +546,17 @@ function ServerSettings(props: { entry: SettingsServer }) {
             <Tabs.Content value="extensions" class="settings-panel">
               <SettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
             </Tabs.Content>
+            <For each={tabComposition?.add ?? []}>
+              {(entry) => (
+                <Tabs.Content value={entry.value} class="settings-panel">
+                  <Dynamic
+                    component={entry.panel ? EXTENSION_PANELS[entry.panel] : entry.content!}
+                    directory={undefined}
+                    onBack={() => surface.select("providers")}
+                  />
+                </Tabs.Content>
+              )}
+            </For>
           </SettingsServerDataScope>
         )}
       </Show>
@@ -463,21 +572,28 @@ function ProjectSettings(props: { server: ServerConnection.Any; project: LocalPr
     () => props.server,
     () => props.project.id,
   )
-  const groups: SettingsNavGroup[] = [
+  const groups = createMemo<SettingsNavGroup[]>(() => [
     {
-      items: nestedProjectTabs.map((item) => ({
+      items: composeProjectSettingsNavItems(nestedProjectTabs, getAppComposition().settingsTabs).map((item) => ({
         ...item,
-        label: language.t(item.label),
         onPrefetch: item.value === "workspaces" ? prefetchWorkspaces : undefined,
+        get label() {
+          if (item.value === "general") return displayName(props.project)
+          const stock = nestedProjectTabs.find((entry) => entry.value === item.value)
+          if (stock) return language.t(stock.label)
+          if (item.value === "skills" || item.value === "mcp" || item.value === "plugins" || item.value === "language-servers")
+            return language.t(pageLabels[item.value])
+          return item.label
+        },
       })),
     },
-  ]
+  ])
   return (
     <SettingsServerDataScope server={props.server} directory={props.project.worktree}>
       <LocationProvider directory={props.project.worktree}>
         <SettingsNavigation
           value={surface.view().tab}
-          groups={groups}
+          groups={groups()}
           backLabel={language.t("settings.backToProjects")}
           onBack={() => surface.back()}
           onChange={(value) => surface.select(value)}
@@ -495,6 +611,15 @@ function ProjectSettings(props: { server: ServerConnection.Any; project: LocalPr
           </Tabs.Content>
           <Tabs.Content value="extensions" class="settings-panel">
             <ProjectSettingsExtensions subtab={surface.view().subtab} onSubtab={(value) => surface.subtab(value)} />
+          </Tabs.Content>
+          <Tabs.Content value="skills" class="settings-panel">
+            <ProjectSettingsExtensions destination="skills" />
+          </Tabs.Content>
+          <Tabs.Content value="mcp" class="settings-panel">
+            <ProjectSettingsExtensions destination="mcp" />
+          </Tabs.Content>
+          <Tabs.Content value="plugins" class="settings-panel">
+            <ProjectSettingsExtensions destination="plugins" />
           </Tabs.Content>
         </SettingsNavigation>
       </LocationProvider>

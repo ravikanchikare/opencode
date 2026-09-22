@@ -1,6 +1,7 @@
-import { describe, expect, test } from "bun:test"
+import { afterEach, describe, expect, test } from "bun:test"
 import { dict } from "@opencode/ui/i18n/en"
 import en from "@/runtime/i18n/en"
+import { configureAppComposition } from "@/composition"
 import { settingsSearchIndex, type SettingsSearchServer } from "./search-index"
 import { rankSettings } from "./search-results"
 import type { SettingsView } from "./surface"
@@ -12,6 +13,8 @@ const servers: SettingsSearchServer[] = [
   { key: "remote", name: "Build server", connected: true, projects: [project] },
 ]
 const root: SettingsView = { type: "root", tab: "general" }
+
+afterEach(() => configureAppComposition({}))
 
 function index(input: Partial<Parameters<typeof settingsSearchIndex>[0]> = {}) {
   return settingsSearchIndex({
@@ -81,6 +84,25 @@ describe("settings search index", () => {
     const items = index({ servers: [{ ...servers[0], projects: [withIcon] }] })
     expect(rankSettings("opencode", items, root)[0].projectInfo).toEqual(withIcon)
     expect(rankSettings("opencode color", items, root)).toEqual([])
+  })
+
+  test("routes project extension results to composed destinations without an Extensions duplicate", () => {
+    configureAppComposition({
+      settingsTabs: {
+        add: [
+          { value: "skills", label: "Skills", icon: "post-skill", panel: "skills" },
+          { value: "mcp", label: "MCP", icon: "mcp", panel: "mcp" },
+          { value: "plugins", label: "Plugins", icon: "cube", panel: "plugins" },
+        ],
+      },
+    })
+    const items = index({ servers: [servers[0]] }).filter((item) => item.project)
+    expect(items.some((item) => item.view.tab === "extensions")).toBe(false)
+    expect(rankSettings("opencode skills", items, root)[0].view).toMatchObject({
+      type: "project",
+      tab: "skills",
+      subtab: undefined,
+    })
   })
 })
 
