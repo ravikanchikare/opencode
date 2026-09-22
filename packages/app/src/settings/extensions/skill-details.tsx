@@ -25,12 +25,10 @@ export const SkillDetails: Component<{
         </Button>
         <header class="skill-details-heading">
           <div class="plugin-details-heading">
-            <h2 class="settings-tab-title">{props.skill.name}</h2>
-            <Show when={props.skill.description}>
-              <p class="plugin-details-description">
-                {props.skill.description}
+            <div class="plugin-details-toolbar plugin-details-title-row">
+              <div class="plugin-details-title-with-help">
+                <h2 class="settings-tab-title">{props.skill.name}</h2>
                 <Show when={props.documentationUrl}>
-                  {" "}
                   <button
                     type="button"
                     class="plugin-details-learn-more"
@@ -41,7 +39,10 @@ export const SkillDetails: Component<{
                     <Icon name="help" size="small" />
                   </button>
                 </Show>
-              </p>
+              </div>
+            </div>
+            <Show when={props.skill.description}>
+              <p class="plugin-details-description">{props.skill.description}</p>
             </Show>
           </div>
           <SkillAvailabilityControls

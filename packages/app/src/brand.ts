@@ -86,8 +86,12 @@ export const LITERAL_KEYS: ReadonlySet<string> = new Set([
   "provider.connect.opencodeZen.line1",
   "dialog.model.unpaid.freeModels.title",
   "command.provider.connect.description",
-  "provider.connect.console.description",
   "provider.connect.console.apiKey.description",
+  "provider.connect.opencode.name",
+  "provider.connect.opencode.freeName",
+  "provider.connect.console.title",
+  "provider.connect.console.connected",
+  "provider.connect.remote.description",
   // The server this app connects to, and its wire compatibility.
   "dialog.server.description",
   "server.row.incompatible",

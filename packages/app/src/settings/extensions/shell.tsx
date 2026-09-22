@@ -10,11 +10,12 @@
  */
 
 import { For, Show, type Component, type JSX } from "solid-js"
-import { Dynamic } from "solid-js/web"
+import { createStore } from "solid-js/store"
 import { Icon, type IconProps } from "@opencode/ui/icon"
 import { useLanguage } from "@/runtime/i18n/language"
 import { usePlatform } from "@/runtime/platform/platform"
 import type { InventoryGroup } from "./presentation"
+import { SettingsGroup } from "@/settings/group"
 import "./extensions.css"
 
 export const ExtensionHeader: Component<{ title: string; description: string }> = (props) => (
@@ -42,27 +43,36 @@ export const ExtensionRow: Component<{
   const language = useLanguage()
   const platform = usePlatform()
   return (
-    <div class="extension-destination-row">
+    <div
+      class="extension-destination-row"
+      classList={{ "extension-destination-row-open": !!props.onOpen }}
+      role={props.onOpen ? "button" : undefined}
+      tabIndex={props.onOpen ? 0 : undefined}
+      onClick={props.onOpen}
+      onKeyDown={(event) => {
+        if (!props.onOpen || event.currentTarget !== event.target || (event.key !== "Enter" && event.key !== " "))
+          return
+        event.preventDefault()
+        props.onOpen()
+      }}
+    >
       <div class="extension-destination-label">
         <Icon name={props.icon} class="extension-destination-icon" />
         <span class="extension-destination-main">
           <span class="extension-destination-name-line">
-            <Dynamic
-              component={props.onOpen ? "button" : "span"}
-              type={props.onOpen ? "button" : undefined}
-              class="extension-destination-name"
-              classList={{ mono: props.mono, "extension-destination-open": !!props.onOpen }}
-              onClick={props.onOpen}
-            >
+            <span class="extension-destination-name" classList={{ mono: props.mono }}>
               {props.name}
-            </Dynamic>
+            </span>
             <Show when={props.documentationUrl}>
               <button
                 type="button"
                 class="extension-destination-learn-more"
                 aria-label={language.t("settings.extensions.learnMore")}
                 title={language.t("settings.extensions.learnMore")}
-                onClick={() => platform.openExternal(props.documentationUrl!)}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  platform.openExternal(props.documentationUrl!)
+                }}
               >
                 <Icon name="help" size="small" />
               </button>
@@ -81,7 +91,11 @@ export const ExtensionRow: Component<{
           </Show>
         </span>
       </div>
-      {props.children}
+      <Show when={props.children}>
+        <div class="extension-destination-controls" onClick={(event) => event.stopPropagation()}>
+          {props.children}
+        </div>
+      </Show>
     </div>
   )
 }
@@ -105,6 +119,7 @@ export function ExtensionSections<T>(props: {
   empty: string
   children: (item: T) => JSX.Element
 }): JSX.Element {
+  const [store, setStore] = createStore({ collapsed: {} as Record<string, boolean> })
   return (
     <div class="settings-section-stack">
       <For each={props.sections}>
@@ -112,17 +127,24 @@ export function ExtensionSections<T>(props: {
           <div class="settings-section">
             <Show when={section.group}>
               {(group) => (
-                <div class="extension-destination-heading">
-                  <h3 class="settings-section-title">{group().title}</h3>
-                  <Show when={group().description}>
-                    {(description) => <span class="extension-destination-description">{description()}</span>}
-                  </Show>
-                </div>
+                <SettingsGroup
+                  expanded={!store.collapsed[group().id]}
+                  onExpandedChange={(expanded) => setStore("collapsed", group().id, !expanded)}
+                >
+                  <span class="settings-group-label">
+                    <span class="settings-group-title">{group().title}</span>
+                    <Show when={group().description}>
+                      {(description) => <span class="extension-destination-description">{description()}</span>}
+                    </Show>
+                  </span>
+                </SettingsGroup>
               )}
             </Show>
-            <ExtensionList each={section.rows} empty={props.empty}>
-              {props.children}
-            </ExtensionList>
+            <Show when={!section.group || !store.collapsed[section.group.id]}>
+              <ExtensionList each={section.rows} empty={props.empty}>
+                {props.children}
+              </ExtensionList>
+            </Show>
           </div>
         )}
       </For>

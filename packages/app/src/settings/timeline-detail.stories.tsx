@@ -22,7 +22,7 @@ export const Interactive = {
       <div class="flex w-[560px] max-w-full flex-col gap-4">
         <Show when={state.visible}>
           <SettingsList>
-            <div class="py-5">
+            <div class="p-5">
               <TimelineDetailControl value={state.value} onChange={(value) => setState("value", value)} />
             </div>
           </SettingsList>

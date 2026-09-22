@@ -2,7 +2,6 @@ import { expect, story } from "../../storybook/playwright/story"
 
 story("maps grouped and collapsed switches to the timeline settings", async ({ mount }) => {
   const component = await mount("settings-timeline-detail--interactive")
-  await component.getByRole("button", { name: "Advanced", exact: true }).click()
   const shell = component.getByRole("group", { name: "Shell", exact: true })
   const grouped = shell.getByRole("switch", { name: "Shell grouped", exact: true })
   const collapsed = shell.getByRole("switch", { name: "Shell collapsed", exact: true })
@@ -25,7 +24,6 @@ story("maps grouped and collapsed switches to the timeline settings", async ({ m
 
 story("replaces hidden switches with solid lines and restores options", async ({ mount, page }) => {
   const component = await mount("settings-timeline-detail--interactive")
-  await component.getByRole("button", { name: "Advanced", exact: true }).click()
   const shell = component.getByRole("group", { name: "Shell", exact: true })
   const visibility = shell.getByRole("button", { name: "Shell visibility" })
   const label = shell.locator('[data-slot="timeline-detail-activity"] > label')
@@ -77,7 +75,6 @@ story("replaces hidden switches with solid lines and restores options", async ({
 
 story("toggles visibility by clicking the activity label", async ({ mount }) => {
   const component = await mount("settings-timeline-detail--interactive")
-  await component.getByRole("button", { name: "Advanced", exact: true }).click()
   const shell = component.getByRole("group", { name: "Shell", exact: true })
   const label = shell.locator('[data-slot="timeline-detail-activity"] > label')
   const visibility = shell.getByRole("button", { name: "Shell visibility" })
@@ -95,7 +92,6 @@ story("toggles visibility by clicking the activity label", async ({ mount }) => 
 
 story("only highlights the eye when hovering the icon, not its activity label", async ({ mount }) => {
   const component = await mount("settings-timeline-detail--interactive")
-  await component.getByRole("button", { name: "Advanced", exact: true }).click()
   const shell = component.getByRole("group", { name: "Shell", exact: true })
   const visibility = shell.getByRole("button", { name: "Shell visibility" })
   const label = shell.locator('[data-slot="timeline-detail-activity"] > label')
@@ -109,31 +105,20 @@ story("only highlights the eye when hovering the icon, not its activity label", 
   }
 })
 
-story("opens advanced on returning to custom settings but not presets", async ({ mount }) => {
+story("opens advanced by default and resets its state when remounted", async ({ mount }) => {
   const component = await mount("settings-timeline-detail--interactive")
   const advanced = component.getByRole("button", { name: "Advanced", exact: true })
-  await expect(advanced).toHaveAttribute("aria-expanded", "false")
-  await advanced.click()
-  await component.locator('[data-category="shell"][data-field="placement"] [data-slot="switch-control"]').click()
-  await expect(component.getByRole("slider")).toHaveAttribute("aria-valuetext", "Custom")
+  await expect(advanced).toHaveAttribute("aria-expanded", "true")
   await advanced.click()
   await expect(advanced).toHaveAttribute("aria-expanded", "false")
   await component.getByRole("button", { name: "Leave settings" }).click()
   await expect(advanced).toHaveCount(0)
   await component.getByRole("button", { name: "Return to settings" }).click()
   await expect(advanced).toHaveAttribute("aria-expanded", "true")
-  await expect(component.getByRole("switch", { name: "Shell grouped", exact: true })).not.toBeChecked()
-
-  await component.getByRole("slider").press("End")
-  await expect(component.getByRole("slider")).toHaveAttribute("aria-valuetext", "Everything")
-  await component.getByRole("button", { name: "Leave settings" }).click()
-  await component.getByRole("button", { name: "Return to settings" }).click()
-  await expect(advanced).toHaveAttribute("aria-expanded", "false")
 })
 
 story("keeps visibility and switches in sync with the preset slider", async ({ mount }) => {
   const component = await mount("settings-timeline-detail--interactive")
-  await component.getByRole("button", { name: "Advanced", exact: true }).click()
   const slider = component.getByRole("slider", { name: "Timeline detail" })
   await slider.focus()
   await slider.press("Home")
@@ -168,7 +153,6 @@ for (const direction of ["ltr", "rtl"]) {
           .locator('[data-slot="settings-row-title"]')
           .evaluate((element) => getComputedStyle(element).color),
       )
-      await component.getByRole("button", { name: "Advanced", exact: true }).click()
       const track = component.locator('[data-slot="timeline-detail-track"]')
       await expect(track).toHaveCSS(
         "--timeline-detail-track-background",
@@ -234,6 +218,24 @@ for (const direction of ["ltr", "rtl"]) {
         await page.setViewportSize({ width, height: 900 })
         await expect(component.getByRole("switch", { name: "Shell grouped", exact: true })).toBeVisible()
         expect(await list.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+        const insets = await component
+          .locator('[data-component="timeline-detail-control"]')
+          .evaluate((element) => {
+            const card = element.closest('[data-component="settings-list"]')
+            if (!card) throw new Error("Timeline detail control must be inside a settings card")
+            const cardRect = card.getBoundingClientRect()
+            const controlRect = element.getBoundingClientRect()
+            return {
+              top: controlRect.top - cardRect.top,
+              right: cardRect.right - controlRect.right,
+              bottom: cardRect.bottom - controlRect.bottom,
+              left: controlRect.left - cardRect.left,
+            }
+          })
+        expect(insets.top).toBeCloseTo(20, 1)
+        expect(insets.right).toBeCloseTo(20, 1)
+        expect(insets.bottom).toBeCloseTo(20, 1)
+        expect(insets.left).toBeCloseTo(20, 1)
         const visibility = component.getByRole("button", { name: "Shell visibility" })
         await visibility.focus()
         await visibility.press("Space")

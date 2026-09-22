@@ -508,7 +508,7 @@ export const SettingsGeneral: Component = () => {
         <section class="settings-section" aria-label={language.t("settings.timeline.title")}>
           <h3 class="settings-section-title">{language.t("settings.timeline.title")}</h3>
           <SettingsList>
-            <div class="py-5">
+            <div class="p-5">
               <TimelineDetailControl
                 value={settings.general.timelineDetail()}
                 onChange={settings.general.setTimelineDetail}

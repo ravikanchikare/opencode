@@ -166,14 +166,15 @@ export const DialogManageModels: Component = () => {
                   onExpandedChange={(key, value) => setStore("collapsed", key, !value)}
                   onSetVisibility={setProviderVisibility}
                   action={(group) => (
-                    <Switch
-                      class="me-6"
-                      checked={providerVisible(group.category)}
-                      onChange={(checked) => setProviderVisibility(group.category, checked)}
-                      hideLabel
-                    >
-                      {group.items[0].provider.name}
-                    </Switch>
+                    <span class="settings-models-group-control">
+                      <Switch
+                        checked={providerVisible(group.category)}
+                        onChange={(checked) => setProviderVisibility(group.category, checked)}
+                        hideLabel
+                      >
+                        {group.items[0].provider.name}
+                      </Switch>
+                    </span>
                   )}
                   rows={(items) => <ModelRows items={items} />}
                 />

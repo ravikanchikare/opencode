@@ -1448,8 +1448,6 @@ export const dict = {
   "project.settings.extensions.lsp.empty.description": "שרתי שפה שמוגדרים לפרויקט זה יופיעו כאן",
   "project.settings.extensions.lsp.disabled.title": "שרתי השפה מושבתים",
   "project.settings.extensions.lsp.disabled.description": "LSP מושבת בתצורת הפרויקט הזה",
-  "project.settings.extensions.lsp.loadFailed": "לא ניתן לטעון את תצורת שרת השפה",
-  "project.settings.extensions.lsp.retry": "ניסיון חוזר",
   "settings.timeline.summary": "\u2068{{preset}}\u2069:",
   "settings.timeline.group": "קיבוץ",
   "settings.timeline.collapse": "כיווץ",
