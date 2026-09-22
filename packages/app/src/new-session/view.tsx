@@ -13,6 +13,7 @@ import {
   PromptProjectSelector,
   type PromptProjectController,
 } from "@/new-session/project/selector"
+import { showNewSessionProviderTip } from "@/composition"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useProviders } from "@/providers/catalog/providers"
@@ -143,6 +144,7 @@ function NewSessionTips(props: {
   )
   const providerVisible = createMemo(
     () =>
+      showNewSessionProviderTip() &&
       providerReady() &&
       providers.anyConnection() === false &&
       Date.now() - providerState.dismissedAt >= providerTipDismissalDuration,

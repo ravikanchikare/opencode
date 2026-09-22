@@ -346,17 +346,20 @@ function ProviderPicker(props: { directory?: string; onSelect: (provider: string
   )
 }
 
-function ProviderConnection(props: {
+export function ProviderConnection(props: {
   provider: string
   directory?: string
   defaultLocation?: boolean
-  onBack: () => void
-  setBack: (handler: () => void) => void
+  onBack?: () => void
+  setBack?: (handler: () => void) => void
   selection?: ModelSelection
   onDone?: () => void
+  onComplete?: () => void
   onConnected?: () => void
   onFirstConnection: (provider: { id: string; name: string }) => void
   onAuthorization: (authorization: boolean) => void
+  /** Lets an embedding dialog supply its own header. */
+  hideTitle?: boolean
 }) {
   const dialog = useDialog()
   const params = useParams()
@@ -423,6 +426,10 @@ function ProviderConnection(props: {
           setState("noModels", true)
           return
         }
+      }
+      if (props.onComplete) {
+        props.onComplete()
+        return
       }
       dialog.close()
       showToast({
@@ -685,10 +692,10 @@ function ProviderConnection(props: {
       controller.auth.reset()
       return
     }
-    props.onBack()
+    props.onBack?.()
   }
 
-  props.setBack(goBack)
+  props.setBack?.(goBack)
 
   function MethodSelection() {
     return (
@@ -1109,29 +1116,33 @@ function ProviderConnection(props: {
   return (
     <Show when={!state.models} fallback={<FirstConnectionModels />}>
       <div class="flex min-h-0 flex-1 flex-col">
-        <div
-          class={isConsole ? "flex shrink-0 items-center gap-2 px-3 pb-6" : "flex h-10 shrink-0 items-start gap-2 px-3"}
-        >
-          <ProviderModelIcon
-            provider={provider()}
-            class={isConsole ? "shrink-0 text-v2-icon-icon-base" : "mt-0.5 shrink-0 text-v2-icon-icon-base"}
-          />
-          <div class="text-[15px] font-[530] leading-5 tracking-[-0.13px] text-v2-text-text-base">
-            <DialogTitle>
-              <Switch>
-                <Match when={consoleSignIn()}>{language.t("provider.connect.console.title")}</Match>
-                <Match
-                  when={
-                    props.provider === "anthropic" && controller.currentMethod()?.label?.toLowerCase().includes("max")
-                  }
-                >
-                  {language.t("provider.connect.title.anthropicProMax")}
-                </Match>
-                <Match when={true}>{language.t("provider.connect.title", { provider: provider().name })}</Match>
-              </Switch>
-            </DialogTitle>
+        <Show when={!props.hideTitle}>
+          <div
+            class={
+              isConsole ? "flex shrink-0 items-center gap-2 px-3 pb-6" : "flex h-10 shrink-0 items-start gap-2 px-3"
+            }
+          >
+            <ProviderModelIcon
+              provider={provider()}
+              class={isConsole ? "shrink-0 text-v2-icon-icon-base" : "mt-0.5 shrink-0 text-v2-icon-icon-base"}
+            />
+            <div class="text-[15px] font-[530] leading-5 tracking-[-0.13px] text-v2-text-text-base">
+              <DialogTitle>
+                <Switch>
+                  <Match when={consoleSignIn()}>{language.t("provider.connect.console.title")}</Match>
+                  <Match
+                    when={
+                      props.provider === "anthropic" && controller.currentMethod()?.label?.toLowerCase().includes("max")
+                    }
+                  >
+                    {language.t("provider.connect.title.anthropicProMax")}
+                  </Match>
+                  <Match when={true}>{language.t("provider.connect.title", { provider: provider().name })}</Match>
+                </Switch>
+              </DialogTitle>
+            </div>
           </div>
-        </div>
+        </Show>
         <div
           data-component="provider-connect-content"
           class={isConsole ? "flex min-h-0 flex-1 flex-col overflow-y-auto pb-4" : "flex min-h-0 flex-1 flex-col"}

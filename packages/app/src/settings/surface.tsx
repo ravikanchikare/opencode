@@ -2,14 +2,16 @@ import { useLocation, useNavigate } from "@solidjs/router"
 import { batch, createEffect, on } from "solid-js"
 import { createStore } from "solid-js/store"
 import { createSimpleContext } from "@opencode/ui/context"
-import { useLayout, type LayoutRoute } from "@/shell/state/layout"
+import { getAppComposition } from "@/composition"
 import { useCommand } from "@/shell/commands/command"
+import { useLayout, type LayoutRoute } from "@/shell/state/layout"
 import { useSettingsServers } from "./servers/inventory"
 import {
-  isProjectTab,
-  isRootTab,
-  isServerTab,
-  parseSettingsView,
+  isProjectTab as routeIsProjectTab,
+  isRootTab as routeIsRootTab,
+  isServerTab as routeIsServerTab,
+  parseSettingsView as routeParseSettingsView,
+  resolveProjectSettingsView as routeResolveProjectSettingsView,
   settingsViewUrl,
   type SettingsProjectTab,
   type SettingsRootTab,
@@ -19,6 +21,14 @@ import {
 } from "./route"
 
 export type { SettingsProjectTab, SettingsRootTab, SettingsServerTab, SettingsView } from "./route"
+
+const isRootTab = (value: string) => routeIsRootTab(value, getAppComposition().settingsTabs)
+const isServerTab = (value: string) => routeIsServerTab(value, getAppComposition().settingsTabs)
+const isProjectTab = (value: string) => routeIsProjectTab(value, getAppComposition().settingsTabs)
+const parseSettingsView = (search: string, multipleServers: boolean, transient?: SettingsTransientView) =>
+  routeParseSettingsView(search, multipleServers, transient, getAppComposition().settingsTabs)
+export const resolveProjectSettingsView = (view: SettingsView) =>
+  routeResolveProjectSettingsView(view, getAppComposition().settingsTabs)
 
 export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = createSimpleContext({
   name: "SettingsSurface",
@@ -33,7 +43,8 @@ export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = cr
     }>()
     const open = () => layout.route().type === "settings"
     const source = () => location.state?.settings?.route ?? { type: "home" as const }
-    const view = () => parseSettingsView(location.search, servers().length > 1, location.state?.settings?.view)
+    const view = (): SettingsView =>
+      resolveProjectSettingsView(parseSettingsView(location.search, servers().length > 1, location.state?.settings?.view))
     const [search, setSearch] = createStore({
       query: "",
       origin: undefined as SettingsView | undefined,
@@ -127,14 +138,18 @@ export const { use: useSettingsSurface, provider: SettingsSurfaceProvider } = cr
       },
       select(tab: string) {
         const current = view()
-        const next: SettingsView =
+        const next: SettingsView | undefined =
           current.type === "root" && isRootTab(tab)
             ? { ...current, tab }
             : current.type === "server" && isServerTab(tab)
               ? { ...current, tab }
               : current.type === "project" && isProjectTab(tab)
                 ? { ...current, tab }
-                : current
+                : undefined
+        // Unknown values must not replace the route. Composed tabs used to miss
+        // the stock whitelist, so every activation snapped back to the current
+        // tab and queued another navigation — the shell got slower each time.
+        if (!next) return
         show({ ...next, target: undefined, subtab: undefined })
       },
       subtab(subtab: SettingsView["subtab"]) {

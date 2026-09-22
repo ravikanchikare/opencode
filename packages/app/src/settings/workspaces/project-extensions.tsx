@@ -14,23 +14,41 @@ import {
   onCleanup,
   type JSX,
 } from "solid-js"
+import { createStore } from "solid-js/store"
 import { useLanguage } from "@/runtime/i18n/language"
 import { useMcpToggle } from "@/providers/connect/mcp"
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useServerSDK } from "@/runtime/server/client"
 import { useData } from "@/runtime/server/current"
-import { pluginLabels } from "@/providers/catalog/plugin"
+import { pluginDisplayName, pluginLabel, pluginLabels } from "@/providers/catalog/plugin"
+import { PluginOptionsEditor } from "@/settings/extensions/plugin-options-editor"
+import { mcpInventoryRows, pluginInventoryRows, type McpRow } from "@/settings/extensions/data"
+import {
+  mcpInventoryGroups,
+  pluginInventoryGroups,
+  skillInventoryGroups,
+  skillInventoryRows,
+  type InventoryGroup,
+} from "@/settings/extensions/presentation"
+import { currentPlugin, hasPluginDetails } from "@/settings/extensions/plugin-options"
+import type { PluginInfo } from "@opencode/client"
 import { ExternalLink } from "@/runtime/platform/external-link"
 import { configuredLanguageServers } from "./project-lsp"
 import { SettingsList } from "@/settings/list"
+import { SettingsGroup } from "@/settings/group"
 import "./project.css"
+import "@/settings/extensions/extensions.css"
 
 type SkillItem = {
+  id: string
   name: string
   path: string
+  description?: string
 }
 
-const skillKey = (item: SkillItem) => `${item.name}\n${item.path}`
+const skillKey = (item: SkillItem) => `${item.id}\n${item.path}`
+const uniqueBy = <T,>(items: readonly T[], key: (item: T) => string) =>
+  items.filter((item, index) => items.findIndex((candidate) => key(candidate) === key(item)) === index)
 
 const ExtensionCard: Component<{ children: JSX.Element }> = (props) => (
   <SettingsList variant="catalog">{props.children}</SettingsList>
@@ -40,6 +58,7 @@ const ExtensionRow: Component<{
   icon: "mcp" | "cube" | "post-skill" | "code"
   name: string
   description?: JSX.Element
+  descriptionLines?: 2
   children?: JSX.Element
 }> = (props) => (
   <div class="settings-extension-row project-settings-extension-row">
@@ -48,7 +67,12 @@ const ExtensionRow: Component<{
       <div class="project-settings-extension-row-copy">
         <span class="project-settings-extension-row-name settings-extension-name">{props.name}</span>
         <Show when={props.description}>
-          <span class="project-settings-extension-row-description">{props.description}</span>
+          <span
+            class="project-settings-extension-row-description"
+            classList={{ "extension-destination-description-clamp-2": props.descriptionLines === 2 }}
+          >
+            {props.description}
+          </span>
         </Show>
       </div>
     </div>
@@ -59,7 +83,7 @@ const ExtensionRow: Component<{
 const ProjectSectionHeader: Component<{
   kind: "mcps" | "plugins" | "skills"
   empty: boolean
-  action: JSX.Element
+  action?: JSX.Element
 }> = (props) => {
   const language = useLanguage()
   return (
@@ -76,7 +100,7 @@ const ProjectSectionHeader: Component<{
           </span>
         </Show>
       </div>
-      {props.action}
+      <Show when={props.action}>{props.action}</Show>
     </div>
   )
 }
@@ -109,14 +133,62 @@ const SharedSection: Component<{
           </span>
         </button>
         <Show when={open()}>
-          <ExtensionCard>{props.children}</ExtensionCard>
+          {props.children}
         </Show>
       </div>
     </Show>
   )
 }
 
-const ProjectLanguageServers: Component = () => {
+function InventorySections<T>(props: {
+  sections: readonly InventoryGroup<T>[]
+  children: (item: T) => JSX.Element
+}): JSX.Element {
+  const [store, setStore] = createStore({ collapsed: {} as Record<string, boolean> })
+  return (
+    <Show
+      when={props.sections.some((section) => section.group !== undefined)}
+      fallback={
+        <ExtensionCard>
+          <For each={props.sections.flatMap((section) => section.rows)}>{(item) => props.children(item)}</For>
+        </ExtensionCard>
+      }
+    >
+      <div class="settings-section-stack">
+        <For each={props.sections}>
+          {(section) => (
+            <div class="settings-section">
+              <Show when={section.group}>
+                {(group) => (
+                  <SettingsGroup
+                    expanded={!store.collapsed[group().id]}
+                    onExpandedChange={(expanded) => setStore("collapsed", group().id, !expanded)}
+                  >
+                    <span class="settings-group-label">
+                      <span class="settings-group-title">{group().title}</span>
+                      <Show when={group().description}>
+                        {(description) => (
+                          <span class="project-settings-extension-empty-description">{description()}</span>
+                        )}
+                      </Show>
+                    </span>
+                  </SettingsGroup>
+                )}
+              </Show>
+              <Show when={!section.group || !store.collapsed[section.group.id]}>
+                <ExtensionCard>
+                  <For each={section.rows}>{(item) => props.children(item)}</For>
+                </ExtensionCard>
+              </Show>
+            </div>
+          )}
+        </For>
+      </div>
+    </Show>
+  )
+}
+
+export const ProjectLanguageServers: Component = () => {
   const language = useLanguage()
   const server = useServerSDK()
   const location = useWorkspaceLocation()
@@ -205,9 +277,12 @@ const ProjectLanguageServers: Component = () => {
   )
 }
 
+export type ProjectExtensionDestination = "mcp" | "plugins" | "skills"
+
 export const ProjectSettingsExtensions: Component<{
+  destination?: ProjectExtensionDestination
   subtab?: "mcps" | "plugins" | "skills" | "lsps"
-  onSubtab: (value: "mcps" | "plugins" | "skills" | "lsps") => void
+  onSubtab?: (value: "mcps" | "plugins" | "skills" | "lsps") => void
 }> = (props) => {
   const language = useLanguage()
   const serverSDK = useServerSDK()
@@ -239,63 +314,240 @@ export const ProjectSettingsExtensions: Component<{
   const mcpEnabled = (name: string) =>
     data.location.mcp.server.list({ directory: directorySDK().directory })?.find((server) => server.name === name)
       ?.status.status === "connected"
+  const globalMcps = createMemo(() =>
+    mcpInventoryRows(globalMcpNames().map((name) => ({ name, enabled: mcpEnabled(name) }))),
+  )
+  const projectMcps = createMemo(() =>
+    mcpInventoryRows(projectMcpNames().map((name) => ({ name, enabled: mcpEnabled(name) }))),
+  )
 
-  const [globalPluginList] = createResource(
+  const [globalPluginList, { refetch: refetchGlobalPlugins }] = createResource(
     () => serverSDK.connection.status() === "connected",
     () => serverSDK.api.plugin.list().then((result) => result.data),
-    { initialValue: [] },
+    { initialValue: [] as PluginInfo[] },
   )
-  const [projectPluginList] = createResource(
+  const [projectPluginList, { refetch: refetchProjectPlugins }] = createResource(
     () => (serverSDK.connection.status() === "connected" ? directorySDK().directory : undefined),
     (directory) => serverSDK.api.plugin.list({ location: { directory } }).then((result) => result.data),
-    { initialValue: [] },
+    { initialValue: [] as PluginInfo[] },
   )
-  const globalPlugins = createMemo(() => pluginLabels(globalPluginList.latest ?? []))
+  const globalPlugins = createMemo(() => pluginInventoryRows(globalPluginList.latest ?? []))
   const projectPlugins = createMemo(() => {
-    const shared = new Set(globalPlugins())
-    return pluginLabels(projectPluginList.latest ?? []).filter((name) => !shared.has(name))
+    const shared = new Set(pluginLabels(globalPlugins()))
+    return pluginInventoryRows(projectPluginList.latest ?? []).filter((plugin) => !shared.has(pluginLabel(plugin)))
   })
+  const [selectedPlugin, setSelectedPlugin] = createSignal<string>()
+  const current = createMemo(() =>
+    currentPlugin(
+      pluginInventoryRows([...(projectPluginList.latest ?? []), ...(globalPluginList.latest ?? [])]),
+      selectedPlugin(),
+    ),
+  )
+  const refetchPlugins = () => Promise.all([refetchGlobalPlugins(), refetchProjectPlugins()])
 
-  const serverSkills = createMemo(() => data.location.skill.list() ?? [])
+  const serverSkills = createMemo(() => skillInventoryRows(data.location.skill.list() ?? []))
   const projectSkills = createMemo(() => {
     const shared = new Set(serverSkills().map(skillKey))
-    return (data.location.skill.list({ directory: directorySDK().directory }) ?? []).filter(
+    return skillInventoryRows(data.location.skill.list({ directory: directorySDK().directory }) ?? []).filter(
       (item) => !shared.has(skillKey(item)),
     )
   })
-
-  const mcpRows = (items: string[]) => (
-    <For each={items}>
-      {(name) => (
-        <ExtensionRow icon="mcp" name={name}>
-          <Switch
-            checked={mcpEnabled(name)}
-            disabled={toggleMcp.isPending && toggleMcp.variables === name}
-            hideLabel
-            onChange={() => {
-              if (toggleMcp.isPending) return
-              toggleMcp.mutate(name)
-            }}
-          >
-            {name}
-          </Switch>
-        </ExtensionRow>
-      )}
-    </For>
+  const availableMcps = createMemo(() =>
+    mcpInventoryRows(
+      uniqueBy([...projectMcpNames(), ...globalMcpNames()], (name) => name).map((name) => ({
+        name,
+        enabled: mcpEnabled(name),
+      })),
+    ),
+  )
+  const availablePlugins = createMemo(() =>
+    pluginInventoryRows(uniqueBy([...projectPlugins(), ...globalPlugins()], (plugin) => pluginLabel(plugin))),
+  )
+  const availableSkills = createMemo(() =>
+    skillInventoryRows(uniqueBy([...projectSkills(), ...serverSkills()], skillKey)),
   )
 
-  const pluginRows = (items: string[]) => <For each={items}>{(name) => <ExtensionRow icon="cube" name={name} />}</For>
+  const mcpRows = (items: McpRow[]) => {
+    return (
+      <InventorySections sections={mcpInventoryGroups(items)}>
+        {(item) => (
+          <ExtensionRow icon="mcp" name={item.name} description={item.description}>
+            <Switch
+              checked={item.enabled}
+              disabled={toggleMcp.isPending && toggleMcp.variables === item.id}
+              hideLabel
+              onChange={() => {
+                if (toggleMcp.isPending) return
+                toggleMcp.mutate(item.id)
+              }}
+            >
+              {item.name}
+            </Switch>
+          </ExtensionRow>
+        )}
+      </InventorySections>
+    )
+  }
+
+  const pluginRows = (items: PluginInfo[]) => (
+    <InventorySections sections={pluginInventoryGroups(items)}>
+      {(plugin) => (
+        <Show
+          when={hasPluginDetails(plugin)}
+          fallback={<ExtensionRow icon="cube" name={pluginDisplayName(plugin)} description={plugin.description} />}
+        >
+          <button type="button" class="plugin-options-open" onClick={() => setSelectedPlugin(String(plugin.id))}>
+            <ExtensionRow icon="cube" name={pluginDisplayName(plugin)} description={plugin.description}>
+              <Icon name="chevron-right" size="small" />
+            </ExtensionRow>
+          </button>
+        </Show>
+      )}
+    </InventorySections>
+  )
 
   const skillRows = (items: SkillItem[]) => (
-    <For each={items}>{(item) => <ExtensionRow icon="post-skill" name={item.name} />}</For>
+    <InventorySections sections={skillInventoryGroups(items)}>
+      {(item) => (
+        <ExtensionRow icon="post-skill" name={item.name} description={item.description} descriptionLines={2} />
+      )}
+    </InventorySections>
   )
+
+  const mcp = (
+    <div class="project-settings-extension-section">
+      <ProjectSectionHeader
+        kind="mcps"
+        empty={projectMcps().length === 0}
+        action={<span>{language.t("settings.extensions.manageConfig")}</span>}
+      />
+      <Show when={projectMcps().length > 0}>{mcpRows(projectMcps())}</Show>
+      <SharedSection count={globalMcps().length}>{mcpRows(globalMcps())}</SharedSection>
+    </div>
+  )
+
+  const plugins = (
+    <div class="project-settings-extension-section">
+      <Show
+        when={current()}
+        fallback={
+          <>
+            <ProjectSectionHeader
+              kind="plugins"
+              empty={projectPlugins().length === 0}
+              action={<span>{language.t("settings.extensions.manageConfig")}</span>}
+            />
+            <Show when={projectPlugins().length > 0}>{pluginRows(projectPlugins())}</Show>
+            <SharedSection count={globalPlugins().length}>{pluginRows(globalPlugins())}</SharedSection>
+          </>
+        }
+      >
+        {(plugin) => (
+          <PluginOptionsEditor
+            plugin={plugin()}
+            directory={directorySDK().directory}
+            onBack={() => setSelectedPlugin()}
+            onChanged={() => refetchPlugins()}
+          />
+        )}
+      </Show>
+    </div>
+  )
+
+  const skills = (
+    <div class="project-settings-extension-section">
+      <ProjectSectionHeader
+        kind="skills"
+        empty={projectSkills().length === 0}
+        action={
+          <ExternalLink class="settings-extension-link" href="https://opencode.ai/docs/skills/">
+            {language.t("settings.extensions.addSkills")}
+          </ExternalLink>
+        }
+      />
+      <Show when={projectSkills().length > 0}>{skillRows(projectSkills())}</Show>
+      <SharedSection count={serverSkills().length}>{skillRows(serverSkills())}</SharedSection>
+    </div>
+  )
+
+  const destinationMcp = (
+    <div class="project-settings-extension-section">
+      <Show
+        when={availableMcps().length > 0}
+        fallback={
+          <ProjectSectionHeader
+            kind="mcps"
+            empty
+            action={<span>{language.t("settings.extensions.manageConfig")}</span>}
+          />
+        }
+      >
+        {mcpRows(availableMcps())}
+      </Show>
+    </div>
+  )
+
+  const destinationPlugins = (
+    <div class="project-settings-extension-section">
+      <Show
+        when={current()}
+        fallback={
+          <Show
+            when={availablePlugins().length > 0}
+            fallback={
+              <ProjectSectionHeader
+                kind="plugins"
+                empty
+                action={<span>{language.t("settings.extensions.manageConfig")}</span>}
+              />
+            }
+          >
+            {pluginRows(availablePlugins())}
+          </Show>
+        }
+      >
+        {(plugin) => (
+          <PluginOptionsEditor
+            plugin={plugin()}
+            directory={directorySDK().directory}
+            onBack={() => setSelectedPlugin()}
+            onChanged={() => refetchPlugins()}
+          />
+        )}
+      </Show>
+    </div>
+  )
+
+  const destinationSkills = (
+    <div class="project-settings-extension-section">
+      <Show
+        when={availableSkills().length > 0}
+        fallback={<ProjectSectionHeader kind="skills" empty />}
+      >
+        {skillRows(availableSkills())}
+      </Show>
+    </div>
+  )
+
+  const content = (destination: ProjectExtensionDestination) => {
+    if (destination === "mcp") return destinationMcp
+    if (destination === "plugins") return destinationPlugins
+    return destinationSkills
+  }
+
+  const title = () => {
+    if (props.destination === "mcp") return language.t("project.settings.extensions.mcp")
+    if (props.destination === "plugins") return language.t("status.popover.tab.plugins")
+    if (props.destination === "skills") return language.t("settings.extensions.tab.skills")
+    return language.t("settings.tab.extensions")
+  }
 
   return (
     <>
       <div class="settings-tab-header">
         <div class="settings-tab-header-row">
           <div class="flex flex-col gap-1">
-            <h2 class="settings-tab-title">{language.t("settings.tab.extensions")}</h2>
+            <h2 class="settings-tab-title">{title()}</h2>
             <span class="text-11-regular text-v2-text-text-muted">
               {language.t("project.settings.extensions.description")}
             </span>
@@ -304,70 +556,32 @@ export const ProjectSettingsExtensions: Component<{
       </div>
 
       <div class="settings-tab-body">
-        <Tabs
-          variant="pill"
-          value={props.subtab ?? "mcps"}
-          onChange={(value) => {
-            if (value === "mcps" || value === "plugins" || value === "skills" || value === "lsps") props.onSubtab(value)
-          }}
-          class="project-settings-extension-tabs settings-subtabs"
-        >
-          <Tabs.List>
-            <Tabs.Trigger value="mcps">{language.t("settings.extensions.tab.mcps")}</Tabs.Trigger>
-            <Tabs.Trigger value="plugins">{language.t("status.popover.tab.plugins")}</Tabs.Trigger>
-            <Tabs.Trigger value="skills">{language.t("settings.extensions.tab.skills")}</Tabs.Trigger>
-            <Tabs.Trigger value="lsps">{language.t("project.settings.extensions.tab.lsps")}</Tabs.Trigger>
-          </Tabs.List>
+        <Show when={props.destination}>{(destination) => content(destination())}</Show>
+        <Show when={!props.destination}>
+          <Tabs
+            variant="pill"
+            value={props.subtab ?? "mcps"}
+            onChange={(value) => {
+              if (value === "mcps" || value === "plugins" || value === "skills" || value === "lsps")
+                props.onSubtab?.(value)
+            }}
+            class="project-settings-extension-tabs settings-subtabs"
+          >
+            <Tabs.List>
+              <Tabs.Trigger value="mcps">{language.t("settings.extensions.tab.mcps")}</Tabs.Trigger>
+              <Tabs.Trigger value="plugins">{language.t("status.popover.tab.plugins")}</Tabs.Trigger>
+              <Tabs.Trigger value="skills">{language.t("settings.extensions.tab.skills")}</Tabs.Trigger>
+              <Tabs.Trigger value="lsps">{language.t("project.settings.extensions.tab.lsps")}</Tabs.Trigger>
+            </Tabs.List>
 
-          <Tabs.Content value="mcps">
-            <div class="project-settings-extension-section">
-              <ProjectSectionHeader
-                kind="mcps"
-                empty={projectMcpNames().length === 0}
-                action={<span>{language.t("settings.extensions.manageConfig")}</span>}
-              />
-              <Show when={projectMcpNames().length > 0}>
-                <ExtensionCard>{mcpRows(projectMcpNames())}</ExtensionCard>
-              </Show>
-              <SharedSection count={globalMcpNames().length}>{mcpRows(globalMcpNames())}</SharedSection>
-            </div>
-          </Tabs.Content>
-
-          <Tabs.Content value="plugins">
-            <div class="project-settings-extension-section">
-              <ProjectSectionHeader
-                kind="plugins"
-                empty={projectPlugins().length === 0}
-                action={<span>{language.t("settings.extensions.manageConfig")}</span>}
-              />
-              <Show when={projectPlugins().length > 0}>
-                <ExtensionCard>{pluginRows(projectPlugins())}</ExtensionCard>
-              </Show>
-              <SharedSection count={globalPlugins().length}>{pluginRows(globalPlugins())}</SharedSection>
-            </div>
-          </Tabs.Content>
-
-          <Tabs.Content value="skills">
-            <div class="project-settings-extension-section">
-              <ProjectSectionHeader
-                kind="skills"
-                empty={projectSkills().length === 0}
-                action={
-                  <ExternalLink class="settings-extension-link" href="https://opencode.ai/docs/skills/">
-                    {language.t("settings.extensions.addSkills")}
-                  </ExternalLink>
-                }
-              />
-              <Show when={projectSkills().length > 0}>
-                <ExtensionCard>{skillRows(projectSkills())}</ExtensionCard>
-              </Show>
-              <SharedSection count={serverSkills().length}>{skillRows(serverSkills())}</SharedSection>
-            </div>
-          </Tabs.Content>
-          <Tabs.Content value="lsps">
-            <ProjectLanguageServers />
-          </Tabs.Content>
-        </Tabs>
+            <Tabs.Content value="mcps">{mcp}</Tabs.Content>
+            <Tabs.Content value="plugins">{plugins}</Tabs.Content>
+            <Tabs.Content value="skills">{skills}</Tabs.Content>
+            <Tabs.Content value="lsps">
+              <ProjectLanguageServers />
+            </Tabs.Content>
+          </Tabs>
+        </Show>
       </div>
     </>
   )

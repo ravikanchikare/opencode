@@ -69,6 +69,11 @@
   gap: 4px;
 }
 
+.project-settings-extension-row {
+  align-items: flex-start;
+  padding: 14px 16px;
+}
+
 .project-settings-extension-row-description {
   color: var(--v2-text-text-muted);
   font-size: 13px;

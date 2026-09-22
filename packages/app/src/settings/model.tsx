@@ -3,6 +3,7 @@ import { createEffect, createMemo } from "solid-js"
 import { Effect, Option, Schema, SchemaGetter } from "effect"
 import { createSimpleContext } from "@opencode/ui/context"
 import { timelinePresets, type TimelineCategory, type TimelineDetail } from "@opencode/session-ui/timeline/detail"
+import { getAppComposition, type AppSettingsDefaults } from "@/composition"
 import { persisted } from "@/runtime/persistence/storage"
 import { Persistence } from "@/runtime/persistence/schema"
 import { ScopedKey, type ServerScope } from "@/runtime/server/scope"
@@ -101,6 +102,15 @@ const appearanceSchema = Persistence.struct({
   sans: Schema.String,
   terminal: Schema.String,
   tabLayout: Schema.Literals(["horizontal", "vertical"]),
+})
+
+const storedAppearanceSchema = Persistence.struct({
+  fontSize: Persistence.optional(Schema.Number),
+  mono: Persistence.optional(Schema.String),
+  sans: Persistence.optional(Schema.String),
+  terminal: Persistence.optional(Schema.String),
+  tabLayout: Persistence.optional(Schema.Literals(["horizontal", "vertical"])),
+  showProjectName: Persistence.optional(Schema.Boolean),
 })
 
 const permissionsSchema = Persistence.struct({
@@ -209,13 +219,18 @@ export const settingsPersistence = Persistence.migrate(
         editToolPartsExpanded: Persistence.optional(Schema.Boolean),
       }),
     ),
+    appearance: Persistence.optional(storedAppearanceSchema),
+    experiments: Persistence.optional(storedAppearanceSchema),
   }).pipe(
     Schema.decode({
       decode: SchemaGetter.transform((value) => {
         const general = value.general
-        if (!general || general.timelineDetail !== undefined) return value
+        const appearance = value.appearance ?? value.experiments
+        if (!general || general.timelineDetail !== undefined)
+          return appearance === undefined ? value : { ...value, appearance }
         return {
           ...value,
+          ...(appearance === undefined ? {} : { appearance }),
           general: {
             ...general,
             timelineDetail: {
@@ -264,6 +279,22 @@ export const defaultSettings: Settings = {
   },
 }
 
+export function resolveSettingsDefaults(overrides?: AppSettingsDefaults): Settings {
+  if (!overrides) return defaultSettings
+  return {
+    general: { ...defaultSettings.general, ...overrides.general },
+    // Panel expansion the host persists as the user works; not a distribution
+    // preference, so it passes through rather than joining AppSettingsDefaults.
+    sessionSummary: defaultSettings.sessionSummary,
+    appearance: { ...defaultSettings.appearance, ...overrides.appearance },
+    keybinds: overrides.keybinds ?? defaultSettings.keybinds,
+    permissions: { ...defaultSettings.permissions, ...overrides.permissions },
+    workspaces: { ...defaultSettings.workspaces, ...overrides.workspaces },
+    notifications: { ...defaultSettings.notifications, ...overrides.notifications },
+    sounds: { ...defaultSettings.sounds, ...overrides.sounds },
+  }
+}
+
 function withFallback<T>(read: () => T | undefined, fallback: T) {
   return createMemo(() => read() ?? fallback)
 }
@@ -272,6 +303,7 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
   name: "Settings",
   gate: false,
   init: () => {
+    const defaultSettings = resolveSettingsDefaults(getAppComposition().settingsDefaults)
     const [store, setStore, , ready] = persisted({ key: "settings.v3" }, settingsPersistence, defaultSettings)
     const showFileTree = withFallback(() => store.general?.showFileTree, defaultSettings.general.showFileTree)
     const showSearch = withFallback(() => store.general?.showSearch, defaultSettings.general.showSearch)

@@ -5,6 +5,8 @@ import { clientSettings, projectSettings, serverSettings } from "./search-catalo
 import { pageLabels } from "./pages"
 import type { SettingsSearchResult } from "./search-results"
 import type { SettingsServerTab, SettingsView } from "./surface"
+import { getAppComposition } from "@/composition"
+import { composedProjectExtensionTabs, projectExtensionDestination } from "./tabs"
 
 export type SettingsSearchServer = {
   key: string
@@ -22,7 +24,10 @@ export function settingsSearchIndex(input: {
 }) {
   const items: SettingsSearchResult[] = []
   const add = (
-    entry: (typeof clientSettings)[number],
+    entry:
+      | (typeof clientSettings)[number]
+      | (typeof serverSettings)[number]
+      | (typeof projectSettings)[number],
     view: SettingsView,
     owner: string,
     server?: string,
@@ -78,13 +83,13 @@ export function settingsSearchIndex(input: {
     if (!server.connected) return
     serverSettings.forEach((entry) => add(entry, view(entry.tab, entry.target, entry.subtab), server.name, server.key))
     server.projects.forEach((project) => {
-      const destination: SettingsView = {
+      const destination = {
         type: "project",
         server: server.key,
         project: project.worktree,
         tab: "general",
         parent: input.servers.length > 1 ? "server" : "root",
-      }
+      } as const
       const name = displayName(project)
       items.push({
         id: `project:${server.key}:${project.worktree}`,
@@ -101,9 +106,27 @@ export function settingsSearchIndex(input: {
       })
       projectSettings.forEach((entry) => {
         if (entry.target === "settings-project-color" && project.icon?.override) return
+        const legacy = {
+          ...destination,
+          tab: entry.tab,
+          target: entry.target,
+          subtab: entry.subtab,
+        }
+        const tab =
+          legacy.tab === "extensions"
+            ? projectExtensionDestination(legacy.subtab, getAppComposition().settingsTabs)
+            : legacy.tab
+        const view = tab === legacy.tab ? legacy : { ...legacy, tab, subtab: undefined }
+        if (
+          entry.tab === "extensions" &&
+          view.tab === "extensions" &&
+          composedProjectExtensionTabs(getAppComposition().settingsTabs)
+        )
+          return
+        if (entry.tab === "extensions" && !entry.subtab && view.tab !== "extensions") return
         add(
           entry,
-          { ...destination, tab: entry.tab, target: entry.target, subtab: entry.subtab },
+          view,
           `${server.name} · ${name}`,
           server.key,
           project.worktree,

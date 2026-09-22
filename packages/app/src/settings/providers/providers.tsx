@@ -37,6 +37,7 @@ const PROVIDER_NOTES = [
 export const SettingsProviders: Component<{
   directory: string | undefined
   onSelectProvider?: (providerID: string) => void
+  onBack?: () => void
 }> = (props) => {
   const dialog = useDialog()
   const language = useLanguage()

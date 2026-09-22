@@ -1,5 +1,5 @@
-import { Route, useParams } from "@solidjs/router"
-import { createMemo, lazy, Show, Suspense, type ParentProps } from "solid-js"
+import { Route, type RouteSectionProps, useParams } from "@solidjs/router"
+import { createMemo, lazy, Show, Suspense, type Component, type ParentProps } from "solid-js"
 import { Home } from "@/home/route"
 import { ServerProvider } from "@/runtime/server/current"
 import { useGlobal } from "@/runtime/server/runtime"
@@ -32,9 +32,13 @@ export function preloadRoute(url: string) {
   return Promise.resolve()
 }
 
-export function AppRoutes() {
+export function AppRoutes(props: { overlay?: Component }) {
   return (
-    <Route component={AppLayout}>
+    <Route
+      component={(routeProps: RouteSectionProps) => (
+        <AppLayout overlay={props.overlay}>{routeProps.children}</AppLayout>
+      )}
+    >
       <Route path="/" component={Home} />
       <Route path="/settings" component={SettingsScreen} />
       <Route
@@ -74,7 +78,7 @@ function TargetServerRoute(props: ParentProps) {
   )
 }
 
-function AppLayout(props: ParentProps) {
+function AppLayout(props: ParentProps & { overlay?: Component }) {
   const servers = useServers()
   const global = useGlobal()
   // A lone server that rejects our credentials (e.g. the web app before pairing) has nothing else to show.
@@ -89,7 +93,7 @@ function AppLayout(props: ParentProps) {
         <SettingsSurfaceProvider>
           <DesktopPairingCommand />
           <BrowserAttachmentsProvider>
-            <Shell>{props.children}</Shell>
+            <Shell overlay={props.overlay}>{props.children}</Shell>
           </BrowserAttachmentsProvider>
         </SettingsSurfaceProvider>
       </LayoutProvider>

@@ -1,3 +1,6 @@
+import { composedProjectExtensionTabs, isComposedSettingsTab, projectExtensionDestination } from "./tabs"
+import type { SettingsTabComposition } from "./tabs"
+
 export type SettingsRootTab =
   | "general"
   | "appearance"
@@ -14,7 +17,14 @@ export type SettingsRootTab =
   | "about"
 
 export type SettingsServerTab = "general" | "projects" | "workspaces" | "providers" | "models" | "extensions"
-export type SettingsProjectTab = "general" | "workspaces" | "extensions"
+export type SettingsProjectTab =
+  | "general"
+  | "workspaces"
+  | "extensions"
+  | "skills"
+  | "mcp"
+  | "plugins"
+  | "language-servers"
 
 export type SettingsView = (
   | { type: "root"; tab: SettingsRootTab }
@@ -61,6 +71,10 @@ const projectTabs: Record<SettingsProjectTab, true> = {
   general: true,
   workspaces: true,
   extensions: true,
+  skills: true,
+  mcp: true,
+  plugins: true,
+  "language-servers": true,
 }
 const subtabs: Record<NonNullable<SettingsView["subtab"]>, true> = {
   mcps: true,
@@ -73,6 +87,7 @@ export function parseSettingsView(
   search: string,
   multipleServers: boolean,
   transient?: SettingsTransientView,
+  composition?: SettingsTabComposition,
 ): SettingsView {
   const params = new URLSearchParams(search)
   const tab = params.get("tab") ?? "general"
@@ -81,7 +96,7 @@ export function parseSettingsView(
   const subtab = params.get("subtab")
   const nested = subtab && isSubtab(subtab) && tab === "extensions" ? subtab : undefined
 
-  if (project && server && isProjectTab(tab)) {
+  if (project && server && isProjectTab(tab, composition)) {
     return {
       type: "project",
       server,
@@ -92,9 +107,9 @@ export function parseSettingsView(
       ...transient,
     }
   }
-  if (!project && server && isServerTab(tab))
+  if (!project && server && isServerTab(tab, composition))
     return { type: "server", server, tab, subtab: nested === "lsps" ? undefined : nested, ...transient }
-  if (!project && !server && isRootTab(tab))
+  if (!project && !server && isRootTab(tab, composition))
     return { type: "root", tab, subtab: nested === "lsps" ? undefined : nested, ...transient }
   return { type: "root", tab: "general", ...transient }
 }
@@ -128,16 +143,31 @@ export function settingsViewRedirect(input: {
     return { type: "root", tab: view.tab === "general" ? "servers" : view.tab }
 }
 
-export function isRootTab(value: string): value is SettingsRootTab {
-  return Object.hasOwn(rootTabs, value)
+export function isRootTab(value: string, composition?: SettingsTabComposition): value is SettingsRootTab {
+  return Object.hasOwn(rootTabs, value) || isComposedSettingsTab(value, composition)
 }
 
-export function isServerTab(value: string): value is SettingsServerTab {
-  return Object.hasOwn(serverTabs, value)
+export function isServerTab(value: string, composition?: SettingsTabComposition): value is SettingsServerTab {
+  return Object.hasOwn(serverTabs, value) || isComposedSettingsTab(value, composition)
 }
 
-export function isProjectTab(value: string): value is SettingsProjectTab {
-  return Object.hasOwn(projectTabs, value)
+export function isProjectTab(value: string, composition?: SettingsTabComposition): value is SettingsProjectTab {
+  if (!Object.hasOwn(projectTabs, value)) return false
+  if (value === "general" || value === "workspaces" || value === "extensions") return true
+  return composedProjectExtensionTabs(composition)?.some((entry) => entry.value === value) ?? false
+}
+
+/** Where a project view's `extensions` tab (or a legacy subtab) must land once composed tabs promote it. */
+export function resolveProjectSettingsView(view: SettingsView, composition?: SettingsTabComposition): SettingsView {
+  if (view.type !== "project") return view
+  if (view.tab === "extensions") {
+    const tab = projectExtensionDestination(view.subtab, composition)
+    if (tab === "extensions" || !isProjectTab(tab, composition)) return view
+    return { ...view, tab, subtab: undefined }
+  }
+  if (view.tab === "general" || view.tab === "workspaces" || isProjectTab(view.tab, composition)) return view
+  const subtab = view.tab === "mcp" ? "mcps" : view.tab === "language-servers" ? "lsps" : view.tab
+  return { ...view, tab: "extensions", subtab }
 }
 
 function isSubtab(value: string): value is NonNullable<SettingsView["subtab"]> {
