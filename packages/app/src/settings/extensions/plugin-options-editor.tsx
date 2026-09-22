@@ -9,6 +9,7 @@ import { TextInput } from "@opencode/ui/text-input"
 import type { PluginInfo, PluginOptionChoice } from "@opencode/client"
 import { useServerSDK } from "@/runtime/server/client"
 import { useLanguage } from "@/runtime/i18n/language"
+import { usePlatform } from "@/runtime/platform/platform"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
 import { showToast } from "@/shell/notifications/toast"
 import { SettingsList } from "@/settings/list"
@@ -25,12 +26,14 @@ import "./extensions.css"
 export const PluginOptionsEditor: Component<{
   plugin: PluginInfo
   directory: string | undefined
+  documentationUrl?: string
   onBack?: () => void
   headerActions?: JSX.Element
   onChanged?: () => unknown | Promise<unknown>
 }> = (props) => {
   const serverSDK = useServerSDK()
   const language = useLanguage()
+  const platform = usePlatform()
   const [store, setStore] = createStore({ pending: "", query: "", expanded: {} as Record<string, boolean> })
   const scope = () => scopeOf(props.directory)
   const pluginId = () => String(props.plugin.id ?? "")
@@ -154,7 +157,21 @@ export const PluginOptionsEditor: Component<{
           </Show>
         </div>
         <Show when={props.plugin.description}>
-          <p class="plugin-details-description">{props.plugin.description}</p>
+          <p class="plugin-details-description">
+            {props.plugin.description}
+            <Show when={props.documentationUrl}>
+              {" "}
+              <button
+                type="button"
+                class="plugin-details-learn-more"
+                aria-label={language.t("settings.extensions.learnMore")}
+                title={language.t("settings.extensions.learnMore")}
+                onClick={() => platform.openExternal(props.documentationUrl!)}
+              >
+                <Icon name="help" size="small" />
+              </button>
+            </Show>
+          </p>
         </Show>
       </header>
       <Show when={props.plugin.state.status === "failed" ? props.plugin.state.error : undefined}>

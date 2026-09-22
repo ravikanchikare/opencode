@@ -1102,6 +1102,7 @@ export const dict = {
   "session.btw.copy": "Copy answer",
   "common.moreOptions": "More options",
   "common.learnMore": "Learn more",
+  "settings.extensions.learnMore": "Learn More",
   "common.rename": "Rename",
   "common.export": "Export",
   "common.reset": "Reset",

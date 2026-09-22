@@ -61,7 +61,13 @@ export type AppNewSessionComposition = {
  * appearance in entries, keeping entries as the single inventory ordering source.
  */
 export type AppInventoryPresentation = {
-  entries?: readonly { id: string; name?: string; description?: string; group?: string }[]
+  entries?: readonly {
+    id: string
+    name?: string
+    description?: string
+    documentationUrl?: string
+    group?: string
+  }[]
   groups?: readonly { id: string; title: string; description?: string }[]
   /** Hide rows in Settings only; runtime inventories and commands remain unchanged. */
   hiddenIDs?: readonly string[]

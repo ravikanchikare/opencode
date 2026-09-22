@@ -6,11 +6,13 @@ export type InventoryGroup<T> = {
   rows: T[]
 }
 
+export type PresentedInventoryRow<T> = T & { documentationUrl?: string }
+
 /** Apply presentation only: retain identity, runtime state, options, and unknown entries. */
 export function presentInventory<T extends { id?: string; name?: string; description?: string }>(
   rows: readonly T[],
   presentation?: AppInventoryPresentation,
-): T[] {
+): PresentedInventoryRow<T>[] {
   const entries = presentation?.entries
   const visible = rows.filter((row) => row.id === undefined || !presentation?.hiddenIDs?.includes(row.id))
   if (!entries?.length) return visible
@@ -27,6 +29,7 @@ export function presentInventory<T extends { id?: string; name?: string; descrip
         ...row,
         ...(value.name === undefined ? {} : { name: value.name }),
         ...(value.description === undefined ? {} : { description: value.description }),
+        ...(value.documentationUrl === undefined ? {} : { documentationUrl: value.documentationUrl }),
       }
     })
 }

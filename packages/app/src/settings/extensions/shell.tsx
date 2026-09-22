@@ -12,6 +12,8 @@
 import { For, Show, type Component, type JSX } from "solid-js"
 import { Dynamic } from "solid-js/web"
 import { Icon, type IconProps } from "@opencode/ui/icon"
+import { useLanguage } from "@/runtime/i18n/language"
+import { usePlatform } from "@/runtime/platform/platform"
 import type { InventoryGroup } from "./presentation"
 import "./extensions.css"
 
@@ -35,35 +37,54 @@ export const ExtensionRow: Component<{
   mono?: boolean
   onOpen?: () => void
   children?: JSX.Element
-}> = (props) => (
-  <div class="extension-destination-row">
-    <Dynamic
-      component={props.onOpen ? "button" : "div"}
-      type={props.onOpen ? "button" : undefined}
-      class="extension-destination-label"
-      onClick={props.onOpen}
-    >
-      <Icon name={props.icon} class="extension-destination-icon" />
-      <span class="extension-destination-main">
-        <span class="extension-destination-name" classList={{ mono: props.mono }}>
-          {props.name}
-        </span>
-        <Show when={props.description}>
-          <span
-            class="extension-destination-description"
-            classList={{ "extension-destination-description-clamp-2": props.descriptionLines === 2 }}
-          >
-            {props.description}
+  documentationUrl?: string
+}> = (props) => {
+  const language = useLanguage()
+  const platform = usePlatform()
+  return (
+    <div class="extension-destination-row">
+      <div class="extension-destination-label">
+        <Icon name={props.icon} class="extension-destination-icon" />
+        <span class="extension-destination-main">
+          <span class="extension-destination-name-line">
+            <Dynamic
+              component={props.onOpen ? "button" : "span"}
+              type={props.onOpen ? "button" : undefined}
+              class="extension-destination-name"
+              classList={{ mono: props.mono, "extension-destination-open": !!props.onOpen }}
+              onClick={props.onOpen}
+            >
+              {props.name}
+            </Dynamic>
+            <Show when={props.documentationUrl}>
+              <button
+                type="button"
+                class="extension-destination-learn-more"
+                aria-label={language.t("settings.extensions.learnMore")}
+                title={language.t("settings.extensions.learnMore")}
+                onClick={() => platform.openExternal(props.documentationUrl!)}
+              >
+                <Icon name="help" size="small" />
+              </button>
+            </Show>
           </span>
-        </Show>
-        <Show when={props.detail}>
-          <span class="extension-destination-description">{props.detail}</span>
-        </Show>
-      </span>
-    </Dynamic>
-    {props.children}
-  </div>
-)
+          <Show when={props.description}>
+            <span
+              class="extension-destination-description"
+              classList={{ "extension-destination-description-clamp-2": props.descriptionLines === 2 }}
+            >
+              {props.description}
+            </span>
+          </Show>
+          <Show when={props.detail}>
+            <span class="extension-destination-description">{props.detail}</span>
+          </Show>
+        </span>
+      </div>
+      {props.children}
+    </div>
+  )
+}
 
 export function ExtensionList<T>(props: {
   each: readonly T[] | undefined
