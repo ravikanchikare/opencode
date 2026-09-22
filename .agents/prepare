@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# Prepare the current fork checkout for agent or editor development. Delta runs
+# this from the root of each managed checkout; run it by hand anywhere else.
+#
+set -euo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+
+# Fetch and publish over SSH from every checkout. A Delta-managed checkout
+# otherwise keeps origin's HTTPS URL, which cannot push. Also add the upstream
+# remote that fork-stack maintenance compares against.
+origin=git@github.com:ravikanchikare/opencode.git
+git remote set-url origin "$origin" 2>/dev/null || git remote add origin "$origin"
+git config --unset-all remote.origin.pushurl || true
+git remote get-url upstream >/dev/null 2>&1 ||
+  git remote add upstream https://github.com/anomalyco/opencode.git
+
+bun install --frozen-lockfile
