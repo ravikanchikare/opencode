@@ -20,6 +20,7 @@ export type Scope = "default" | "location"
 
 export interface SkillRow extends SkillInventory {
   readonly id: string
+  readonly documentationUrl?: string
 }
 
 export function scopeOf(directory: string | undefined): Scope {

@@ -28,11 +28,21 @@ test("configured array order wins over API order and alphabetical names", () => 
     Object.freeze({ id: "b", name: "Beta", description: "Native beta", enabled: true }),
   ]
   const presentation = {
-    entries: [{ id: "missing" }, { id: "b", name: "Zulu", description: "Configured beta" }, { id: "a" }],
+    entries: [
+      { id: "missing" },
+      { id: "b", name: "Zulu", description: "Configured beta", documentationUrl: "https://example.com/beta" },
+      { id: "a" },
+    ],
   }
   for (const input of [rows, [...rows].reverse()]) {
     expect(presentInventory(input, presentation)).toEqual([
-      { id: "b", name: "Zulu", description: "Configured beta", enabled: true },
+      {
+        id: "b",
+        name: "Zulu",
+        description: "Configured beta",
+        documentationUrl: "https://example.com/beta",
+        enabled: true,
+      },
       rows[0],
     ])
   }

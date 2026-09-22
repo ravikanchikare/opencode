@@ -39,7 +39,7 @@ import { currentSkill, detailOf, payloadFor, scopeOf, type SkillRow } from "./sk
 import { SkillDetails } from "./skill-details"
 import { SkillAvailabilityControls } from "./skill-availability-controls"
 import { createSkillInventory } from "./skill-inventory"
-import { pluginInventoryGroups, skillInventoryGroups } from "./presentation"
+import { pluginInventoryGroups, skillInventoryGroups, type PresentedInventoryRow } from "./presentation"
 import {
   integrationSubtitle,
   serviceIntegrations,
@@ -99,9 +99,9 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
   const current = createMemo(() => currentPlugin(plugins.rows(), selected()))
   const sections = createMemo(() => pluginInventoryGroups(plugins.rows()))
   const grouped = createMemo(() => sections().some((section) => section.group !== undefined))
-  const row = (plugin: PluginInfo) => (
+  const row = (plugin: PresentedInventoryRow<PluginInfo>) => (
     <Show
-      when={hasPluginDetails(plugin)}
+      when={hasPluginDetails(plugin) || plugin.documentationUrl}
       fallback={
         <ExtensionRow
           icon="cube"
@@ -109,20 +109,21 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
           mono={!plugin.name}
           description={plugin.description}
           detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+          documentationUrl={plugin.documentationUrl}
         />
       }
     >
-      <button type="button" class="plugin-options-open" onClick={() => setSelected(String(plugin.id))}>
-        <ExtensionRow
-          icon="cube"
-          name={pluginDisplayName(plugin)}
-          mono={!plugin.name}
-          description={plugin.description}
-          detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
-        >
-          <Icon name="chevron-right" size="small" class="extension-destination-icon" />
-        </ExtensionRow>
-      </button>
+      <ExtensionRow
+        icon="cube"
+        name={pluginDisplayName(plugin)}
+        mono={!plugin.name}
+        description={plugin.description}
+        detail={plugin.state.status === "failed" ? plugin.state.error : undefined}
+        documentationUrl={plugin.documentationUrl}
+        onOpen={() => setSelected(String(plugin.id))}
+      >
+        <Icon name="chevron-right" size="small" class="extension-destination-icon" />
+      </ExtensionRow>
     </Show>
   )
 
@@ -171,6 +172,7 @@ export const PluginsPanel: Component<ExtensionPanelProps> = (props) => {
           <PluginOptionsEditor
             plugin={plugin()}
             directory={props.directory}
+            documentationUrl={plugin().documentationUrl}
             onBack={() => setSelected()}
             onChanged={() => plugins.refetch()}
           />
@@ -224,6 +226,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
       description={item.description}
       descriptionLines={2}
       detail={detailOf(item, scope())}
+      documentationUrl={item.documentationUrl}
       onOpen={() => setSelected(item.id)}
     >
       <SkillAvailabilityControls
@@ -266,6 +269,7 @@ export const SkillsPanel: Component<ExtensionPanelProps> = (props) => {
       {(skill) => (
         <SkillDetails
           skill={skill()}
+          documentationUrl={skill().documentationUrl}
           scope={scope()}
           pending={inventory.pending() !== undefined}
           onEnabledChange={(enabled) => void inventory.set(skill(), enabled)}

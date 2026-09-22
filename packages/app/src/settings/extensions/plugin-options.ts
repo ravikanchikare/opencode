@@ -41,7 +41,7 @@ export function editorValues(plugin: PluginInfo, key: string, fallback: readonly
   return requestedValues(plugin, key) ?? selectedValues(plugin, key) ?? fallback
 }
 
-export function currentPlugin(plugins: readonly PluginInfo[], id: string | undefined) {
+export function currentPlugin<T extends PluginInfo>(plugins: readonly T[], id: string | undefined): T | undefined {
   if (!id) return
   return plugins.find((plugin) => String(plugin.id) === id)
 }
