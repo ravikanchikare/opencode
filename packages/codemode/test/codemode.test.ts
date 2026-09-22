@@ -158,6 +158,91 @@ describe("CodeMode host failure boundary", () => {
       expect(Cause.hasInterruptsOnly(exit.cause)).toBe(true)
     }
   })
+
+  test("lets hosts preserve selected tool defects", async () => {
+    const exit = await Effect.runPromiseExit(
+      CodeMode.make({
+        tools: {
+          host: {
+            call: Tool.make({
+              description: "Decline",
+              input: Schema.Struct({}),
+              output: Schema.String,
+              execute: () => Effect.die(new HostError({ message: "Declined" })),
+            }),
+          },
+        },
+        propagateToolCause: (cause) =>
+          cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof HostError),
+      }).execute("try { return await tools.host.call({}) } catch { return null }"),
+    )
+
+    expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") {
+      expect(
+        exit.cause.reasons.some(
+          (reason) =>
+            Cause.isDieReason(reason) && reason.defect instanceof HostError && reason.defect.message === "Declined",
+        ),
+      ).toBe(true)
+    }
+  })
+
+  test("preserves the original composite host cause", async () => {
+    const original = Cause.combine(Cause.fail(new HostError({ message: "declined" })), Cause.die("cleanup defect"))
+    const exit = await Effect.runPromiseExit(
+      CodeMode.make({
+        tools: {
+          host: {
+            call: Tool.make({
+              description: "Decline",
+              input: Schema.Struct({}),
+              output: Schema.String,
+              execute: () => Effect.failCause(original),
+            }),
+          },
+        },
+        propagateToolCause: () => true,
+      }).execute("return await tools.host.call({})"),
+    )
+
+    expect(exit._tag).toBe("Failure")
+    if (exit._tag === "Failure") expect(exit.cause).toBe(original as Cause.Cause<never>)
+  })
+
+  test("runs finalizers without allowing them to replace preserved host causes", async () => {
+    for (const finalizer of [
+      "return null",
+      "throw new Error('finalizer')",
+      "try { throw new Error('inner') } finally { return null }",
+    ]) {
+      const exit = await Effect.runPromiseExit(
+        CodeMode.make({
+          tools: {
+            host: {
+              call: Tool.make({
+                description: "Decline",
+                input: Schema.Struct({}),
+                output: Schema.String,
+                execute: () => Effect.die(new HostError({ message: "declined" })),
+              }),
+            },
+          },
+          propagateToolCause: (cause) =>
+            cause.reasons.some((reason) => Cause.isDieReason(reason) && reason.defect instanceof HostError),
+        }).execute(`try { await tools.host.call({}) } catch { return null } finally { ${finalizer} }`),
+      )
+
+      expect(exit._tag).toBe("Failure")
+      if (exit._tag === "Failure")
+        expect(
+          exit.cause.reasons.some(
+            (reason) =>
+              Cause.isDieReason(reason) && reason.defect instanceof HostError && reason.defect.message === "declined",
+          ),
+        ).toBe(true)
+    }
+  })
 })
 
 describe("CodeMode call hooks", () => {
