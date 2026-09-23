@@ -16,7 +16,7 @@ const methodID = Integration.MethodID.make("oauth")
 
 const remote = (url: string) => new ConfigMCP.Remote({ type: "remote", url, oauth: { client_id: "client" } })
 
-const credential = (input: { access: string; refresh: string; expires?: number; url: string }) =>
+const credential = (input: { access: string; refresh: string; expires?: number; url: string; clientID?: string }) =>
   new Credential.Info({
     id: Credential.ID.make("cred_test"),
     integrationID,
@@ -27,9 +27,20 @@ const credential = (input: { access: string; refresh: string; expires?: number; 
       access: input.access,
       refresh: input.refresh,
       expires: input.expires ?? Date.now() - 1000,
-      metadata: { serverUrl: input.url, tokenType: "Bearer" },
+      metadata: {
+        serverUrl: input.url,
+        tokenType: "Bearer",
+        ...(input.clientID ? { client: { client_id: input.clientID, token_endpoint_auth_method: "none" } } : {}),
+      },
     },
   })
+
+const unsignedJwt = (claims: Record<string, string>) =>
+  [
+    Buffer.from(JSON.stringify({ alg: "none" })).toString("base64url"),
+    Buffer.from(JSON.stringify(claims)).toString("base64url"),
+    "",
+  ].join(".")
 
 // Connect-time providers read and write the credential store; this one lives in memory so tests can
 // inspect the row the provider leaves behind.
@@ -183,6 +194,75 @@ describe("MCP OAuth", () => {
     const stored = store.rows.get(Credential.ID.make("cred_test"))?.value
     expect(stored?.type === "oauth" && stored.access).toBe("next")
     expect(stored?.type === "oauth" && stored.metadata?.issuer).toBe(server.url.href)
+  })
+
+  test("retries a rejected refresh with the client named by the access token", async () => {
+    const tokenRequests: URLSearchParams[] = []
+    const server = Bun.serve({
+      port: 0,
+      async fetch(request) {
+        const url = new URL(request.url)
+        if (request.method !== "POST" || url.pathname !== "/token") return new Response(null, { status: 404 })
+        const body = new URLSearchParams(await request.text())
+        tokenRequests.push(body)
+        if (body.get("client_id") !== "backing-app")
+          return Response.json({ error: "access_denied", error_description: "Unauthorized" }, { status: 401 })
+        return Response.json({ access_token: "next", token_type: "Bearer", refresh_token: "rotated", expires_in: 1800 })
+      },
+    })
+    const url = server.url.href
+    const store = memoryCredentials([
+      credential({
+        access: unsignedJwt({ azp: "backing-app" }),
+        refresh: "devrev-refresh",
+        url,
+        clientID: "devrev:dcr:test",
+      }),
+    ])
+    const oauthProvider = await connectProvider(new ConfigMCP.Remote({ type: "remote", url }), store)
+    const fetchFn = await Effect.runPromise(McpOAuth.loggedFetch({ server: "test" }))
+
+    const result = await auth(oauthProvider, { serverUrl: url, fetchFn }).finally(() => server.stop(true))
+
+    expect(result).toBe("AUTHORIZED")
+    expect(tokenRequests.map((body) => body.get("client_id"))).toEqual(["devrev:dcr:test", "backing-app"])
+    expect(tokenRequests[1]?.get("grant_type")).toBe("refresh_token")
+    expect(tokenRequests[1]?.get("refresh_token")).toBe("devrev-refresh")
+    const stored = store.rows.get(Credential.ID.make("cred_test"))?.value
+    expect(stored?.type === "oauth" && stored.access).toBe("next")
+    expect(stored?.type === "oauth" && stored.refresh).toBe("rotated")
+    expect(stored?.type === "oauth" && McpOAuth.clientFromCredential(stored)?.client_id).toBe("devrev:dcr:test")
+  })
+
+  test("does not retry a refresh rejected with invalid_grant", async () => {
+    const tokenRequests: URLSearchParams[] = []
+    const server = Bun.serve({
+      port: 0,
+      async fetch(request) {
+        const url = new URL(request.url)
+        if (request.method !== "POST" || url.pathname !== "/token") return new Response(null, { status: 404 })
+        tokenRequests.push(new URLSearchParams(await request.text()))
+        return Response.json({ error: "invalid_grant", error_description: "Unknown refresh token" }, { status: 401 })
+      },
+    })
+    const url = server.url.href
+    const store = memoryCredentials([
+      credential({
+        access: unsignedJwt({ azp: "backing-app" }),
+        refresh: "other-refresh",
+        url,
+        clientID: "devrev:dcr:test",
+      }),
+    ])
+    const oauthProvider = await connectProvider(new ConfigMCP.Remote({ type: "remote", url }), store)
+    const fetchFn = await Effect.runPromise(McpOAuth.loggedFetch({ server: "test" }))
+
+    await auth(oauthProvider, { serverUrl: url, fetchFn })
+      .catch(() => undefined)
+      .finally(() => server.stop(true))
+
+    expect(tokenRequests).toHaveLength(1)
+    expect(tokenRequests[0]?.get("client_id")).toBe("devrev:dcr:test")
   })
 
   test("reports needs_auth for an unauthorized server without registering a client", async () => {

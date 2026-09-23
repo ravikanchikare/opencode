@@ -6,6 +6,7 @@ import {
   checkResourceAllowed,
   discoverOAuthServerInfo,
   extractWWWAuthenticateParams,
+  OAuthErrorCode,
   parseErrorResponse,
   resourceUrlFromServerUrl,
   UnauthorizedError,
@@ -28,6 +29,10 @@ export const CLIENT_METADATA_URL = "https://opencode.ai/oauth/opencode/client.js
 
 // Refresh tokens rotate, so concurrent refreshes of the same token share one request or the second gets invalid_grant.
 const refreshes = new Map<string, ReturnType<FetchLike>>()
+// Some authorization servers mint the access token for a different client than the one DCR returned.
+// DevRev's registration id (`devrev:dcr:…`) is accepted for the code grant and rejected on refresh
+// with access_denied; the token's `azp` is the client id the refresh grant accepts.
+const refreshClients = new Map<string, string>()
 
 const refreshKey = (url: string | URL, init: RequestInit | undefined) => {
   if (!(init?.body instanceof URLSearchParams) || init.body.get("grant_type") !== "refresh_token") return undefined
@@ -39,12 +44,52 @@ const refreshKey = (url: string | URL, init: RequestInit | undefined) => {
 const base: FetchLike = fetch
 const share = (pending: ReturnType<FetchLike>) => pending.then((response) => response.clone() as typeof response)
 
+const jwtAzp = (access: string) => {
+  const segment = access.split(".")[1]
+  if (!segment) return undefined
+  try {
+    const parsed: unknown = JSON.parse(Buffer.from(segment, "base64url").toString())
+    if (typeof parsed !== "object" || parsed === null || !("azp" in parsed)) return undefined
+    return typeof parsed.azp === "string" && parsed.azp ? parsed.azp : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const rememberRefreshClient = (oauth: Credential.OAuth) => {
+  const azp = jwtAzp(oauth.access)
+  if (!oauth.refresh || !azp) {
+    if (oauth.refresh) refreshClients.delete(oauth.refresh)
+    return
+  }
+  refreshClients.set(oauth.refresh, azp)
+}
+
+// The registered client is what the code grant used. When that id is refused, one retry presents
+// the client named by the access token. The registered client's secret does not belong to that client.
+const refreshRequest = async (url: string | URL, init: RequestInit | undefined) => {
+  const response = await base(url, init)
+  const body = init?.body
+  if (response.ok || response.status !== 401 || !(body instanceof URLSearchParams)) return response
+  if (body.get("grant_type") !== "refresh_token") return response
+  const azp = refreshClients.get(body.get("refresh_token") ?? "")
+  const registered = body.get("client_id")
+  if (!azp || !registered || azp === registered) return response
+  const rejected = await parseErrorResponse(await response.clone().text())
+  if (rejected.code !== OAuthErrorCode.AccessDenied) return response
+  const next = new URLSearchParams(body)
+  next.set("client_id", azp)
+  const headers = new Headers(init?.headers)
+  headers.delete("authorization")
+  return base(url, { ...init, headers, body: next })
+}
+
 const send: FetchLike = (url, init) => {
   const key = refreshKey(url, init)
-  if (key === undefined) return base(url, init)
+  if (key === undefined) return refreshRequest(url, init)
   const current = refreshes.get(key)
   if (current) return share(current)
-  const pending = base(url, init).finally(() => {
+  const pending = refreshRequest(url, init).finally(() => {
     if (refreshes.get(key) === pending) refreshes.delete(key)
   })
   refreshes.set(key, pending)
@@ -288,6 +333,7 @@ export const connectProvider = Effect.fnUntraced(function* (input: {
       if (scope === "verifier" || scope === "discovery") return
       const oauth = await read()
       if (!oauth || oauth.refresh !== presented) return
+      refreshClients.delete(presented)
       await run(Effect.logWarning("mcp oauth credential invalidated", { credentialID: id, scope }))
       await run(credentials.remove(id))
     },
@@ -296,6 +342,7 @@ export const connectProvider = Effect.fnUntraced(function* (input: {
         const oauth = await read()
         if (!oauth) return undefined
         presented = oauth.refresh
+        rememberRefreshClient(oauth)
         return toTokens(oauth)
       },
       saveTokens: async (tokens) => {
@@ -306,6 +353,8 @@ export const connectProvider = Effect.fnUntraced(function* (input: {
           tokens,
           client: previous ? clientFromCredential(previous) : undefined,
         })
+        if (previous?.refresh && previous.refresh !== value.refresh) refreshClients.delete(previous.refresh)
+        rememberRefreshClient(value)
         presented = value.refresh
         await run(credentials.update(id, { value }))
       },
