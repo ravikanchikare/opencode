@@ -327,26 +327,7 @@ export type FileSystemWrite = { path: string }
 
 export type CommandInfo = { name: string; description?: string }
 
-export type SkillInfo = {
-  id: string
-  name: string
-  description?: string
-  autoinvoke?: boolean
-  path: string
-  content: string
-}
-
-export type SkillInventory = {
-  id: string
-  name: string
-  description?: string
-  autoinvoke?: boolean
-  path: string
-  content: string
-  enabled: boolean
-  inherited: boolean
-  defaultEnabled: boolean
-}
+export type SkillResource = { name: string; description?: string; content: string }
 
 export type RpcOutput = { output?: any }
 
@@ -1562,6 +1543,29 @@ export type PermissionAsked = {
     source?: PermissionSource
     message?: string
   }
+}
+
+export type SkillInfo = {
+  id: string
+  name: string
+  description?: string
+  autoinvoke?: boolean
+  path: string
+  content: string
+  resources?: Array<SkillResource>
+}
+
+export type SkillInventory = {
+  id: string
+  name: string
+  description?: string
+  autoinvoke?: boolean
+  path: string
+  content: string
+  resources?: Array<SkillResource>
+  enabled: boolean
+  inherited: boolean
+  defaultEnabled: boolean
 }
 
 export type PermissionReplied = {

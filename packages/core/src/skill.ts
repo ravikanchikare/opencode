@@ -24,6 +24,8 @@ export type Source = Skill.Source
 
 export const Info = Skill.Info
 export type Info = Skill.Info
+export const Resource = Skill.Resource
+export type Resource = Skill.Resource
 export const Inventory = Skill.Inventory
 export type Inventory = Skill.Inventory
 export const ID = Skill.ID
@@ -36,14 +38,27 @@ export { Event } from "@opencode/schema/skill"
 export const available = (skills: ReadonlyArray<Info>, permissions: Permission.Ruleset) =>
   skills.filter((skill) => Permission.evaluate("skill", skill.id, permissions).effect !== "deny")
 
+const hasResources = (skill: Info) => (skill.resources?.length ?? 0) > 0
+
 export const toModelOutput = (skill: Info, files: ReadonlyArray<string>) => {
+  const header = [`<skill_content name="${skill.name}">`, `# Skill: ${skill.name}`, "", skill.content.trim(), ""]
+  if (hasResources(skill))
+    return [
+      ...header,
+      `Resources for this skill are served by the skill tool: call it with { id: "${skill.id}", resource: "<name>" }.`,
+      "",
+      "<skill_resources>",
+      ...skill.resources!.map((resource) =>
+        resource.description
+          ? `<resource name="${resource.name}">${resource.description}</resource>`
+          : `<resource name="${resource.name}" />`,
+      ),
+      "</skill_resources>",
+      "</skill_content>",
+    ].join("\n")
   const directory = path.dirname(skill.path)
   return [
-    `<skill_content name="${skill.name}">`,
-    `# Skill: ${skill.name}`,
-    "",
-    skill.content.trim(),
-    "",
+    ...header,
     `Base directory for this skill: ${directory}`,
     "Relative paths in this skill (e.g., scripts/, reference/) are relative to this base directory.",
     "Note: file list is sampled.",
@@ -55,10 +70,14 @@ export const toModelOutput = (skill: Info, files: ReadonlyArray<string>) => {
   ].join("\n")
 }
 
+export const resourceOutput = (skill: Info, resource: Resource) =>
+  [`<skill_resource skill="${skill.name}" name="${resource.name}">`, resource.content.trim(), "</skill_resource>"].join("\n")
+
 export const prepare = Effect.fn("Skill.prepare")(function* (fs: FSUtil.Interface, skill: Info) {
   const directory = path.dirname(skill.path)
+  // A skill that carries its resources never exposes its install directory.
   const files =
-    path.basename(skill.path) === "SKILL.md"
+    !hasResources(skill) && path.basename(skill.path) === "SKILL.md"
       ? (yield* fs.scan("**/*", { cwd: directory, absolute: true, include: "file", dot: true }))
           .filter((file) => path.basename(file) !== "SKILL.md")
           .toSorted()

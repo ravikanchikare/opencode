@@ -23,6 +23,13 @@ export const UrlSource = Schema.Struct({
   url: Schema.String,
 }).annotate({ identifier: "Skill.UrlSource" })
 
+export interface Resource extends Schema.Schema.Type<typeof Resource> {}
+export const Resource = Schema.Struct({
+  name: Schema.String,
+  description: Schema.String.pipe(optional),
+  content: Schema.String,
+}).annotate({ identifier: "Skill.Resource" })
+
 export interface Info extends Schema.Schema.Type<typeof Info> {}
 export const Info = Schema.Struct({
   id: ID,
@@ -31,6 +38,12 @@ export const Info = Schema.Struct({
   autoinvoke: Schema.Boolean.pipe(optional),
   path: AbsolutePath,
   content: Schema.String,
+  /**
+   * Named resources whose content the host already holds. When present, the
+   * skill tool lists them by name and serves them itself, so the model never
+   * reads the skill's install directory.
+   */
+  resources: Schema.Array(Resource).pipe(optional),
 }).annotate({ identifier: "Skill.Info" })
 
 export interface Inventory extends Schema.Schema.Type<typeof Inventory> {}
