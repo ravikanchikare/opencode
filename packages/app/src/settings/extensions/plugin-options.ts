@@ -41,6 +41,11 @@ export function editorValues(plugin: PluginInfo, key: string, fallback: readonly
   return requestedValues(plugin, key) ?? selectedValues(plugin, key) ?? fallback
 }
 
+/** A child gated off by its parent reads as off; its saved value returns with the parent. */
+export function isChoiceChecked(selected: ReadonlySet<string>, value: string, parentEnabled = true) {
+  return parentEnabled && selected.has(value)
+}
+
 export function currentPlugin<T extends PluginInfo>(plugins: readonly T[], id: string | undefined): T | undefined {
   if (!id) return
   return plugins.find((plugin) => String(plugin.id) === id)
