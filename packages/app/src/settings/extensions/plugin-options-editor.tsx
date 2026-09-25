@@ -13,7 +13,15 @@ import { usePlatform } from "@/runtime/platform/platform"
 import { pluginDisplayName } from "@/providers/catalog/plugin"
 import { showToast } from "@/shell/notifications/toast"
 import { SettingsList } from "@/settings/list"
-import { canReset, editorValues, hasManyPluginTools, isSelectionActive, optionLabel, scopeOf } from "./plugin-options"
+import {
+  canReset,
+  editorValues,
+  hasManyPluginTools,
+  isChoiceChecked,
+  isSelectionActive,
+  optionLabel,
+  scopeOf,
+} from "./plugin-options"
 import {
   filterPluginChoiceChildren,
   filterPluginChoices,
@@ -208,7 +216,7 @@ export const PluginOptionsEditor: Component<{
           )
           const toggle = (choice: PluginOptionChoice, label = choice.label, disabled = false) => (
             <Switch
-              checked={selected().has(choice.value)}
+              checked={isChoiceChecked(selected(), choice.value, !disabled)}
               hideLabel
               disabled={disabled || !!store.pending || !pluginId()}
               onChange={(checked) => {

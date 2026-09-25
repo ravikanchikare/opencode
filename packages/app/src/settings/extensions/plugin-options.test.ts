@@ -7,6 +7,7 @@ import {
   editorValues,
   hasManyPluginTools,
   hasPluginDetails,
+  isChoiceChecked,
   isSelectionActive,
   optionLabel,
   selectedValues,
@@ -233,5 +234,20 @@ describe("project extension plugin lookup", () => {
     expect(source).toContain("onChanged={() => refetchPlugins()}")
     expect(source).toContain("refetchGlobalPlugins")
     expect(source).toContain("refetchProjectPlugins")
+  })
+})
+
+describe("gated child choices", () => {
+  test("a child reads off while its parent is off and returns with the parent", () => {
+    const saved = new Set(["domain:works:read"])
+    expect(isChoiceChecked(saved, "domain:works:read")).toBe(true)
+    expect(isChoiceChecked(saved, "domain:works:read", false)).toBe(false)
+    expect(isChoiceChecked(saved, "domain:works:read", true)).toBe(true)
+    expect(isChoiceChecked(saved, "domain:works:write", true)).toBe(false)
+  })
+
+  test("child switches reflect their parent gate", () => {
+    const source = readFileSync(new URL("./plugin-options-editor.tsx", import.meta.url), "utf8")
+    expect(source).toContain("checked={isChoiceChecked(selected(), choice.value, !disabled)}")
   })
 })
