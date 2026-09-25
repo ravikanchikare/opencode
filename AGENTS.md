@@ -239,7 +239,7 @@ package directories.
 | Brain | `bun typecheck` and `bun test` in each touched package; after Protocol or Server `HttpApi` changes, `bun run generate` in `packages/client` and commit the result |
 | Face | tests and `bun typecheck` in `packages/app` (unit and browser) and `packages/ui` |
 | Desktop | tests and `bun typecheck` in `packages/desktop` |
-| All | `bun run check`, `git diff --check origin/v2...HEAD` |
+| All | `bun run check`; `git diff --check origin/v2...HEAD` for a topic landing, `git diff --check upstream/v2...HEAD` for an upstream sync or rewrite, whose `origin/v2` range includes upstream's own commits |
 
 ### Landing a topic
 
@@ -265,6 +265,19 @@ often, in small batches.
    conflict in the commit it belongs to, then run `bun install`,
    `bun run check`, and the checks for every track that conflicted. The
    Starter's E2E smoke check runs when the pin lands.
+3. Judge test failures against upstream's baseline, not zero. Pristine
+   `upstream/v2` has failing and flaky tests of its own (core, plugin, client
+   and desktop have all had some). Run the same failing test files in a
+   worktree at `upstream/v2` (`git worktree add --detach <dir> upstream/v2`,
+   then `bun install`), and treat only failures that do not also occur there as
+   blocking. Rerun a failure that passes on the second try before calling it
+   fork-caused. Record the comparison in the pin commit.
+4. A cloud session can do the rewrite and checks, but not the publish. It stops
+   after step 3 of "Rewriting published history", pushes the candidate as
+   `claude/<name>` with the checks and the baseline comparison in its report,
+   and hands off. A local operator then runs steps 1–8 against that candidate:
+   cloud containers cannot move `~/code/opencode`, Delta-managed checkouts, or
+   other Macs' clones.
 
 The stack grows by one commit per landed topic. At a release, it may be
 consolidated into fewer commits per track, the same way.
@@ -276,7 +289,11 @@ upstream sync rewrite commits already on `origin/v2`. Do it only when asked,
 by one operator, never as part of a topic landing.
 
 1. `git fetch origin --tags`, and record `old=$(git rev-parse origin/v2)`
-   before changing anything. Local `v2` must equal `$old`.
+   before changing anything. Local `v2` must equal `$old`. If it is strictly
+   behind (`git merge-base --is-ancestor v2 origin/v2` and no local-only
+   commits in `origin/v2..v2`), fast-forward it with
+   `git merge --ff-only origin/v2`. Stop and ask only when `v2` has local-only
+   commits or uncommitted changes that overlap.
 2. Archive the old tip so published Starter pins stay fetchable:
    `git push origin "${old}:refs/tags/archive/v2-$(date +%Y%m%d)-${old:0:10}"`.
 3. Rewrite: amend or fold into the owning commit, reword, or rebase. Run
