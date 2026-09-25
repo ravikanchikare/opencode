@@ -163,4 +163,109 @@ describe("SkillTool", () => {
       ),
     ),
   )
+
+  it.live("serves embedded resources by name without exposing the skill's install directory", () =>
+    Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+    ).pipe(
+      Effect.flatMap((tmp) =>
+        Effect.gen(function* () {
+          const directory = path.join(tmp.path, "installed", "guide.skills", "guide")
+          const location = path.join(directory, "SKILL.md")
+          const sibling = path.join(directory, "recovery.md")
+          yield* Effect.promise(() => fs.mkdir(directory, { recursive: true }))
+          yield* Effect.promise(() => Promise.all([fs.writeFile(location, "unused"), fs.writeFile(sibling, "on disk")]))
+
+          const info: Skill.Info = {
+            id: Skill.ID.make("guide"),
+            name: Skill.Name.make("Guide"),
+            description: "Guidance with resources",
+            path: AbsolutePath.make(location),
+            content: "# Guide\n\nLoad the recovery resource when blocked.",
+            resources: [
+              { name: "recovery", description: "What to do when blocked", content: "# Recovery\n\nReconcile first." },
+              { name: "glossary", content: "Terms" },
+            ],
+          }
+          const assertions: Permission.AssertInput[] = []
+          const permission = permissionLayer({ assert: (input) => Effect.sync(() => assertions.push(input)) })
+          const skills = Layer.mock(Skill.Service, {
+            get: (id) => Effect.succeed(id === info.id ? info : undefined),
+            list: () => Effect.succeed([info]),
+          })
+          const skillToolLayer = AppNodeBuilder.build(LayerNode.group([Tool.node, skillToolNode]), [
+            Permission.node.replace(permission),
+            Skill.node.replace(skills),
+            Image.node.replace(imagePassthrough),
+          ])
+
+          return yield* Effect.gen(function* () {
+            const registry = yield* Tool.Service
+            const loaded = yield* executeTool(registry, {
+              sessionID,
+              ...toolIdentity,
+              call: { type: "tool-call", id: "call-guide", name: "skill", input: { id: "guide" } },
+            })
+            const text = Skill.toModelOutput(info, [])
+            expect(loaded).toMatchObject({ status: "completed", content: [{ type: "text", text }] })
+            expect(text).toContain('<resource name="recovery">What to do when blocked</resource>')
+            expect(text).toContain('<resource name="glossary" />')
+            expect(text).not.toContain(directory)
+            expect(text).not.toContain("<skill_files>")
+
+            expect(
+              yield* executeTool(registry, {
+                sessionID,
+                ...toolIdentity,
+                call: {
+                  type: "tool-call",
+                  id: "call-guide-recovery",
+                  name: "skill",
+                  input: { id: "guide", resource: "recovery" },
+                },
+              }),
+            ).toMatchObject({
+              status: "completed",
+              content: [{ type: "text", text: Skill.resourceOutput(info, info.resources![0]) }],
+            })
+            expect(Skill.resourceOutput(info, info.resources![0])).toContain("Reconcile first.")
+
+            // Skills refer to "its Recovery resource"; the lookup ignores case.
+            expect(
+              yield* executeTool(registry, {
+                sessionID,
+                ...toolIdentity,
+                call: {
+                  type: "tool-call",
+                  id: "call-guide-recovery-cased",
+                  name: "skill",
+                  input: { id: "guide", resource: "Recovery" },
+                },
+              }),
+            ).toMatchObject({
+              status: "completed",
+              content: [{ type: "text", text: Skill.resourceOutput(info, info.resources![0]) }],
+            })
+
+            expect(
+              yield* executeTool(registry, {
+                sessionID,
+                ...toolIdentity,
+                call: {
+                  type: "tool-call",
+                  id: "call-guide-missing",
+                  name: "skill",
+                  input: { id: "guide", resource: "missing" },
+                },
+              }),
+            ).toMatchObject({ status: "error" })
+
+            // Only the skill permission is consulted: no file read, so no external_directory request.
+            expect(assertions.every((input) => input.action === "skill")).toBe(true)
+          }).pipe(Effect.provide(skillToolLayer))
+        }),
+      ),
+    ),
+  )
 })

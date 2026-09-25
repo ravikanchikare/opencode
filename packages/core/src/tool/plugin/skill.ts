@@ -11,6 +11,11 @@ export const name = "skill"
 
 export const Input = Schema.Struct({
   id: Skill.ID.annotate({ description: "The ID of an available skill or a skill explicitly referenced by the user" }),
+  resource: Schema.optional(
+    Schema.String.annotate({
+      description: "The name of a resource the loaded skill lists under <skill_resources>; omit to load the skill itself",
+    }),
+  ),
 })
 
 export const Output = Schema.Struct({
@@ -22,6 +27,7 @@ export const description = [
   "Load a specialized skill's instructions and resources into the current conversation when the task at hand matches its description.",
   "",
   "The skill ID must match an available skill or a skill explicitly referenced by the user.",
+  "When a loaded skill lists <skill_resources>, load one by passing its name as `resource` with the same skill ID.",
 ].join("\n")
 
 export const toModelOutput = Skill.toModelOutput
@@ -56,6 +62,20 @@ export const Plugin = {
                   agent: context.agent,
                   source: { type: "tool", messageID: context.messageID, id: context.id },
                 })
+                if (input.resource !== undefined) {
+                  const wanted = input.resource.trim().toLowerCase()
+                  const resource = skill.resources?.find((entry) => entry.name.toLowerCase() === wanted)
+                  if (!resource) {
+                    const names = (skill.resources ?? []).map((entry) => entry.name)
+                    return yield* Effect.fail(
+                      new Error(
+                        `Skill ${skill.id} has no resource named ${input.resource}` +
+                          (names.length > 0 ? `; available: ${names.join(", ")}` : "; it has no resources"),
+                      ),
+                    )
+                  }
+                  return { name: skill.name, directory: "", output: Skill.resourceOutput(skill, resource) }
+                }
                 return { name: skill.name, ...(yield* Skill.prepare(fs, skill)) }
               }).pipe(Effect.mapError((error) => unableToLoad(input.id, error)))
             }).pipe(
