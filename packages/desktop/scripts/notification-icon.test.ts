@@ -49,6 +49,10 @@ describe("desktop notification icon", () => {
 
   test.each(["serve", "build"])("the real %s config projects the selected PNG into the renderer", async (command) => {
     const directory = path.join(root, "icons/beta")
+    // The data URI is far larger than a pipe buffer, and a child that exits
+    // right after writing it to a pipe can lose the tail on Linux. Hand the
+    // value over through a file instead.
+    const output = path.join(await mkdtemp(path.join(tmpdir(), "desktop-notification-config-")), "define.json")
     // Config loading runs in its own process so channel/branding inputs cannot
     // leak into other tests that load Electron's config.
     const child = Bun.spawn(
@@ -58,7 +62,7 @@ describe("desktop notification icon", () => {
         `
       import { loadConfigFromFile } from "electron-vite"
       const loaded = await loadConfigFromFile({ command: ${JSON.stringify(command)}, mode: "production" })
-      console.log(loaded.config.renderer.define["import.meta.env.OPENCODE_NOTIFICATION_ICON"])
+      await Bun.write(${JSON.stringify(output)}, loaded.config.renderer.define["import.meta.env.OPENCODE_NOTIFICATION_ICON"])
     `,
       ],
       {
@@ -77,8 +81,13 @@ describe("desktop notification icon", () => {
       new Response(child.stderr).text(),
       child.exited,
     ])
-    expect(stderr).toBe("")
-    expect(exit).toBe(0)
-    expect(JSON.parse(stdout)).toBe(notificationIcon(directory, "prod"))
+    try {
+      expect(stderr).toBe("")
+      expect(stdout).toBe("")
+      expect(exit).toBe(0)
+      expect(JSON.parse(await Bun.file(output).text())).toBe(notificationIcon(directory, "prod"))
+    } finally {
+      await rm(path.dirname(output), { recursive: true, force: true })
+    }
   })
 })
